@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}Stock{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Niveaux de stock</h1>
+        <div class="text-muted">{{ request.boutique.name }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'stock:movement_history' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> Historique</a>
+        <a href="{% url 'stock:movement_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau mouvement</a>
+    </div>
+</div>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil bas</th><th></th></tr></thead>
+        <tbody>
+            {% for row in rows %}
+            <tr class="{% if row.is_low %}row-danger{% endif %}">
+                <td class="fw-semibold">{{ row.level.product.name }}</td>
+                <td>{{ row.level.quantity }} {{ row.level.product.unit.symbol|default:row.level.product.unit.name }}</td>
+                <td>{{ row.threshold }}</td>
+                <td>{% if row.is_low %}<span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Stock bas</span>{% endif %}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="text-muted text-center py-4">Aucun mouvement de stock enregistré.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

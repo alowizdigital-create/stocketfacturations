@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Tableau de bord{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Tableau de bord</h1>
+        <div class="text-muted">{{ request.boutique.name }} — {% now "d F Y" %}</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+            <div>
+                <div class="stat-value">{{ ca_mois }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">Chiffre d'affaires du mois</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
+            <div>
+                <div class="stat-value">{{ nb_produits }}</div>
+                <div class="stat-label">Produits actifs</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-receipt"></i></div>
+            <div>
+                <div class="stat-value">{{ nb_factures_impayees }}</div>
+                <div class="stat-label">Factures non soldées</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card {% if nb_stock_bas %}stat-warn{% endif %}">
+            <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="stat-value">{{ nb_stock_bas }}</div>
+                <div class="stat-label">Produits en stock bas</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="card-app">
+            <div class="card-app-header">Dernières ventes</div>
+            <div class="table-app" style="border:none; box-shadow:none;">
+                <table class="table mb-0">
+                    <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th>Facture</th><th>Total TTC</th></tr></thead>
+                    <tbody>
+                        {% for sale in dernieres_ventes %}
+                        <tr>
+                            <td><a href="{% url 'sales:sale_detail' sale.id %}">{{ sale.number }}</a></td>
+                            <td>{{ sale.client|default:"—" }}</td>
+                            <td>
+                                <span class="badge-status
+                                    {% if sale.status == 'CONFIRMEE' %}badge-green
+                                    {% elif sale.status == 'ANNULEE' %}badge-red
+                                    {% else %}badge-gray{% endif %}">
+                                    {{ sale.get_status_display }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if sale.invoice_id %}
+                                <a href="{% url 'sales:invoice_detail' sale.invoice_id %}">{{ sale.invoice.number }}</a>
+                                {% else %}
+                                <span class="text-muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ sale.total_ttc }} {{ sale.currency }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="5" class="text-muted">Aucune vente pour le moment.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card-app">
+            <div class="card-app-header">Actions rapides</div>
+            <div class="card-app-body d-grid gap-2">
+                <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle vente</a>
+                <a href="{% url 'catalog:product_create' %}" class="btn btn-outline-secondary"><i class="bi bi-box-seam"></i> Nouveau produit</a>
+                <a href="{% url 'stock:movement_create' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right"></i> Mouvement de stock</a>
+                <a href="{% url 'sales:client_create' %}" class="btn btn-outline-secondary"><i class="bi bi-person-plus"></i> Nouveau client</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

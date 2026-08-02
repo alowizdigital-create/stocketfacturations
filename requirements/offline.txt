@@ -1,0 +1,6 @@
+-r base.txt
+pywebview>=5.3
+waitress>=3.0
+PyInstaller>=6.11
+platformdirs>=4.3
+requests>=2.32

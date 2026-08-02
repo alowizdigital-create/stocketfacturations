@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Nouveau devis{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Nouveau devis</h1></div></div>
+<form method="post">
+    {% csrf_token %}
+    <div class="card-app mb-3">
+        <div class="card-app-body">
+            <label class="form-label">{{ form.client.label }}</label>
+            {{ form.client }}
+        </div>
+    </div>
+
+    <div class="card-app">
+        <div class="card-app-header">Lignes</div>
+        <div class="card-app-body">
+            {{ formset.management_form }}
+            {{ formset.non_form_errors }}
+            <div class="table-app" style="border:none; box-shadow:none;">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>Produit</th><th>Description</th><th>Quantité</th><th>PU HT</th><th>TVA %</th>{% if formset.can_delete %}<th>Suppr.</th>{% endif %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line_form in formset %}
+                        <tr>
+                            <td style="min-width:180px">{{ line_form.product }}</td>
+                            <td style="min-width:200px">{{ line_form.description }}</td>
+                            <td style="width:110px">{{ line_form.quantity }}</td>
+                            <td style="width:130px">{{ line_form.unit_price_ht }}</td>
+                            <td style="width:100px">{{ line_form.tva_rate }}</td>
+                            {% if formset.can_delete %}<td class="text-center">{{ line_form.DELETE }}</td>{% endif %}
+                        </tr>
+                        {% if line_form.non_field_errors %}
+                        <tr><td colspan="6" class="text-danger small">{{ line_form.non_field_errors }}</td></tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" class="btn btn-primary">Créer le devis</button>
+        <a href="{% url 'sales:invoice_list' %}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+</form>
+{% endblock %}

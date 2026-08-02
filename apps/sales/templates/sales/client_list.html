@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Clients{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>Clients</h1></div>
+    <a href="{% url 'sales:client_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Nouveau client</a>
+</div>
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Nom</th><th>Téléphone</th><th>Email</th></tr></thead>
+        <tbody>
+            {% for client in clients %}
+            <tr><td class="fw-semibold">{{ client.name }}</td><td>{{ client.phone|default:"—" }}</td><td>{{ client.email|default:"—" }}</td></tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-4">Aucun client.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

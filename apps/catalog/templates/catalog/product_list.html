@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Produits{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Produits</h1>
+        <div class="text-muted">Catalogue de {{ request.compte.name }}</div>
+    </div>
+    <a href="{% url 'catalog:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau produit</a>
+</div>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead>
+            <tr><th></th><th>Nom</th><th>Catégorie</th><th>Unité</th><th>Prix</th><th>TVA</th><th>Statut</th><th></th></tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>
+                    {% if product.image %}
+                    <img src="{{ product.image.url }}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:6px;">
+                    {% else %}
+                    <span class="d-inline-flex align-items-center justify-content-center" style="width:36px;height:36px;border-radius:6px;background:var(--brand-lighter);color:#c3bcd1;"><i class="bi bi-image"></i></span>
+                    {% endif %}
+                </td>
+                <td class="fw-semibold">{{ product.name }}</td>
+                <td>{{ product.category|default:"—" }}</td>
+                <td>{{ product.unit }}</td>
+                <td>{{ product.default_sale_price }} {{ request.boutique.devise }}</td>
+                <td>{{ product.tva_rate }}%</td>
+                <td>
+                    {% if product.is_active %}
+                    <span class="badge-status badge-green">Actif</span>
+                    {% else %}
+                    <span class="badge-status badge-gray">Inactif</span>
+                    {% endif %}
+                </td>
+                <td class="text-end"><a href="{% url 'catalog:product_update' product.id %}"><i class="bi bi-pencil"></i> Modifier</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="8" class="text-muted text-center py-4">Aucun produit pour le moment.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

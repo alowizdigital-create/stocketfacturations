@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Factures & devis{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Factures &amp; devis</h1>
+        <div class="text-muted">Les factures sont générées depuis une vente confirmée. Un devis peut être créé directement.</div>
+    </div>
+    <a href="{% url 'sales:invoice_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau devis</a>
+</div>
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Numéro</th><th>Type</th><th>Client</th><th>Statut</th><th>Date</th><th>Total TTC</th></tr></thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td><a href="{% url 'sales:invoice_detail' invoice.id %}" class="fw-semibold">{{ invoice.number }}</a></td>
+                <td>{{ invoice.get_type_display }}</td>
+                <td>{{ invoice.client|default:"—" }}</td>
+                <td>
+                    <span class="badge-status
+                        {% if invoice.status == 'PAYEE' %}badge-green
+                        {% elif invoice.status == 'BROUILLON' %}badge-gray
+                        {% elif invoice.status == 'ANNULEE' %}badge-red
+                        {% else %}badge-orange{% endif %}">
+                        {{ invoice.get_status_display }}
+                    </span>
+                </td>
+                <td class="text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
+                <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">Aucune facture pour le moment.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

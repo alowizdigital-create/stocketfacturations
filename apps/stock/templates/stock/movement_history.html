@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Historique des mouvements{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Historique des mouvements de stock</h1></div></div>
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Motif</th></tr></thead>
+        <tbody>
+            {% for m in movements %}
+            <tr>
+                <td class="text-muted">{{ m.created_at|date:"d/m/Y H:i" }}</td>
+                <td class="fw-semibold">{{ m.product.name }}</td>
+                <td>
+                    <span class="badge-status
+                        {% if m.type == 'VENTE' %}badge-purple
+                        {% elif m.type == 'SORTIE' %}badge-orange
+                        {% elif m.type == 'AJUSTEMENT' %}badge-gray
+                        {% else %}badge-green{% endif %}">
+                        {{ m.get_type_display }}
+                    </span>
+                </td>
+                <td>{{ m.quantity }}</td>
+                <td class="text-muted">{{ m.reason }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-4">Aucun mouvement.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

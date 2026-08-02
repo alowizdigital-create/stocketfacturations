@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Catégories{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Catégories</h1>
+        <div class="text-muted">Organisez votre catalogue de produits</div>
+    </div>
+    <a href="{% url 'catalog:category_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle catégorie</a>
+</div>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Nom</th><th>Catégorie parente</th><th></th></tr></thead>
+        <tbody>
+            {% for category in categories %}
+            <tr>
+                <td class="fw-semibold">{{ category.name }}</td>
+                <td>{{ category.parent|default:"—" }}</td>
+                <td class="text-end">
+                    <a href="{% url 'catalog:category_update' category.id %}" class="me-3"><i class="bi bi-pencil"></i></a>
+                    <form method="post" action="{% url 'catalog:category_delete' category.id %}" class="d-inline" onsubmit="return confirm('Supprimer cette catégorie ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-4">Aucune catégorie pour le moment.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

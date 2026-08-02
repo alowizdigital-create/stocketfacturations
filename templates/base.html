@@ -1,0 +1,105 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Stock & Facturation{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}" rel="stylesheet">
+</head>
+<body>
+{% if user.is_authenticated and request.boutique %}
+<div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-brand">
+            <i class="bi bi-boxes"></i> Stock &amp; Facturation
+        </div>
+        <nav class="sidebar-nav">
+            <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'core:home' %}">
+                <i class="bi bi-speedometer2"></i> Tableau de bord
+            </a>
+
+            <div class="sidebar-section">Catalogue</div>
+            <a class="nav-link {% if '/catalogue/produits' in request.path %}active{% endif %}" href="{% url 'catalog:product_list' %}">
+                <i class="bi bi-box-seam"></i> Produits
+            </a>
+            <a class="nav-link {% if '/catalogue/categories' in request.path %}active{% endif %}" href="{% url 'catalog:category_list' %}">
+                <i class="bi bi-tags"></i> Catégories
+            </a>
+            <a class="nav-link {% if '/catalogue/unites' in request.path %}active{% endif %}" href="{% url 'catalog:unit_list' %}">
+                <i class="bi bi-rulers"></i> Unités
+            </a>
+
+            <div class="sidebar-section">Stock</div>
+            <a class="nav-link {% if request.path == '/stock/' %}active{% endif %}" href="{% url 'stock:stock_level_list' %}">
+                <i class="bi bi-clipboard-data"></i> Niveaux de stock
+            </a>
+            <a class="nav-link {% if '/stock/mouvements' in request.path %}active{% endif %}" href="{% url 'stock:movement_history' %}">
+                <i class="bi bi-arrow-left-right"></i> Mouvements
+            </a>
+
+            <div class="sidebar-section">Ventes</div>
+            <a class="nav-link {% if '/ventes' in request.path %}active{% endif %}" href="{% url 'sales:sale_list' %}">
+                <i class="bi bi-cart-check"></i> Ventes
+            </a>
+            <a class="nav-link {% if '/clients' in request.path %}active{% endif %}" href="{% url 'sales:client_list' %}">
+                <i class="bi bi-people"></i> Clients
+            </a>
+            <a class="nav-link {% if '/factures' in request.path or '/devis' in request.path %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
+                <i class="bi bi-receipt"></i> Factures &amp; devis
+            </a>
+        </nav>
+        <div class="sidebar-footer">
+            {% if user.memberships.count > 1 %}
+            <a href="{% url 'tenants:choose_boutique' %}" class="nav-link">
+                <i class="bi bi-shop"></i> Changer de boutique
+            </a>
+            {% endif %}
+            <form method="post" action="{% url 'accounts:logout' %}">
+                {% csrf_token %}
+                <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
+                    <i class="bi bi-box-arrow-right"></i> Déconnexion
+                </button>
+            </form>
+        </div>
+    </aside>
+
+    <div class="main-content">
+        <header class="topbar">
+            <button class="btn btn-outline-secondary d-md-none" type="button" onclick="document.getElementById('sidebar').classList.toggle('open')">
+                <i class="bi bi-list"></i>
+            </button>
+            <span class="boutique-pill"><i class="bi bi-shop"></i> {{ request.boutique.name }}</span>
+            <span class="text-muted small">{{ user.email }}</span>
+        </header>
+        <main class="page">
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+</div>
+{% else %}
+<main>
+    {% if messages %}
+    <div class="container mt-3">
+        {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% block auth_content %}{% endblock %}
+</main>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

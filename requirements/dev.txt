@@ -1,0 +1,4 @@
+-r base.txt
+pytest>=9.0
+pytest-django>=4.12
+factory_boy>=3.3

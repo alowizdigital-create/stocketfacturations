@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}{{ invoice.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ invoice.number }}
+            <span class="badge-status
+                {% if invoice.status == 'PAYEE' %}badge-green
+                {% elif invoice.status == 'BROUILLON' %}badge-gray
+                {% elif invoice.status == 'ANNULEE' %}badge-red
+                {% else %}badge-orange{% endif %}">
+                {{ invoice.get_status_display }}
+            </span>
+        </h1>
+        <div class="text-muted">
+            {{ invoice.get_type_display }} — {{ invoice.client|default:"Client de passage" }} — {{ invoice.issue_date|date:"d/m/Y" }}
+            {% if invoice.sale %}— générée depuis la vente <a href="{% url 'sales:sale_detail' invoice.sale.id %}">{{ invoice.sale.number }}</a>{% endif %}
+        </div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        {% if invoice.status == "BROUILLON" %}
+        <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider le devis</button>
+        </form>
+        {% endif %}
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="table-app mb-3">
+            <table class="table mb-0">
+                <thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Total TTC</th></tr></thead>
+                <tbody>
+                    {% for line in invoice.lines.all %}
+                    <tr>
+                        <td>{{ line.description }}</td>
+                        <td>{{ line.quantity }}</td>
+                        <td>{{ line.unit_price_ht }}</td>
+                        <td>{{ line.tva_rate }}</td>
+                        <td>{{ line.line_total_ttc }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="card-app">
+            <div class="card-app-header">Paiements</div>
+            <div class="table-app" style="border:none; box-shadow:none;">
+                <table class="table mb-0">
+                    <thead><tr><th>Date</th><th>Montant</th><th>Méthode</th><th>Référence</th></tr></thead>
+                    <tbody>
+                        {% for payment in invoice.payments.all %}
+                        <tr>
+                            <td class="text-muted">{{ payment.paid_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ payment.amount }} {{ invoice.currency }}</td>
+                            <td>{{ payment.get_method_display }}</td>
+                            <td>{{ payment.reference|default:"—" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="4" class="text-muted text-center py-3">Aucun paiement enregistré.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if invoice.status != "ANNULEE" %}
+            <div class="card-app-body border-top">
+                <form method="post" action="{% url 'sales:payment_create' invoice.id %}" class="row g-2 align-items-end">
+                    {% csrf_token %}
+                    <div class="col-md-3">
+                        <label class="form-label">{{ payment_form.amount.label }}</label>
+                        {{ payment_form.amount }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ payment_form.method.label }}</label>
+                        {{ payment_form.method }}
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">{{ payment_form.reference.label }}</label>
+                        {{ payment_form.reference }}
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-app">
+            <div class="card-app-header">Récapitulatif</div>
+            <div class="card-app-body">
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span>{{ invoice.subtotal_ht }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span>{{ invoice.total_tva }} {{ invoice.currency }}</span></div>
+                <hr>
+                <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

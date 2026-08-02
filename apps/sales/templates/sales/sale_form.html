@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}Nouvelle vente{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Nouvelle vente</h1>
+        <div class="text-muted">La confirmation déduit le stock. La facture pourra être générée ensuite.</div>
+    </div>
+</div>
+
+<form method="post" id="sale-form">
+    {% csrf_token %}
+    <div class="card-app mb-3">
+        <div class="card-app-body">
+            <label class="form-label">{{ form.client.label }}</label>
+            {{ form.client }}
+        </div>
+    </div>
+
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card-app pos-pane">
+                <div class="card-app-header">Rechercher un produit</div>
+                <div class="card-app-body">
+                    <div class="position-relative mb-3">
+                        <i class="bi bi-search pos-search-icon"></i>
+                        <input type="text" id="pos-search" class="form-control ps-5" placeholder="Nom, référence ou code-barres..." autocomplete="off">
+                    </div>
+                    <div id="pos-results" class="pos-results"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card-app pos-pane">
+                <div class="card-app-header">Panier</div>
+                <div class="card-app-body p-0">
+                    <div id="pos-cart" class="pos-cart"></div>
+                    <div id="pos-cart-empty" class="text-muted text-center py-5">
+                        <i class="bi bi-cart3 fs-2 d-block mb-2"></i>
+                        Aucun produit dans le panier
+                    </div>
+                </div>
+                <div class="card-app-body border-top">
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span id="pos-subtotal">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span id="pos-tva">0</span></div>
+                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span id="pos-total">0</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" name="cart_json" id="cart_json">
+    <div class="d-flex gap-2 mt-4">
+        <button type="submit" id="pos-submit" class="btn btn-primary" disabled>Enregistrer la vente</button>
+        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Annuler</a>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const searchUrl = "{% url 'catalog:product_search' %}";
+    const searchInput = document.getElementById("pos-search");
+    const resultsEl = document.getElementById("pos-results");
+    const cartEl = document.getElementById("pos-cart");
+    const cartEmptyEl = document.getElementById("pos-cart-empty");
+    const cartJsonInput = document.getElementById("cart_json");
+    const submitBtn = document.getElementById("pos-submit");
+    const currency = "{{ request.boutique.devise }}";
+
+    let cart = [];
+    let searchTimer = null;
+
+    function fmt(n) {
+        return Math.round(n).toLocaleString("fr-FR") + " " + currency;
+    }
+
+    function placeholderImg(name) {
+        const initial = (name || "?").trim().charAt(0).toUpperCase();
+        return `<span class="pos-thumb pos-thumb-placeholder">${initial}</span>`;
+    }
+
+    function renderResults(items) {
+        if (!items.length) {
+            resultsEl.innerHTML = '<div class="text-muted text-center py-4">Aucun produit trouvé</div>';
+            return;
+        }
+        resultsEl.innerHTML = items.map((p) => {
+            const img = p.image_url
+                ? `<img src="${p.image_url}" class="pos-thumb" alt="">`
+                : placeholderImg(p.name);
+            const stockBadge = p.stock_qty <= 0
+                ? '<span class="badge-status badge-red">Rupture</span>'
+                : `<span class="badge-status badge-gray">${p.stock_qty} en stock</span>`;
+            return `
+            <div class="pos-item" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
+                ${img}
+                <div class="pos-item-info">
+                    <div class="pos-item-name">${p.name}</div>
+                    <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
+                </div>
+                <div class="pos-item-price">${fmt(p.price)}</div>
+            </div>`;
+        }).join("");
+    }
+
+    async function runSearch(query) {
+        const url = searchUrl + "?q=" + encodeURIComponent(query);
+        const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        const data = await resp.json();
+        renderResults(data.results);
+    }
+
+    searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        const query = searchInput.value;
+        searchTimer = setTimeout(() => runSearch(query), 200);
+    });
+
+    resultsEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".pos-item");
+        if (!item) return;
+        const product = JSON.parse(item.dataset.product.replace(/&apos;/g, "'"));
+        addToCart(product);
+    });
+
+    function addToCart(product) {
+        const existing = cart.find((line) => line.product_id === product.id);
+        if (existing) {
+            existing.quantity += 1;
+        } else {
+            cart.push({
+                product_id: product.id,
+                name: product.name,
+                sku: product.sku,
+                unit: product.unit,
+                image_url: product.image_url,
+                unit_price_ht: product.price,
+                tva_rate: product.tva_rate,
+                quantity: 1,
+            });
+        }
+        renderCart();
+    }
+
+    function removeFromCart(productId) {
+        cart = cart.filter((line) => line.product_id !== productId);
+        renderCart();
+    }
+
+    function renderCart() {
+        cartEmptyEl.style.display = cart.length ? "none" : "block";
+        cartEl.innerHTML = cart.map((line) => {
+            const img = line.image_url
+                ? `<img src="${line.image_url}" class="pos-thumb" alt="">`
+                : placeholderImg(line.name);
+            return `
+            <div class="pos-cart-line" data-id="${line.product_id}">
+                ${img}
+                <div class="pos-item-info">
+                    <div class="pos-item-name">${line.name}</div>
+                    <div class="text-muted small">${fmt(line.unit_price_ht)} / ${line.unit}</div>
+                </div>
+                <input type="number" min="0.001" step="0.001" class="form-control pos-qty" value="${line.quantity}">
+                <div class="pos-line-total">${fmt(line.quantity * line.unit_price_ht)}</div>
+                <button type="button" class="btn btn-link text-danger pos-remove"><i class="bi bi-trash"></i></button>
+            </div>`;
+        }).join("");
+
+        let subtotal = 0, total = 0;
+        cart.forEach((line) => {
+            const lineHt = Math.round(line.quantity * line.unit_price_ht);
+            const lineTtc = Math.round(lineHt * (1 + line.tva_rate / 100));
+            subtotal += lineHt;
+            total += lineTtc;
+        });
+        document.getElementById("pos-subtotal").textContent = fmt(subtotal);
+        document.getElementById("pos-tva").textContent = fmt(total - subtotal);
+        document.getElementById("pos-total").textContent = fmt(total);
+
+        submitBtn.disabled = cart.length === 0;
+        cartJsonInput.value = JSON.stringify(cart.map((line) => ({
+            product_id: line.product_id,
+            quantity: line.quantity,
+            unit_price_ht: line.unit_price_ht,
+        })));
+    }
+
+    cartEl.addEventListener("input", (e) => {
+        if (!e.target.classList.contains("pos-qty")) return;
+        const line = e.target.closest(".pos-cart-line");
+        const productId = line.dataset.id;
+        const cartLine = cart.find((l) => l.product_id === productId);
+        const value = parseFloat(e.target.value);
+        cartLine.quantity = isNaN(value) || value <= 0 ? 1 : value;
+        renderCart();
+    });
+
+    cartEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".pos-remove");
+        if (!btn) return;
+        removeFromCart(btn.closest(".pos-cart-line").dataset.id);
+    });
+
+    document.getElementById("sale-form").addEventListener("submit", () => {
+        cartJsonInput.value = JSON.stringify(cart.map((line) => ({
+            product_id: line.product_id,
+            quantity: line.quantity,
+            unit_price_ht: line.unit_price_ht,
+        })));
+    });
+
+    runSearch("");
+})();
+</script>
+{% endblock %}
