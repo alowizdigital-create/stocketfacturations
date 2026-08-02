@@ -6,10 +6,21 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+# Installation des dépendances nécessaires à mysqlclient
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    pkg-config \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements/ requirements/
+
+RUN pip install --upgrade pip
 RUN pip install --no-cache-dir -r requirements/online.txt
 
 COPY . .
+
 RUN chmod +x docker/entrypoint.sh
 
 EXPOSE 8000
