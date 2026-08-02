@@ -5,6 +5,14 @@ Serveur en ligne, déployé via Docker sur le VPS Hostinger (zweey.com).
 from .base import *  # noqa: F401,F403
 from .base import env
 
+
+
+from pathlib import Path
+
+
+
+
+
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list(
@@ -17,8 +25,16 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["https://zweey.com", "https://www.zweey.com", "https://api.zweey.com"],
 )
 
+# DATABASES = {
+#     "default": env.db("DATABASE_URL", default="postgres://postgres:postgres@db:5432/postgres"),
+# }
+BASE_DIR = Path(__file__).resolve().parent.parent
+
 DATABASES = {
-    "default": env.db("DATABASE_URL", default="postgres://postgres:postgres@db:5432/postgres"),
+    "default": {
+        "ENGINE": "django.db.backends.sqlite3",
+        "NAME": BASE_DIR / "db.sqlite3",
+    }
 }
 
 MIDDLEWARE = [
