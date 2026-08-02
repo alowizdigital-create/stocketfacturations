@@ -1,5 +1,4 @@
 -r base.txt
-psycopg[binary]>=3.2
 gunicorn>=23.0
 whitenoise>=6.8
-mysqlclient
+mysqlclient>=2.2.7
