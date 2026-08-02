@@ -1,16 +1,10 @@
 """
 Serveur en ligne, déployé via Docker sur le VPS Hostinger (zweey.com).
 """
-
+import os
 from .base import *  # noqa: F401,F403
 from .base import env
-
-
-
 from pathlib import Path
-
-
-
 
 
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
