@@ -6,7 +6,6 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Installation des dépendances nécessaires à mysqlclient
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
