@@ -12,7 +12,15 @@
     {% csrf_token %}
     <div class="card-app mb-3">
         <div class="card-app-body">
-            <label class="form-label">{{ form.client.label }}</label>
+            <label class="form-label">Client</label>
+            <div class="position-relative" style="max-width: 420px;">
+                <div id="client-selected" class="d-none align-items-center justify-content-between border rounded px-3 py-2" style="border-color: var(--border);">
+                    <span><i class="bi bi-person-check me-2"></i><span id="client-selected-name" class="fw-semibold"></span></span>
+                    <button type="button" id="client-clear" class="btn btn-link text-danger p-0"><i class="bi bi-x-lg"></i></button>
+                </div>
+                <input type="text" id="client-search" class="form-control" placeholder="Rechercher un client par nom... (laisser vide = client de passage)" autocomplete="off">
+                <div id="client-results" class="client-suggestions"></div>
+            </div>
             {{ form.client }}
         </div>
     </div>
@@ -213,6 +221,86 @@
     });
 
     runSearch("");
+
+    // --- Recherche client (même principe que la recherche produit) ---
+    const clientSearchUrl = "{% url 'sales:client_search' %}";
+    const clientSearchInput = document.getElementById("client-search");
+    const clientResultsEl = document.getElementById("client-results");
+    const clientHiddenInput = document.getElementById("id_client");
+    const clientSelectedEl = document.getElementById("client-selected");
+    const clientSelectedName = document.getElementById("client-selected-name");
+    const clientClearBtn = document.getElementById("client-clear");
+    let clientSearchTimer = null;
+
+    function selectClient(client) {
+        clearTimeout(clientSearchTimer);
+        clientHiddenInput.value = client.id;
+        clientSelectedName.textContent = client.name;
+        clientSelectedEl.classList.remove("d-none");
+        clientSelectedEl.classList.add("d-flex");
+        clientSearchInput.classList.add("d-none");
+        clientResultsEl.style.display = "none";
+        clientSearchInput.value = "";
+    }
+
+    function clearClient() {
+        clientHiddenInput.value = "";
+        clientSelectedEl.classList.add("d-none");
+        clientSelectedEl.classList.remove("d-flex");
+        clientSearchInput.classList.remove("d-none");
+        clientSearchInput.focus();
+    }
+
+    function renderClientResults(items) {
+        if (!items.length) {
+            clientResultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun client trouvé</div>';
+        } else {
+            clientResultsEl.innerHTML = items.map((c) => `
+                <div class="pos-item" data-client='${JSON.stringify(c).replace(/'/g, "&apos;")}'>
+                    <div class="pos-item-info">
+                        <div class="pos-item-name">${c.name}</div>
+                        ${c.phone ? `<div class="text-muted small">${c.phone}</div>` : ""}
+                    </div>
+                </div>`).join("");
+        }
+        clientResultsEl.style.display = "block";
+    }
+
+    async function runClientSearch(query) {
+        // Un client est déjà sélectionné : le champ de recherche est masqué
+        // et ne doit plus rouvrir la liste, même si un évènement focus
+        // résiduel se déclenche pendant qu'on le cache (comportement
+        // observé de certains navigateurs lors du clic sur une suggestion).
+        // Revérifié après la requête : une sélection a pu se produire
+        // pendant qu'elle était en vol.
+        if (clientHiddenInput.value) return;
+        const resp = await fetch(clientSearchUrl + "?q=" + encodeURIComponent(query), {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        const data = await resp.json();
+        if (clientHiddenInput.value) return;
+        renderClientResults(data.results);
+    }
+
+    clientSearchInput.addEventListener("input", () => {
+        clearTimeout(clientSearchTimer);
+        const query = clientSearchInput.value;
+        clientSearchTimer = setTimeout(() => runClientSearch(query), 200);
+    });
+
+    clientSearchInput.addEventListener("focus", () => runClientSearch(clientSearchInput.value));
+
+    clientResultsEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".pos-item");
+        if (!item || !item.dataset.client) return;
+        selectClient(JSON.parse(item.dataset.client.replace(/&apos;/g, "'")));
+    });
+
+    clientClearBtn.addEventListener("click", clearClient);
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#client-search") && !e.target.closest("#client-results")) {
+            clientResultsEl.style.display = "none";
+        }
+    });
 })();
 </script>
 {% endblock %}

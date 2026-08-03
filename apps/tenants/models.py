@@ -23,6 +23,10 @@ class Compte(UUIDModel, TimeStampedModel):
     name = models.CharField("nom de l'entreprise", max_length=255)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
+    logo = models.ImageField(
+        "logo de l'entreprise", upload_to="logos/", null=True, blank=True,
+        help_text="Affiché en haut des factures/devis (ticket 80 mm).",
+    )
     plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_GRATUIT)
 
     class Meta:

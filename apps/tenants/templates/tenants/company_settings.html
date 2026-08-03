@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Paramètres de l'entreprise{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Paramètres de l'entreprise</h1>
+        <div class="text-muted">Le logo est repris en haut des factures/devis (ticket 80 mm).</div>
+    </div>
+</div>
+<div class="card-app" style="max-width: 520px;">
+    <div class="card-app-body">
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% if form.instance.logo %}
+            <div class="mb-3">
+                <img src="{{ form.instance.logo.url }}" alt="" style="max-width:120px;max-height:120px;object-fit:contain;border-radius:8px;border:1px solid var(--border);">
+            </div>
+            {% endif %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+                <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

@@ -52,6 +52,16 @@
             <a class="nav-link {% if '/factures' in request.path or '/devis' in request.path %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
                 <i class="bi bi-receipt"></i> Factures &amp; devis
             </a>
+
+            {% if request.is_compte_admin %}
+            <div class="sidebar-section">Administration</div>
+            <a class="nav-link {% if '/entreprises/equipe' in request.path %}active{% endif %}" href="{% url 'tenants:staff_list' %}">
+                <i class="bi bi-person-badge"></i> Équipe
+            </a>
+            <a class="nav-link {% if '/entreprises/parametres' in request.path %}active{% endif %}" href="{% url 'tenants:company_settings' %}">
+                <i class="bi bi-gear"></i> Paramètres
+            </a>
+            {% endif %}
         </nav>
         <div class="sidebar-footer">
             {% if user.memberships.count > 1 %}

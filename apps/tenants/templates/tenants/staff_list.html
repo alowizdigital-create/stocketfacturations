@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}Équipe{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Équipe</h1>
+        <div class="text-muted">Employés de {{ request.compte.name }}, toutes boutiques confondues</div>
+    </div>
+    <a href="{% url 'tenants:staff_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Nouvel employé</a>
+</div>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>Employé</th><th>Boutique</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+        <tbody>
+            {% for m in memberships %}
+            <tr>
+                <td>
+                    <div class="fw-semibold">{{ m.user.get_full_name|default:m.user.email }}</div>
+                    <div class="text-muted small">{{ m.user.email }}</div>
+                </td>
+                <td>{{ m.boutique.name }}</td>
+                <td><span class="badge-status badge-purple">{{ m.get_role_display }}</span></td>
+                <td>
+                    {% if m.is_active %}
+                    <span class="badge-status badge-green">Actif</span>
+                    {% else %}
+                    <span class="badge-status badge-gray">Désactivé</span>
+                    {% endif %}
+                </td>
+                <td class="text-end">
+                    {% if m.user_id == request.user.id %}
+                    <span class="text-muted small">Vous</span>
+                    {% else %}
+                    <a href="{% url 'tenants:staff_update' m.id %}"><i class="bi bi-pencil"></i> Modifier</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-4">Aucun employé pour le moment.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

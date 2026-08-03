@@ -20,6 +20,8 @@ class CurrentTenantMiddleware:
     def __call__(self, request):
         request.compte = None
         request.boutique = None
+        request.is_compte_admin = False
+        request.boutique_role = None
 
         if request.user.is_authenticated:
             from apps.tenants.models import Boutique
@@ -37,8 +39,30 @@ class CurrentTenantMiddleware:
             if boutique is not None:
                 request.boutique = boutique
                 request.compte = boutique.compte
+                request.is_compte_admin = self._is_compte_admin(request, boutique.compte)
+                request.boutique_role = self._role_for_boutique(request, boutique)
 
         return self.get_response(request)
+
+    @staticmethod
+    def _role_for_boutique(request, boutique):
+        from apps.tenants.models import Membership
+
+        membership = Membership.objects.filter(
+            user=request.user, boutique=boutique, is_active=True
+        ).first()
+        return membership.role if membership else None
+
+    @staticmethod
+    def _is_compte_admin(request, compte):
+        from apps.tenants.models import Membership
+
+        return Membership.objects.filter(
+            user=request.user,
+            is_active=True,
+            role=Membership.ADMIN_COMPTE,
+            boutique__compte=compte,
+        ).exists()
 
     @staticmethod
     def _active_boutiques(request):

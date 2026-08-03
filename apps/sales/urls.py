@@ -6,6 +6,7 @@ app_name = "sales"
 
 urlpatterns = [
     path("clients/", views.client_list, name="client_list"),
+    path("clients/rechercher/", views.client_search, name="client_search"),
     path("clients/nouveau/", views.client_create, name="client_create"),
 
     path("ventes/", views.sale_list, name="sale_list"),
@@ -20,4 +21,8 @@ urlpatterns = [
     path("factures/<uuid:invoice_id>/valider/", views.invoice_validate, name="invoice_validate"),
     path("factures/<uuid:invoice_id>/paiement/", views.payment_create, name="payment_create"),
     path("factures/<uuid:invoice_id>/pdf/", views.invoice_pdf, name="invoice_pdf"),
+    path("factures/<uuid:invoice_id>/whatsapp/", views.invoice_send_whatsapp, name="invoice_send_whatsapp"),
+
+    # Lien public (sans connexion), utilisé pour le partage WhatsApp.
+    path("partage/factures/<uuid:invoice_id>/pdf/", views.invoice_public_pdf, name="invoice_public_pdf"),
 ]

@@ -102,3 +102,14 @@ REST_FRAMEWORK = {
 # configurable par entreprise via TaxRate — voir apps.sales).
 DEFAULT_CURRENCY = "XOF"
 DEFAULT_TVA_RATE = env.float("DEFAULT_TVA_RATE", default=18.0)
+
+# --- API WhatsApp (techsoft-sms.com) -------------------------------------
+# Documentation publique introuvable pour l'envoi de document par WhatsApp
+# au moment de l'implémentation — l'URL/les paramètres ci-dessous sont un
+# point de départ à ajuster dans apps/sales/whatsapp_api.py une fois la
+# vraie documentation (ou collection Postman) du compte en main.
+TECHSOFT_API_KEY = env("TECHSOFT_API_KEY", default="")
+TECHSOFT_WHATSAPP_API_URL = env(
+    "TECHSOFT_WHATSAPP_API_URL", default="https://app.techsoft-sms.com/whatsapp/api"
+)
+TECHSOFT_WHATSAPP_SENDER = env("TECHSOFT_WHATSAPP_SENDER", default="")

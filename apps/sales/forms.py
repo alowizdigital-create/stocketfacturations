@@ -25,7 +25,11 @@ class InvoiceForm(BootstrapFormMixin, forms.Form):
 
 
 class SaleForm(BootstrapFormMixin, forms.Form):
-    client = forms.ModelChoiceField(queryset=Client.objects.none(), required=False, label="Client")
+    # Champ caché : la sélection se fait via la recherche par nom en JS
+    # (voir sale_form.html), qui écrit l'id du client choisi ici.
+    client = forms.ModelChoiceField(
+        queryset=Client.objects.none(), required=False, label="Client", widget=forms.HiddenInput()
+    )
 
     def __init__(self, *args, boutique=None, **kwargs):
         super().__init__(*args, **kwargs)

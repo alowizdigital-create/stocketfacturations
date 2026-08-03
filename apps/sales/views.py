@@ -3,8 +3,10 @@ from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
+from django.db.models import Q
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 
 from apps.catalog.models import Product
 from apps.core.permissions import boutique_role_required
@@ -14,6 +16,8 @@ from . import services
 from .forms import ClientForm, InvoiceForm, InvoiceLineFormSet, PaymentForm, SaleForm
 from .models import Client, Invoice, Sale
 from .pdf import render_invoice_pdf
+from .whatsapp import build_message, build_share_link, normalize_phone
+from .whatsapp_api import WhatsAppSendError, is_configured, send_document
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE, Membership.CAISSIER)
 
@@ -22,6 +26,23 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE, Membership.
 def client_list(request):
     clients = Client.objects.filter(boutique=request.boutique).order_by("name")
     return render(request, "sales/client_list.html", {"clients": clients})
+
+
+@login_required
+def client_search(request):
+    """Recherche client en direct pour l'écran de vente (POS), sur le même
+    principe que catalog:product_search."""
+    query = request.GET.get("q", "").strip()
+    clients = Client.objects.filter(boutique=request.boutique)
+    if query:
+        clients = clients.filter(Q(name__icontains=query) | Q(phone__icontains=query))
+    clients = clients.order_by("name")[:20]
+
+    results = [
+        {"id": str(c.id), "name": c.name, "phone": c.phone}
+        for c in clients
+    ]
+    return JsonResponse({"results": results})
 
 
 @login_required
@@ -209,6 +230,10 @@ def invoice_create(request):
     return render(request, "sales/invoice_form.html", {"form": form, "formset": formset})
 
 
+def _public_pdf_url(request, invoice):
+    return request.build_absolute_uri(reverse("sales:invoice_public_pdf", args=[invoice.id]))
+
+
 @login_required
 def invoice_detail(request, invoice_id):
     invoice = get_object_or_404(
@@ -217,9 +242,51 @@ def invoice_detail(request, invoice_id):
         boutique=request.boutique,
     )
     payment_form = PaymentForm()
+
+    whatsapp_url = None
+    has_client_phone = bool(invoice.client and invoice.client.phone)
+    if has_client_phone:
+        whatsapp_url = build_share_link(
+            phone=invoice.client.phone, invoice=invoice, pdf_url=_public_pdf_url(request, invoice)
+        )
+
     return render(
-        request, "sales/invoice_detail.html", {"invoice": invoice, "payment_form": payment_form}
+        request,
+        "sales/invoice_detail.html",
+        {
+            "invoice": invoice,
+            "payment_form": payment_form,
+            "whatsapp_url": whatsapp_url,
+            "whatsapp_api_configured": is_configured(),
+            "has_client_phone": has_client_phone,
+        },
     )
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def invoice_send_whatsapp(request, invoice_id):
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("client"), id=invoice_id, boutique=request.boutique
+    )
+    phone = normalize_phone(invoice.client.phone) if invoice.client else None
+    if not phone:
+        messages.error(request, "Ce client n'a pas de numéro de téléphone.")
+        return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+    pdf_url = _public_pdf_url(request, invoice)
+    try:
+        send_document(
+            to=phone,
+            message=build_message(invoice),
+            document_url=pdf_url,
+            filename=f"{invoice.number}.pdf",
+        )
+    except WhatsAppSendError as exc:
+        messages.error(request, f"Échec de l'envoi WhatsApp : {exc}")
+    else:
+        messages.success(request, f"Facture envoyée par WhatsApp à {invoice.client.name}.")
+    return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 
 @login_required
@@ -255,6 +322,21 @@ def invoice_pdf(request, invoice_id):
         Invoice.objects.select_related("client", "boutique").prefetch_related("lines"),
         id=invoice_id,
         boutique=request.boutique,
+    )
+    pdf_bytes = render_invoice_pdf(invoice)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="{invoice.number}.pdf"'
+    return response
+
+
+def invoice_public_pdf(request, invoice_id):
+    """Lien public (sans connexion) utilisé pour le partage WhatsApp — la
+    sécurité repose sur le caractère non devinable de l'UUID de la facture,
+    comme un lien de partage classique (Google Docs, Stripe...). Pas de
+    scoping par boutique/compte ici puisque le visiteur n'est pas connecté."""
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("client", "boutique").prefetch_related("lines", "payments"),
+        id=invoice_id,
     )
     pdf_bytes = render_invoice_pdf(invoice)
     response = HttpResponse(pdf_bytes, content_type="application/pdf")

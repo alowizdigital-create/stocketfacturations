@@ -18,7 +18,21 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF (80 mm)</a>
+        {% if has_client_phone and whatsapp_api_configured %}
+        <form method="post" action="{% url 'sales:invoice_send_whatsapp' invoice.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-whatsapp"><i class="bi bi-whatsapp"></i> Envoyer par WhatsApp</button>
+        </form>
+        {% elif whatsapp_url %}
+        <a href="{{ whatsapp_url }}" class="btn btn-whatsapp" target="_blank" rel="noopener" title="API WhatsApp non configurée : ceci ouvre WhatsApp avec un lien vers le PDF, sans pièce jointe automatique">
+            <i class="bi bi-whatsapp"></i> WhatsApp (lien)
+        </a>
+        {% elif invoice.client %}
+        <span class="btn btn-outline-secondary disabled text-muted" title="Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp">
+            <i class="bi bi-whatsapp"></i> WhatsApp (pas de téléphone)
+        </span>
+        {% endif %}
         {% if invoice.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
             {% csrf_token %}

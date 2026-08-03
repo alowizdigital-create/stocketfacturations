@@ -3,3 +3,4 @@ djangorestframework>=3.17,<4.0
 django-environ>=0.14,<0.15
 reportlab>=5.0,<6.0
 Pillow>=12.0,<13.0
+requests>=2.32

@@ -89,9 +89,11 @@
             <div class="card-app-header">Actions rapides</div>
             <div class="card-app-body d-grid gap-2">
                 <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle vente</a>
+                <a href="{% url 'sales:client_create' %}" class="btn btn-outline-secondary"><i class="bi bi-person-plus"></i> Nouveau client</a>
+                {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
                 <a href="{% url 'catalog:product_create' %}" class="btn btn-outline-secondary"><i class="bi bi-box-seam"></i> Nouveau produit</a>
                 <a href="{% url 'stock:movement_create' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right"></i> Mouvement de stock</a>
-                <a href="{% url 'sales:client_create' %}" class="btn btn-outline-secondary"><i class="bi bi-person-plus"></i> Nouveau client</a>
+                {% endif %}
             </div>
         </div>
     </div>

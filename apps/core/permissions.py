@@ -25,3 +25,18 @@ def boutique_role_required(*roles):
         return wrapped
 
     return decorator
+
+
+def compte_admin_required(view_func):
+    """Vérifie que l'utilisateur est administrateur de l'entreprise
+    courante (request.compte) — utilisé pour les actions qui portent sur
+    toute l'entreprise plutôt que sur une seule boutique (ex: gestion du
+    personnel)."""
+
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.is_compte_admin:
+            raise PermissionDenied("Réservé aux administrateurs de l'entreprise.")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
