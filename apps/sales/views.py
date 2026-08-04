@@ -76,6 +76,7 @@ def _extract_lines_data(formset):
                 "quantity": form.cleaned_data["quantity"],
                 "unit_price_ht": form.cleaned_data["unit_price_ht"],
                 "tva_rate": form.cleaned_data["tva_rate"],
+                "discount_amount": Decimal(form.cleaned_data.get("discount_amount") or 0),
             }
         )
     return lines_data
@@ -121,7 +122,7 @@ def _parse_cart(request):
             unit_price_ht = Decimal(str(item.get("unit_price_ht", "0")))
         except InvalidOperation:
             return None, "Quantité ou prix invalide dans le panier."
-        if quantity <= 0 or unit_price_ht < 0:
+        if quantity <= 0 or unit_price_ht < 0 or quantity != quantity.to_integral_value():
             return None, "Quantité ou prix invalide dans le panier."
 
         lines_data.append(
@@ -199,8 +200,23 @@ def sale_generate_invoice(request, sale_id):
 
 @login_required
 def invoice_list(request):
-    invoices = Invoice.objects.filter(boutique=request.boutique).select_related("client")
+    """Liste des factures uniquement — les devis ont leur propre liste
+    (voir devis_list), ce sont deux documents distincts pour l'utilisateur
+    même s'ils partagent le même modèle Invoice en base."""
+    invoices = (
+        Invoice.objects.filter(boutique=request.boutique, type=Invoice.FACTURE)
+        .select_related("client")
+    )
     return render(request, "sales/invoice_list.html", {"invoices": invoices})
+
+
+@login_required
+def devis_list(request):
+    devis = (
+        Invoice.objects.filter(boutique=request.boutique, type=Invoice.DEVIS)
+        .select_related("client")
+    )
+    return render(request, "sales/devis_list.html", {"devis": devis})
 
 
 @login_required
@@ -220,6 +236,7 @@ def invoice_create(request):
                     type=Invoice.DEVIS,
                     created_by=request.user,
                     lines_data=lines_data,
+                    discount_amount=Decimal(form.cleaned_data["discount_amount"]),
                 )
                 messages.success(request, f"{invoice.number} créé en brouillon.")
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)

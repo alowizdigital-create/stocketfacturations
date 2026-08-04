@@ -53,7 +53,7 @@
             <div class="card-app-header">Dernières ventes</div>
             <div class="table-app" style="border:none; box-shadow:none;">
                 <table class="table mb-0">
-                    <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th>Facture</th><th>Total TTC</th></tr></thead>
+                    <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th class="d-none d-md-table-cell">Facture</th><th>Total TTC</th></tr></thead>
                     <tbody>
                         {% for sale in dernieres_ventes %}
                         <tr>
@@ -67,7 +67,7 @@
                                     {{ sale.get_status_display }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="d-none d-md-table-cell">
                                 {% if sale.invoice_id %}
                                 <a href="{% url 'sales:invoice_detail' sale.invoice_id %}">{{ sale.invoice.number }}</a>
                                 {% else %}

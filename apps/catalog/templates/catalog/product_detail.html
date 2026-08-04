@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}{{ product.name }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ product.name }}
+            {% if product.is_active %}
+            <span class="badge-status badge-green">Actif</span>
+            {% else %}
+            <span class="badge-status badge-gray">Inactif</span>
+            {% endif %}
+        </h1>
+        <div class="text-muted">{{ product.category|default:"Sans catégorie" }}</div>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'catalog:product_update' product.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Modifier</a>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">Retour</a>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-4">
+        <div class="card-app">
+            <div class="card-app-body text-center">
+                {% if product.image %}
+                <img src="{{ product.image.url }}" alt="" style="width:100%;max-width:220px;aspect-ratio:1;object-fit:cover;border-radius:10px;">
+                {% else %}
+                <div class="d-inline-flex align-items-center justify-content-center" style="width:220px;height:220px;border-radius:10px;background:var(--brand-lighter);color:#c3bcd1;">
+                    <i class="bi bi-image fs-1"></i>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-8">
+        <div class="card-app">
+            <div class="card-app-header">Informations</div>
+            <div class="card-app-body">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="text-muted small">Prix de vente</div>
+                        <div class="fw-semibold">{{ effective_price }} {{ request.boutique.devise }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Taux de TVA</div>
+                        <div class="fw-semibold">{{ product.tva_rate }}%</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Unité</div>
+                        <div class="fw-semibold">{{ product.unit }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Référence (SKU)</div>
+                        <div class="fw-semibold">{{ product.sku|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Code-barres</div>
+                        <div class="fw-semibold">{{ product.barcode|default:"—" }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">Seuil de stock bas</div>
+                        <div class="fw-semibold">{{ product.low_stock_threshold_default }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card-app mt-3">
+            <div class="card-app-header">Stock — {{ request.boutique.name }}</div>
+            <div class="card-app-body">
+                <div class="stat-value">{{ stock_qty }} {{ product.unit.symbol|default:product.unit.name }}</div>
+                <div class="text-muted small">Quantité actuellement en stock dans cette boutique</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

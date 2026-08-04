@@ -2,12 +2,22 @@
 {% block title %}Nouveau devis{% endblock %}
 {% block content %}
 <div class="page-header"><div><h1>Nouveau devis</h1></div></div>
-<form method="post">
+<form method="post" id="devis-form">
     {% csrf_token %}
     <div class="card-app mb-3">
-        <div class="card-app-body">
-            <label class="form-label">{{ form.client.label }}</label>
-            {{ form.client }}
+        <div class="card-app-body row g-3">
+            <div class="col-md-8">
+                <label class="form-label">{{ form.client.label }}</label>
+                {{ form.client }}
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">
+                    <button type="button" id="toggle-global-discount" class="btn btn-link p-0"><i class="bi bi-cash-coin"></i> Remise sur la facture</button>
+                </label>
+                <div id="global-discount-field" class="d-none">
+                    {{ form.discount_amount }}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -16,36 +26,205 @@
         <div class="card-app-body">
             {{ formset.management_form }}
             {{ formset.non_form_errors }}
-            <div class="table-app" style="border:none; box-shadow:none;">
-                <table class="table mb-0">
+            <div class="table-app mb-3" style="border:none; box-shadow:none;">
+                <table class="table mb-0" id="lines-table">
                     <thead>
                         <tr>
-                            <th>Produit</th><th>Description</th><th>Quantité</th><th>PU HT</th><th>TVA %</th>{% if formset.can_delete %}<th>Suppr.</th>{% endif %}
+                            <th style="min-width:180px">Produit</th>
+                            <th style="min-width:200px">Description</th>
+                            <th style="width:90px">Qté</th>
+                            <th style="width:120px">PU HT</th>
+                            <th style="width:90px">TVA %</th>
+                            <th style="width:120px">Remise (FCFA)</th>
+                            <th style="width:100px">Total TTC</th>
+                            <th style="width:40px"></th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="lines-tbody">
                         {% for line_form in formset %}
-                        <tr>
-                            <td style="min-width:180px">{{ line_form.product }}</td>
-                            <td style="min-width:200px">{{ line_form.description }}</td>
-                            <td style="width:110px">{{ line_form.quantity }}</td>
-                            <td style="width:130px">{{ line_form.unit_price_ht }}</td>
-                            <td style="width:100px">{{ line_form.tva_rate }}</td>
-                            {% if formset.can_delete %}<td class="text-center">{{ line_form.DELETE }}</td>{% endif %}
+                        <tr class="line-row">
+                            <td>{{ line_form.product }}</td>
+                            <td>{{ line_form.description }}</td>
+                            <td>{{ line_form.quantity }}</td>
+                            <td>{{ line_form.unit_price_ht }}</td>
+                            <td>{{ line_form.tva_rate }}</td>
+                            <td>{{ line_form.discount_amount }}</td>
+                            <td class="line-total text-end fw-semibold">0</td>
+                            <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
                         </tr>
                         {% if line_form.non_field_errors %}
-                        <tr><td colspan="6" class="text-danger small">{{ line_form.non_field_errors }}</td></tr>
+                        <tr><td colspan="8" class="text-danger small">{{ line_form.non_field_errors }}</td></tr>
                         {% endif %}
                         {% endfor %}
                     </tbody>
                 </table>
             </div>
+            <div class="d-flex gap-2">
+                <button type="button" id="add-product-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> Ajouter un produit</button>
+                <button type="button" id="add-fee-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> Ajouter un frais (ex: expédition)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-1">
+        <div class="col-lg-4 offset-lg-8">
+            <div class="card-app">
+                <div class="card-app-body">
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span id="recap-subtotal">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span id="recap-tva">0</span></div>
+                    <div id="recap-discount-row" class="d-flex justify-content-between py-1 d-none"><span class="text-muted">Remise globale</span><span id="recap-discount">0</span></div>
+                    <hr>
+                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span id="recap-total">0</span></div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" class="btn btn-primary">Créer le devis</button>
-        <a href="{% url 'sales:invoice_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="submit" id="devis-submit" class="btn btn-primary">Créer le devis</button>
+        <a href="{% url 'sales:devis_list' %}" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
+
+<template id="line-row-template">
+    <tr class="line-row">
+        <td>{{ formset.empty_form.product }}</td>
+        <td>{{ formset.empty_form.description }}</td>
+        <td>{{ formset.empty_form.quantity }}</td>
+        <td>{{ formset.empty_form.unit_price_ht }}</td>
+        <td>{{ formset.empty_form.tva_rate }}</td>
+        <td>{{ formset.empty_form.discount_amount }}</td>
+        <td class="line-total text-end fw-semibold">0</td>
+        <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
+    </tr>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const tbody = document.getElementById("lines-tbody");
+    const totalFormsInput = document.getElementById("id_form-TOTAL_FORMS");
+    const rowTemplate = document.getElementById("line-row-template");
+    const addProductBtn = document.getElementById("add-product-row");
+    const addFeeBtn = document.getElementById("add-fee-row");
+    const submitBtn = document.getElementById("devis-submit");
+    const currency = "{{ request.boutique.devise }}";
+
+    const toggleGlobalBtn = document.getElementById("toggle-global-discount");
+    const globalDiscountField = document.getElementById("global-discount-field");
+    const globalDiscountInput = globalDiscountField.querySelector("input");
+
+    function fmt(n) {
+        return Math.round(n).toLocaleString("fr-FR") + " " + currency;
+    }
+
+    function reindexRows() {
+        const rows = tbody.querySelectorAll("tr.line-row");
+        rows.forEach((row, index) => {
+            row.querySelectorAll("[name], [id]").forEach((el) => {
+                ["name", "id"].forEach((attr) => {
+                    const val = el.getAttribute(attr);
+                    if (val && /form-(\d+|__prefix__)-/.test(val)) {
+                        el.setAttribute(attr, val.replace(/form-(\d+|__prefix__)-/, "form-" + index + "-"));
+                    }
+                });
+            });
+        });
+        totalFormsInput.value = rows.length;
+        submitBtn.disabled = rows.length === 0;
+    }
+
+    function addRow(presetDescription) {
+        const fragment = rowTemplate.content.cloneNode(true);
+        const row = fragment.querySelector("tr");
+        tbody.appendChild(row);
+        reindexRows();
+        const descInput = row.querySelector('input[name$="-description"]');
+        if (presetDescription) {
+            descInput.value = presetDescription;
+            row.querySelector('input[name$="-unit_price_ht"]').focus();
+        } else {
+            row.querySelector('select[name$="-product"]').focus();
+        }
+        return row;
+    }
+
+    function computeRowTotal(row) {
+        const qty = parseFloat(row.querySelector('input[name$="-quantity"]').value) || 0;
+        const price = parseFloat(row.querySelector('input[name$="-unit_price_ht"]').value) || 0;
+        const tva = parseFloat(row.querySelector('input[name$="-tva_rate"]').value) || 0;
+        const discount = parseFloat(row.querySelector('input[name$="-discount_amount"]').value) || 0;
+        const grossHt = qty * price;
+        const lineHt = Math.max(Math.round(grossHt - discount), 0);
+        const lineTtc = Math.round(lineHt * (1 + tva / 100));
+        row.querySelector(".line-total").textContent = fmt(lineTtc);
+        return {ht: lineHt, ttc: lineTtc};
+    }
+
+    function recomputeAll() {
+        let subtotal = 0, total = 0;
+        tbody.querySelectorAll("tr.line-row").forEach((row) => {
+            const t = computeRowTotal(row);
+            subtotal += t.ht;
+            total += t.ttc;
+        });
+        const tva = total - subtotal;
+        const globalDiscount = globalDiscountField.classList.contains("d-none")
+            ? 0 : (parseFloat(globalDiscountInput.value) || 0);
+        const discountRow = document.getElementById("recap-discount-row");
+        if (globalDiscount > 0) {
+            document.getElementById("recap-discount").textContent = "-" + fmt(globalDiscount);
+            discountRow.classList.remove("d-none");
+        } else {
+            discountRow.classList.add("d-none");
+        }
+        const finalTotal = Math.max(subtotal + tva - globalDiscount, 0);
+        document.getElementById("recap-subtotal").textContent = fmt(subtotal);
+        document.getElementById("recap-tva").textContent = fmt(tva);
+        document.getElementById("recap-total").textContent = fmt(finalTotal);
+    }
+
+    addProductBtn.addEventListener("click", () => addRow(null));
+    addFeeBtn.addEventListener("click", () => addRow("Frais supplémentaire"));
+
+    toggleGlobalBtn.addEventListener("click", () => {
+        globalDiscountField.classList.toggle("d-none");
+        if (!globalDiscountField.classList.contains("d-none")) {
+            globalDiscountInput.focus();
+        }
+        recomputeAll();
+    });
+
+    tbody.addEventListener("click", (e) => {
+        const removeBtn = e.target.closest(".line-remove");
+        if (!removeBtn) return;
+        removeBtn.closest("tr").remove();
+        reindexRows();
+        recomputeAll();
+    });
+
+    tbody.addEventListener("change", (e) => {
+        if (e.target.matches('select[name$="-product"]')) {
+            const row = e.target.closest("tr");
+            const selected = e.target.selectedOptions[0];
+            if (selected && selected.value) {
+                const descInput = row.querySelector('input[name$="-description"]');
+                if (!descInput.value.trim()) {
+                    descInput.value = selected.textContent.trim();
+                }
+                row.querySelector('input[name$="-unit_price_ht"]').value = selected.dataset.price || 0;
+                row.querySelector('input[name$="-tva_rate"]').value = selected.dataset.tva || 0;
+            }
+        }
+        recomputeAll();
+    });
+
+    tbody.addEventListener("input", recomputeAll);
+    globalDiscountInput.addEventListener("input", recomputeAll);
+
+    reindexRows();
+    recomputeAll();
+})();
+</script>
 {% endblock %}

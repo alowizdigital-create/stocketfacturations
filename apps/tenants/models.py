@@ -4,6 +4,7 @@ import uuid
 
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 from apps.core.models import TimeStampedModel, UUIDModel
 
@@ -13,13 +14,6 @@ class Compte(UUIDModel, TimeStampedModel):
     multi-entreprises) : toutes les données d'un Compte sont strictement
     isolées de celles des autres Comptes."""
 
-    PLAN_GRATUIT = "GRATUIT"
-    PLAN_STANDARD = "STANDARD"
-    PLAN_CHOICES = [
-        (PLAN_GRATUIT, "Gratuit"),
-        (PLAN_STANDARD, "Standard"),
-    ]
-
     name = models.CharField("nom de l'entreprise", max_length=255)
     email = models.EmailField(blank=True)
     phone = models.CharField(max_length=30, blank=True)
@@ -27,7 +21,6 @@ class Compte(UUIDModel, TimeStampedModel):
         "logo de l'entreprise", upload_to="logos/", null=True, blank=True,
         help_text="Affiché en haut des factures/devis (ticket 80 mm).",
     )
-    plan = models.CharField(max_length=20, choices=PLAN_CHOICES, default=PLAN_GRATUIT)
 
     class Meta:
         verbose_name = "entreprise"
@@ -145,3 +138,61 @@ class BoutiqueAPIToken(models.Model):
 
     def __str__(self):
         return f"Jeton de {self.boutique}"
+
+
+class Plan(UUIDModel, TimeStampedModel):
+    """Catalogue des offres d'abonnement — communes à toute la plateforme,
+    pas propres à un Compte. Gérées via l'admin Django (pas de back-office
+    dédié pour l'instant)."""
+
+    name = models.CharField("nom", max_length=100)
+    price_monthly = models.DecimalField("prix mensuel (FCFA)", max_digits=12, decimal_places=0, default=0)
+    max_boutiques = models.PositiveIntegerField(
+        "nombre de boutiques max", null=True, blank=True, help_text="Laisser vide = illimité"
+    )
+    max_users = models.PositiveIntegerField(
+        "nombre d'employés max", null=True, blank=True, help_text="Laisser vide = illimité"
+    )
+    description = models.CharField(max_length=255, blank=True)
+    is_active = models.BooleanField("proposé aux entreprises", default=True)
+
+    class Meta:
+        verbose_name = "offre d'abonnement"
+        verbose_name_plural = "offres d'abonnement"
+        ordering = ["price_monthly"]
+
+    def __str__(self):
+        return self.name
+
+
+class Subscription(UUIDModel, TimeStampedModel):
+    """Abonnement d'une entreprise — auto-géré : c'est l'administrateur de
+    l'entreprise qui choisit son offre et renseigne lui-même la date
+    d'expiration après un paiement effectué hors application (Mobile
+    Money, virement...). Pas de passerelle de paiement pour l'instant."""
+
+    compte = models.OneToOneField(
+        "tenants.Compte", on_delete=models.CASCADE, related_name="subscription"
+    )
+    plan = models.ForeignKey(Plan, on_delete=models.PROTECT, related_name="subscriptions")
+    started_at = models.DateField("débuté le", default=timezone.localdate)
+    expires_at = models.DateField(
+        "expire le", null=True, blank=True,
+        help_text="Laisser vide pour une offre sans limite de durée (ex: plan gratuit).",
+    )
+    payment_reference = models.CharField(
+        "référence de paiement", max_length=255, blank=True,
+        help_text="Ex: référence Mobile Money, numéro de virement...",
+    )
+    notes = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "abonnement"
+        verbose_name_plural = "abonnements"
+
+    def __str__(self):
+        return f"{self.compte.name} — {self.plan.name}"
+
+    @property
+    def is_active(self):
+        return self.expires_at is None or self.expires_at >= timezone.localdate()

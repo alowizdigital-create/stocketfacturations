@@ -243,10 +243,107 @@ a:hover { color: var(--brand-dark); }
 .auth-brand { display: flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.15rem; color: var(--brand-dark); margin-bottom: 1.5rem; }
 .auth-brand .bi { color: var(--brand); font-size: 1.5rem; }
 
-@media (max-width: 900px) {
-  .sidebar { transform: translateX(-100%); transition: transform .2s ease; }
+/* Tiroir de navigation mobile : masqué par défaut, sans effet sur le
+   rendu ordinateur (l'élément n'existait pas avant, aucune règle
+   existante n'est modifiée). Rendu visible uniquement dans le media
+   query téléphone/tablette ci-dessous. */
+.sidebar-backdrop { display: none; }
+.sidebar-user-email { display: none; }
+
+/* =========================================================================
+   TÉLÉPHONE & TABLETTE UNIQUEMENT (< 992px, seuil Bootstrap "lg" déjà
+   utilisé par les grilles col-lg-* des templates). Rien ici ne s'applique
+   à l'affichage ordinateur — voir contrainte : ne pas toucher au desktop.
+   ========================================================================= */
+@media (max-width: 991.98px) {
+  /* --- Tiroir de navigation --- */
+  .sidebar {
+    width: 84vw;
+    max-width: 320px;
+    transform: translateX(-100%);
+    transition: transform .25s ease;
+    box-shadow: 4px 0 24px rgba(31, 15, 51, .18);
+  }
   .sidebar.open { transform: translateX(0); }
   .main-content { margin-left: 0; }
+
+  .sidebar-backdrop.show {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(20, 10, 35, .45);
+    z-index: 1025;
+    animation: sidebar-fade-in .15s ease;
+  }
+  @keyframes sidebar-fade-in { from { opacity: 0; } to { opacity: 1; } }
+
+  /* Cibles tactiles plus généreuses dans le menu */
+  .sidebar-nav { padding: 1rem .75rem; }
+  .sidebar-nav .nav-link { padding: .8rem .85rem; font-size: .95rem; }
+  .sidebar-nav .nav-link .bi { font-size: 1.15rem; }
+  .sidebar-footer .nav-link { padding: .8rem .85rem; }
+  .sidebar-user-email {
+    display: block;
+    padding: .3rem .85rem .6rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* --- Barre du haut : évite tout débordement sur petit écran --- */
+  .topbar { padding: .6rem .9rem; gap: .5rem; }
+  .sidebar-toggle {
+    min-width: 44px; min-height: 44px;
+    padding: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .topbar .boutique-pill {
+    font-size: .78rem;
+    max-width: 42vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .topbar-email { display: none; } /* déjà visible dans le tiroir (email en bas) — évite l'encombrement */
+
+  /* --- Contenu : on récupère de la largeur --- */
+  .page { padding: 1rem; }
+  .card-app .card-app-body { padding: 1rem; }
+  .card-app .card-app-header { padding: .85rem 1rem; }
+  .page-header { margin-bottom: 1.1rem; }
+  .page-header h1 { font-size: 1.15rem; }
+
+  /* --- Cibles tactiles : boutons et champs --- */
+  .btn { min-height: 44px; padding-top: .55rem; padding-bottom: .55rem; }
+  .btn-link { min-height: auto; } /* liens texte type "Modifier" : pas de gros bloc tactile */
+  .form-control, .form-select {
+    font-size: 16px; /* empêche le zoom auto iOS au focus */
+    padding: .6rem .75rem;
+  }
+
+  /* --- Tuiles du tableau de bord : plus compactes --- */
+  .stat-card { padding: .85rem 1rem; gap: .75rem; }
+  .stat-card .stat-icon { width: 38px; height: 38px; font-size: 1.05rem; }
+  .stat-card .stat-value { font-size: 1.15rem; }
+
+  /* --- Tableaux : défilement horizontal plutôt qu'un rendu cassé --- */
+  .table-app {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .table-app table { min-width: 100%; }
+  .table-app thead th, .table-app tbody td { padding: .65rem .75rem; }
+
+  /* --- Écran de vente (POS) : resserré pour les petits écrans --- */
+  .pos-thumb { width: 36px; height: 36px; }
+  .pos-item, .pos-cart-line { padding: .55rem .4rem; gap: .55rem; }
+  .pos-item-name { font-size: .82rem; }
+  .pos-qty { width: 56px; }
+  .pos-line-total { width: 68px; font-size: .8rem; }
+
+  /* --- Formulaire d'inscription/connexion --- */
+  .auth-card { padding: 1.75rem 1.5rem; }
 }
 
 /* POS (écran de vente) */

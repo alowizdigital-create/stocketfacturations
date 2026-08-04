@@ -14,13 +14,13 @@
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Produit</th><th>Quantité</th><th>Seuil bas</th><th></th></tr></thead>
+        <thead><tr><th>Produit</th><th>Quantité</th><th class="d-none d-sm-table-cell">Seuil bas</th><th></th></tr></thead>
         <tbody>
             {% for row in rows %}
             <tr class="{% if row.is_low %}row-danger{% endif %}">
                 <td class="fw-semibold">{{ row.level.product.name }}</td>
                 <td>{{ row.level.quantity }} {{ row.level.product.unit.symbol|default:row.level.product.unit.name }}</td>
-                <td>{{ row.threshold }}</td>
+                <td class="d-none d-sm-table-cell">{{ row.threshold }}</td>
                 <td>{% if row.is_low %}<span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Stock bas</span>{% endif %}</td>
             </tr>
             {% empty %}

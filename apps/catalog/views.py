@@ -64,6 +64,28 @@ def product_list(request):
 
 
 @login_required
+def product_detail(request, product_id):
+    """Fiche produit en lecture seule — distincte de la page de facture :
+    un produit est un enregistrement du catalogue, pas une ligne de
+    document, et se consulte/gère depuis son propre écran."""
+    from apps.stock.models import StockLevel
+
+    product = get_object_or_404(
+        Product.objects.select_related("category", "unit"), id=product_id, compte=request.compte
+    )
+    stock_level = StockLevel.objects.filter(boutique=request.boutique, product=product).first()
+    return render(
+        request,
+        "catalog/product_detail.html",
+        {
+            "product": product,
+            "stock_qty": stock_level.quantity if stock_level else 0,
+            "effective_price": get_effective_price(product, request.boutique),
+        },
+    )
+
+
+@login_required
 @boutique_role_required(*MANAGE_ROLES)
 def product_create(request):
     if not Unit.objects.filter(compte=request.compte).exists():

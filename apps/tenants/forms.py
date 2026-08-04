@@ -4,7 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 
 from apps.core.forms import BootstrapFormMixin
 
-from .models import Boutique, Compte, Membership
+from .models import Boutique, Compte, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -102,3 +102,23 @@ class CompteSettingsForm(BootstrapFormMixin, forms.ModelForm):
             "phone": "Téléphone",
             "logo": "Logo",
         }
+
+
+class SubscriptionForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = Subscription
+        fields = ["plan", "expires_at", "payment_reference", "notes"]
+        widgets = {"expires_at": forms.DateInput(attrs={"type": "date"})}
+        labels = {
+            "plan": "Offre",
+            "expires_at": "Abonnement payé jusqu'au",
+            "payment_reference": "Référence de paiement",
+            "notes": "Notes",
+        }
+        help_texts = {
+            "expires_at": "Laisser vide pour l'offre Gratuite. À mettre à jour vous-même après chaque paiement (Mobile Money, virement...).",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["plan"].queryset = Plan.objects.filter(is_active=True)

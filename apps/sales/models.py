@@ -139,6 +139,9 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     subtotal_ht = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     total_tva = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     total_ttc = models.DecimalField(max_digits=14, decimal_places=0, default=0)
+    discount_amount = models.DecimalField(
+        "remise globale (FCFA)", max_digits=14, decimal_places=0, default=0
+    )
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"
     )
@@ -177,6 +180,9 @@ class InvoiceLine(UUIDModel):
     quantity = models.DecimalField(max_digits=12, decimal_places=3)
     unit_price_ht = models.DecimalField(max_digits=12, decimal_places=0)
     tva_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    discount_amount = models.DecimalField(
+        "remise (FCFA)", max_digits=12, decimal_places=0, default=0
+    )
     line_total_ht = models.DecimalField(max_digits=14, decimal_places=0)
     line_total_ttc = models.DecimalField(max_digits=14, decimal_places=0)
     position = models.PositiveIntegerField(default=0)

@@ -7,10 +7,10 @@
 </div>
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Nom</th><th>Téléphone</th><th>Email</th></tr></thead>
+        <thead><tr><th>Nom</th><th>Téléphone</th><th class="d-none d-md-table-cell">Email</th></tr></thead>
         <tbody>
             {% for client in clients %}
-            <tr><td class="fw-semibold">{{ client.name }}</td><td>{{ client.phone|default:"—" }}</td><td>{{ client.email|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold">{{ client.name }}</td><td>{{ client.phone|default:"—" }}</td><td class="d-none d-md-table-cell">{{ client.email|default:"—" }}</td></tr>
             {% empty %}
             <tr><td colspan="3" class="text-muted text-center py-4">Aucun client.</td></tr>
             {% endfor %}

@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Abonnement{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Abonnement</h1>
+        <div class="text-muted">Aucun paiement en ligne pour l'instant — payez hors application (Mobile Money, virement...) puis mettez à jour la date ci-dessous.</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-6">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-award"></i></div>
+            <div>
+                <div class="stat-value">{{ subscription.plan.name }}</div>
+                <div class="stat-label">Offre actuelle — {{ subscription.plan.price_monthly }} FCFA/mois</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="stat-card {% if not subscription.is_active %}stat-warn{% endif %}">
+            <div class="stat-icon"><i class="bi bi-calendar-check"></i></div>
+            <div>
+                <div class="stat-value">
+                    {% if subscription.is_active %}
+                    <span class="badge-status badge-green">Actif</span>
+                    {% else %}
+                    <span class="badge-status badge-red">Expiré</span>
+                    {% endif %}
+                </div>
+                <div class="stat-label">
+                    {% if subscription.expires_at %}
+                    Jusqu'au {{ subscription.expires_at|date:"d/m/Y" }}
+                    {% else %}
+                    Sans date d'expiration
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    {% for plan in plans %}
+    <div class="col-md-4">
+        <div class="card-app {% if plan.id == subscription.plan_id %}border-2{% endif %}" style="{% if plan.id == subscription.plan_id %}border-color: var(--brand);{% endif %}">
+            <div class="card-app-body">
+                <div class="fw-bold fs-5">{{ plan.name }}</div>
+                <div class="text-muted mb-2">{{ plan.price_monthly }} FCFA/mois</div>
+                <div class="small text-muted">
+                    <div>Boutiques : {{ plan.max_boutiques|default:"Illimité" }}</div>
+                    <div>Employés : {{ plan.max_users|default:"Illimité" }}</div>
+                </div>
+                {% if plan.description %}<div class="small text-muted mt-2">{{ plan.description }}</div>{% endif %}
+                {% if plan.id == subscription.plan_id %}
+                <span class="badge-status badge-purple mt-2 d-inline-block">Offre actuelle</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<div class="card-app" style="max-width: 520px;">
+    <div class="card-app-header">Mettre à jour mon abonnement</div>
+    <div class="card-app-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

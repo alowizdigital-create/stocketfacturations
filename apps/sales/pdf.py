@@ -106,7 +106,7 @@ class _ReceiptWriter:
         self.y -= 1.5 * mm
 
 
-def _estimate_height(invoice, lines, payments, logo_sized):
+def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount):
     n = 0
     n += 3  # nom boutique + adresse/téléphone (jusqu'à 2 lignes)
     n += 1  # séparateur
@@ -115,6 +115,8 @@ def _estimate_height(invoice, lines, payments, logo_sized):
     n += len(lines) * 2  # description + qté×PU = total
     n += 1  # séparateur
     n += 3  # sous-total / TVA / total
+    if has_global_discount:
+        n += 1  # ligne remise globale
     if payments:
         n += 1 + len(payments)  # séparateur + une ligne par paiement
     n += 1  # séparateur
@@ -133,8 +135,9 @@ def render_invoice_pdf(invoice):
     payments = list(invoice.payments.all())
     logo_field = invoice.boutique.compte.logo
     logo_sized = _logo_size(logo_field)
+    has_global_discount = bool(invoice.discount_amount)
 
-    height = _estimate_height(invoice, lines, payments, logo_sized)
+    height = _estimate_height(invoice, lines, payments, logo_sized, has_global_discount)
 
     buffer = io.BytesIO()
     c = pdfcanvas.Canvas(buffer, pagesize=(PAGE_WIDTH, height))
@@ -160,11 +163,15 @@ def render_invoice_pdf(invoice):
         description = _truncate(c, line.description, FONT_NORMAL, CONTENT_WIDTH)
         w.text(description)
         detail = f"{float(line.quantity):g} x {_fmt(line.unit_price_ht)}"
+        if line.discount_amount:
+            detail += f" (-{_fmt(line.discount_amount)})"
         w.two_columns(detail, _fmt(line.line_total_ttc))
     w.separator()
 
     w.two_columns("Sous-total HT", f"{_fmt(invoice.subtotal_ht)} {invoice.currency}")
     w.two_columns("TVA", f"{_fmt(invoice.total_tva)} {invoice.currency}")
+    if has_global_discount:
+        w.two_columns("Remise globale", f"-{_fmt(invoice.discount_amount)} {invoice.currency}")
     w.two_columns("TOTAL TTC", f"{_fmt(invoice.total_ttc)} {invoice.currency}", font=FONT_BOLD)
 
     if payments:

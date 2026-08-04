@@ -4,7 +4,7 @@
 <div class="page-header"><div><h1>Historique des mouvements de stock</h1></div></div>
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th>Motif</th></tr></thead>
+        <thead><tr><th>Date</th><th>Produit</th><th>Type</th><th>Quantité</th><th class="d-none d-md-table-cell">Motif</th></tr></thead>
         <tbody>
             {% for m in movements %}
             <tr>
@@ -20,7 +20,7 @@
                     </span>
                 </td>
                 <td>{{ m.quantity }}</td>
-                <td class="text-muted">{{ m.reason }}</td>
+                <td class="d-none d-md-table-cell text-muted">{{ m.reason }}</td>
             </tr>
             {% empty %}
             <tr><td colspan="5" class="text-muted text-center py-4">Aucun mouvement.</td></tr>

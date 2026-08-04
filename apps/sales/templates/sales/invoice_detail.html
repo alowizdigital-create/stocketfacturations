@@ -46,7 +46,7 @@
     <div class="col-lg-8">
         <div class="table-app mb-3">
             <table class="table mb-0">
-                <thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Total TTC</th></tr></thead>
+                <thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Remise</th><th>Total TTC</th></tr></thead>
                 <tbody>
                     {% for line in invoice.lines.all %}
                     <tr>
@@ -54,6 +54,7 @@
                         <td>{{ line.quantity }}</td>
                         <td>{{ line.unit_price_ht }}</td>
                         <td>{{ line.tva_rate }}</td>
+                        <td>{% if line.discount_amount %}-{{ line.discount_amount }} {{ invoice.currency }}{% else %}—{% endif %}</td>
                         <td>{{ line.line_total_ttc }}</td>
                     </tr>
                     {% endfor %}
@@ -111,6 +112,9 @@
             <div class="card-app-body">
                 <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span>{{ invoice.subtotal_ht }} {{ invoice.currency }}</span></div>
                 <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span>{{ invoice.total_tva }} {{ invoice.currency }}</span></div>
+                {% if invoice.discount_amount %}
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Remise globale</span><span class="text-danger">-{{ invoice.discount_amount }} {{ invoice.currency }}</span></div>
+                {% endif %}
                 <hr>
                 <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
             </div>

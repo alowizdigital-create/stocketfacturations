@@ -16,6 +16,7 @@ urlpatterns = [
     path("ventes/<uuid:sale_id>/facturer/", views.sale_generate_invoice, name="sale_generate_invoice"),
 
     path("factures/", views.invoice_list, name="invoice_list"),
+    path("devis/", views.devis_list, name="devis_list"),
     path("devis/nouveau/", views.invoice_create, name="invoice_create"),
     path("factures/<uuid:invoice_id>/", views.invoice_detail, name="invoice_detail"),
     path("factures/<uuid:invoice_id>/valider/", views.invoice_validate, name="invoice_validate"),

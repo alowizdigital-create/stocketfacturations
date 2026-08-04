@@ -10,33 +10,45 @@ from apps.stock.models import StockMovement
 from .models import Invoice, InvoiceLine, Payment, Sale, SaleLine
 
 
-def _line_totals(quantity, unit_price_ht, tva_rate):
-    line_total_ht = (quantity * unit_price_ht).quantize(Decimal("1"))
+def _line_totals(quantity, unit_price_ht, tva_rate, discount_amount=Decimal("0")):
+    gross_ht = quantity * unit_price_ht
+    line_total_ht = max(gross_ht - discount_amount, Decimal("0")).quantize(Decimal("1"))
     line_total_ttc = (line_total_ht * (Decimal("1") + tva_rate / Decimal("100"))).quantize(Decimal("1"))
     return line_total_ht, line_total_ttc
 
 
-def _compute_totals(lines_data):
+def _compute_totals(lines_data, discount_amount=Decimal("0")):
+    """Calcule les lignes et les totaux. `discount_amount` est la remise
+    globale de facture (montant fixe en FCFA), déduite directement du total
+    TTC final. Chaque ligne peut aussi porter sa propre `discount_amount`
+    (montant fixe déduit de son HT) dans `lines_data`."""
+
     subtotal_ht = Decimal("0")
     total_tva = Decimal("0")
-    total_ttc = Decimal("0")
     computed = []
     for line in lines_data:
         line_total_ht, line_total_ttc = _line_totals(
-            line["quantity"], line["unit_price_ht"], line["tva_rate"]
+            line["quantity"],
+            line["unit_price_ht"],
+            line["tva_rate"],
+            line.get("discount_amount", Decimal("0")),
         )
         computed.append((line, line_total_ht, line_total_ttc))
         subtotal_ht += line_total_ht
-        total_ttc += line_total_ttc
         total_tva += line_total_ttc - line_total_ht
+
+    total_ttc = max(subtotal_ht + total_tva - discount_amount, Decimal("0"))
     return computed, subtotal_ht, total_tva, total_ttc
 
 
 @transaction.atomic
-def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None):
+def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None,
+                   discount_amount=Decimal("0")):
     """Crée une facture/devis en BROUILLON avec ses lignes. `lines_data` :
-    liste de dicts {product, description, quantity, unit_price_ht, tva_rate}.
-    Ne touche pas au stock — voir validate_invoice()."""
+    liste de dicts {product, description, quantity, unit_price_ht, tva_rate,
+    discount_amount}. `discount_amount` est la remise globale de la
+    facture (montant fixe FCFA). Ne touche pas au stock — voir
+    validate_invoice()."""
 
     issue_date = issue_date or timezone.localdate()
     invoice = Invoice.objects.create(
@@ -45,17 +57,12 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
         type=type,
         number=Invoice.generate_number(boutique, issue_date),
         issue_date=issue_date,
+        discount_amount=discount_amount,
         created_by=created_by,
     )
 
-    subtotal_ht = Decimal("0")
-    total_tva = Decimal("0")
-    total_ttc = Decimal("0")
-
-    for position, line in enumerate(lines_data):
-        line_total_ht, line_total_ttc = _line_totals(
-            line["quantity"], line["unit_price_ht"], line["tva_rate"]
-        )
+    computed, subtotal_ht, total_tva, total_ttc = _compute_totals(lines_data, discount_amount)
+    for position, (line, line_total_ht, line_total_ttc) in enumerate(computed):
         InvoiceLine.objects.create(
             invoice=invoice,
             product=line.get("product"),
@@ -63,13 +70,11 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
             quantity=line["quantity"],
             unit_price_ht=line["unit_price_ht"],
             tva_rate=line["tva_rate"],
+            discount_amount=line.get("discount_amount", Decimal("0")),
             line_total_ht=line_total_ht,
             line_total_ttc=line_total_ttc,
             position=position,
         )
-        subtotal_ht += line_total_ht
-        total_ttc += line_total_ttc
-        total_tva += line_total_ttc - line_total_ht
 
     Invoice.objects.filter(pk=invoice.pk).update(
         subtotal_ht=subtotal_ht, total_tva=total_tva, total_ttc=total_ttc

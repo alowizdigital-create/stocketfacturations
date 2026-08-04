@@ -11,7 +11,7 @@
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Employé</th><th>Boutique</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+        <thead><tr><th>Employé</th><th class="d-none d-md-table-cell">Boutique</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
         <tbody>
             {% for m in memberships %}
             <tr>
@@ -19,7 +19,7 @@
                     <div class="fw-semibold">{{ m.user.get_full_name|default:m.user.email }}</div>
                     <div class="text-muted small">{{ m.user.email }}</div>
                 </td>
-                <td>{{ m.boutique.name }}</td>
+                <td class="d-none d-md-table-cell">{{ m.boutique.name }}</td>
                 <td><span class="badge-status badge-purple">{{ m.get_role_display }}</span></td>
                 <td>
                     {% if m.is_active %}

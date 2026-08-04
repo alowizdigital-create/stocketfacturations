@@ -8,8 +8,8 @@ from django.views.decorators.http import require_POST
 from apps.catalog.models import Unit
 from apps.core.permissions import compte_admin_required
 
-from .forms import CompteSettingsForm, SignupForm, StaffCreateForm, StaffUpdateForm
-from .models import Boutique, Compte, Membership
+from .forms import CompteSettingsForm, SignupForm, StaffCreateForm, StaffUpdateForm, SubscriptionForm
+from .models import Boutique, Compte, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -35,6 +35,9 @@ def signup(request):
                     is_default=True,
                 )
                 Unit.objects.create(compte=compte, name="Pièce", symbol="pc")
+                free_plan = Plan.objects.filter(name="Gratuit").first()
+                if free_plan:
+                    Subscription.objects.create(compte=compte, plan=free_plan)
                 user = User.objects.create_user(
                     email=data["email"],
                     password=data["password"],
@@ -158,3 +161,27 @@ def company_settings(request):
     else:
         form = CompteSettingsForm(instance=compte)
     return render(request, "tenants/company_settings.html", {"form": form})
+
+
+@login_required
+@compte_admin_required
+def subscription_view(request):
+    subscription, _ = Subscription.objects.get_or_create(
+        compte=request.compte,
+        defaults={"plan": Plan.objects.filter(is_active=True).order_by("price_monthly").first()},
+    )
+    if request.method == "POST":
+        form = SubscriptionForm(request.POST, instance=subscription)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Abonnement mis à jour.")
+            return redirect("tenants:subscription")
+    else:
+        form = SubscriptionForm(instance=subscription)
+
+    plans = Plan.objects.filter(is_active=True)
+    return render(
+        request,
+        "tenants/subscription.html",
+        {"form": form, "subscription": subscription, "plans": plans},
+    )

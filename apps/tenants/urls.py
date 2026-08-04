@@ -12,4 +12,5 @@ urlpatterns = [
     path("equipe/nouveau/", views.staff_create, name="staff_create"),
     path("equipe/<uuid:membership_id>/modifier/", views.staff_update, name="staff_update"),
     path("parametres/", views.company_settings, name="company_settings"),
+    path("abonnement/", views.subscription_view, name="subscription"),
 ]

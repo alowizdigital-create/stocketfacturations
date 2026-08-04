@@ -1,5 +1,7 @@
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.utils import timezone
 
@@ -7,6 +9,16 @@ from apps.catalog.models import Product
 from apps.catalog.services import get_effective_low_stock_threshold
 from apps.sales.models import Invoice, Sale
 from apps.stock.models import StockLevel
+
+
+def service_worker(request):
+    """Sert le service worker depuis la racine du site (/sw.js) plutôt que
+    /static/sw.js : la portée par défaut d'un service worker est le
+    dossier de son URL, il doit donc être servi hors de /static/ pour
+    pouvoir contrôler toute l'application, pas seulement les fichiers
+    statiques."""
+    path = settings.BASE_DIR / "static" / "sw.js"
+    return HttpResponse(path.read_text(encoding="utf-8"), content_type="application/javascript")
 
 
 @login_required
