@@ -12,12 +12,12 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "name",
             "image",
             "category",
-            "sku",
-            "barcode",
+            # "sku",
+            # "barcode",
             "unit",
             "default_sale_price",
-            "tva_rate",
-            "low_stock_threshold_default",
+            # "tva_rate",
+            # "low_stock_threshold_default",
             "is_active",
         ]
         labels = {

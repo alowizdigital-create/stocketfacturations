@@ -27,12 +27,14 @@ Dans la zone DNS de `zweey.com` (panneau Hostinger ou votre registrar), créer :
 | A    | @   | \<IP publique du VPS\>  |
 | A    | www | \<IP publique du VPS\>  |
 
+
 La propagation DNS peut prendre de quelques minutes à quelques heures. Vous pouvez
 vérifier avec `nslookup zweey.com` avant de continuer.
 
 ---
 
 ## 2. Installer Docker sur le VPS (si pas déjà fait)
+
 
 Connectez-vous en SSH au VPS, puis :
 

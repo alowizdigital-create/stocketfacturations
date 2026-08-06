@@ -17,10 +17,10 @@ class StockMovementForm(BootstrapFormMixin, forms.Form):
     type = forms.ChoiceField(choices=TYPE_CHOICES, label="Type de mouvement")
     quantity = forms.DecimalField(
         label="Quantité",
-        min_value=0.001,
-        max_digits=12,
-        decimal_places=3,
-        help_text="Toujours positive : le sens (+/-) est déduit du type choisi.",
+        min_value=1,
+        # max_digits=12,
+        # decimal_places=,
+        # help_text="Toujours positive : le sens (+/-) est déduit du type choisi.",
     )
     reason = forms.CharField(label="Motif", max_length=255, required=False)
 

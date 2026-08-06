@@ -4,13 +4,13 @@
 <div class="page-header">
     <div>
         <h1>Devis</h1>
-        <div class="text-muted">Un devis n'affecte jamais le stock.</div>
+        <!-- <div class="text-muted">Un devis n'affecte jamais le stock.</div> -->
     </div>
     <a href="{% url 'sales:invoice_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau devis</a>
 </div>
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th class="d-none d-sm-table-cell">Date</th><th>Total TTC</th></tr></thead>
+        <thead><tr><th>N°</th><th>Client</th><th>Statut</th><th class="d-none d-sm-table-cell">Date</th><th>Total TTC</th></tr></thead>
         <tbody>
             {% for invoice in devis %}
             <tr>

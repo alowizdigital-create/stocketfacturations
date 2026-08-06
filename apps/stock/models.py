@@ -63,7 +63,7 @@ class StockLevel(models.Model):
 
     boutique = models.ForeignKey("tenants.Boutique", on_delete=models.CASCADE, related_name="stock_levels")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="stock_levels")
-    quantity = models.DecimalField(max_digits=12, decimal_places=3, default=0)
+    quantity = models.DecimalField(max_digits=12, decimal_places=0, default=0)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:

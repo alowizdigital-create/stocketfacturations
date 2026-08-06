@@ -32,7 +32,7 @@ class ProductChoiceWidget(forms.Select):
 class ClientForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Client
-        fields = ["name", "phone", "email", "address", "nif"]
+        fields = ["name", "phone", "email", "address"]
 
 
 class InvoiceForm(BootstrapFormMixin, forms.Form):
