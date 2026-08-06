@@ -7,7 +7,7 @@ from apps.catalog.models import Product
 from apps.core.forms import BootstrapFormMixin
 
 from .models import Client, Invoice, Payment
-
+ 
 
 class ProductChoiceWidget(forms.Select):
     """Select produit qui porte le prix/la TVA/l'unité de chaque option en
