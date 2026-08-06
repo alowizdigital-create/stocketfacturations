@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.core.models import BoutiqueScopedModel, CompteScopedModel, TimeStampedModel, UUIDModel
 
-
+ 
 class Client(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     name = models.CharField(max_length=255)
     phone = models.CharField(max_length=30, blank=True)
