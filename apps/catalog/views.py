@@ -71,7 +71,7 @@ def product_search(request):
         )
 
     # Trier, limiter puis convertir en liste
-    products = list(products.order_by("name")[:20])
+    products = list(products.order_by("name")[:5])
 
     product_ids = [p.id for p in products]
 
