@@ -34,8 +34,8 @@
                             <th style="min-width:200px">Description</th>
                             <th style="width:120px">Qté</th>
                             <th style="width:120px">PU HT</th>
-                            <!-- <th style="width:90px">TVA %</th>
-                            <th style="width:120px">Remise (FCFA)</th> -->
+                            <th style="width:90px">TVA %</th>
+                            <!-- <th style="width:120px">Remise (FCFA)</th> -->
                             <th style="width:100px">Total TTC</th>
                             <th style="width:40px"></th>
                         </tr>
@@ -62,7 +62,7 @@
                             <td>{{ line_form.description }}</td>
                             <td>{{ line_form.quantity }}</td>
                             <td>{{ line_form.unit_price_ht }}</td>
-                            <!-- <td>{{ line_form.tva_rate }}</td> -->
+                            <td>{{ line_form.tva_rate }}</td>
                             <!-- <td>{{ line_form.discount_amount }}</td> -->
                             <td class="line-total text-end fw-semibold">0</td>
                             <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
@@ -123,7 +123,7 @@
         <td>{{ formset.empty_form.quantity }}</td>
         <td>{{ formset.empty_form.unit_price_ht }}</td>
         <td>{{ formset.empty_form.tva_rate }}</td>
-        <td>{{ formset.empty_form.discount_amount }}</td>
+        <!-- <td>{{ formset.empty_form.discount_amount }}</td> -->
         <td class="line-total text-end fw-semibold">0</td>
         <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
     </tr>
@@ -183,17 +183,20 @@
         return row;
     }
 
+  
     function computeRowTotal(row) {
         const qty = parseFloat(row.querySelector('input[name$="-quantity"]').value) || 0;
         const price = parseFloat(row.querySelector('input[name$="-unit_price_ht"]').value) || 0;
         const tva = parseFloat(row.querySelector('input[name$="-tva_rate"]').value) || 0;
-        const discount = parseFloat(row.querySelector('input[name$="-discount_amount"]').value) || 0;
-        const grossHt = qty * price;
-        const lineHt = Math.max(Math.round(grossHt - discount), 0);
+        const lineHt = Math.max(Math.round(qty * price), 0);    
         const lineTtc = Math.round(lineHt * (1 + tva / 100));
+
         row.querySelector(".line-total").textContent = fmt(lineTtc);
+
         return {ht: lineHt, ttc: lineTtc};
     }
+
+    
 
     function recomputeAll() {
         let subtotal = 0, total = 0;
