@@ -16,24 +16,32 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
 @login_required
 def product_search(request):
-    """Recherche produit en direct pour l'écran de vente (POS) : renvoie
-    au fil de la frappe les produits actifs dont le nom, la référence ou le
-    code-barres correspond, avec prix effectif et stock de la boutique
-    courante."""
     from apps.stock.models import StockLevel
 
     query = request.GET.get("q", "").strip()
-    products = Product.objects.filter(compte=request.compte, is_active=True).select_related("unit")
+
+    products = Product.objects.filter(
+        compte=request.compte,
+        is_active=True
+    ).select_related("unit")
+
     if query:
         products = products.filter(
-            Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
+            Q(name__icontains=query) |
+            Q(sku__icontains=query) |
+            Q(barcode__icontains=query)
         )
-    products = products.order_by("name")[:20]
+
+    # Trier, limiter puis convertir en liste
+    products = list(products.order_by("name")[:3])
+
+    product_ids = [p.id for p in products]
 
     stock_by_product = {
         level.product_id: level.quantity
         for level in StockLevel.objects.filter(
-            boutique=request.boutique, product__in=products
+            boutique=request.boutique,
+            product_id__in=product_ids,
         )
     }
 
@@ -50,6 +58,7 @@ def product_search(request):
         }
         for product in products
     ]
+
     return JsonResponse({"results": results})
 
 
