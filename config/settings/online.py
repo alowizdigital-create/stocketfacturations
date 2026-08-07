@@ -7,7 +7,9 @@ from .base import env
 from pathlib import Path
 
 
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
+# DEBUG = env.bool("DJANGO_DEBUG", default=False)
+
+DEBUG = True
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
@@ -31,6 +33,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 #     }
 # }
 
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
@@ -53,11 +58,22 @@ MIDDLEWARE = [
     *[m for m in MIDDLEWARE if m != "django.middleware.security.SecurityMiddleware"],  # noqa: F405
 ]
 
+# STORAGES = {
+#     "staticfiles": {
+#         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+#     },
+# }
+
 STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
     "staticfiles": {
         "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
     },
 }
+
+
 
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 SESSION_COOKIE_SECURE = not DEBUG
