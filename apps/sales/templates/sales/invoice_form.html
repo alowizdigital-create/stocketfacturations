@@ -64,7 +64,7 @@
                             <td>{{ line_form.unit_price_ht }}</td>
                             <td>{{ line_form.tva_rate }}</td>
                             <!-- <td>{{ line_form.discount_amount }}</td> -->
-                            <td class="line-total text-end fw-semibold">0</td>
+                            <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="Modifier"><i class="bi bi-pencil"></i></button></td>
                             <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
                         </tr>
                         {% if line_form.non_field_errors %}
@@ -124,13 +124,52 @@
         <td>{{ formset.empty_form.unit_price_ht }}</td>
         <td>{{ formset.empty_form.tva_rate }}</td>
         <!-- <td>{{ formset.empty_form.discount_amount }}</td> -->
-        <td class="line-total text-end fw-semibold">0</td>
+        <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="Modifier"><i class="bi bi-pencil"></i></button></td>
         <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
     </tr>
 </template>
 
 <div id="product-search-results" class="pos-results product-search-floating"></div>
 {{ preselected_products|json_script:"preselected-products-data" }}
+
+<!-- Téléphone/tablette uniquement : après avoir choisi un produit, ses
+     informations (qté/prix/TVA) se modifient dans ce pop-up vertical
+     plutôt que dans la ligne du tableau, trop étroite sur petit écran. -->
+<div class="modal fade" id="line-edit-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="product-thumb-wrap" id="line-edit-thumb"><i class="bi bi-image"></i></span>
+                    <h5 class="modal-title mb-0" id="line-edit-title">Produit</h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Quantité</label>
+                    <input type="number" min="1" step="1" class="form-control form-control-lg" id="line-edit-quantity">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Prix unitaire HT</label>
+                    <input type="number" min="0" step="1" class="form-control form-control-lg" id="line-edit-price">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">TVA %</label>
+                    <input type="number" min="0" step="0.01" class="form-control form-control-lg" id="line-edit-tva">
+                </div>
+                <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+                    <span class="text-muted">Total TTC</span>
+                    <span class="fw-bold fs-5" id="line-edit-total">0</span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="line-edit-save">Enregistrer</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -148,8 +187,67 @@
     const globalDiscountField = document.getElementById("global-discount-field");
     const globalDiscountInput = globalDiscountField.querySelector("input");
 
+    // --- Pop-up d'édition mobile (qté/prix/TVA) ---------------------------
+    const lineEditModalEl = document.getElementById("line-edit-modal");
+    const lineEditModal = new bootstrap.Modal(lineEditModalEl);
+    const modalTitle = document.getElementById("line-edit-title");
+    const modalThumb = document.getElementById("line-edit-thumb");
+    const modalQty = document.getElementById("line-edit-quantity");
+    const modalPrice = document.getElementById("line-edit-price");
+    const modalTva = document.getElementById("line-edit-tva");
+    const modalTotal = document.getElementById("line-edit-total");
+    let currentEditRow = null;
+    let advanceOnSave = false;
+    let pendingAdvance = false;
+
+    function updateModalTotal() {
+        const qty = parseFloat(modalQty.value) || 0;
+        const price = parseFloat(modalPrice.value) || 0;
+        const tva = parseFloat(modalTva.value) || 0;
+        const ht = Math.max(Math.round(qty * price), 0);
+        const ttc = Math.round(ht * (1 + tva / 100));
+        modalTotal.textContent = fmt(ttc);
+    }
+    [modalQty, modalPrice, modalTva].forEach((el) => el.addEventListener("input", updateModalTotal));
+
+    function openLineEditModal(row, opts) {
+        opts = opts || {};
+        currentEditRow = row;
+        advanceOnSave = !!opts.advanceOnSave;
+        const pill = row.querySelector(".product-selected");
+        modalTitle.textContent = pill.querySelector(".product-selected-name").textContent;
+        modalThumb.innerHTML = pill.querySelector(".product-thumb-wrap").innerHTML;
+        modalQty.value = row.querySelector('input[name$="-quantity"]').value || 1;
+        modalPrice.value = row.querySelector('input[name$="-unit_price_ht"]').value || 0;
+        modalTva.value = row.querySelector('input[name$="-tva_rate"]').value || 0;
+        updateModalTotal();
+        lineEditModal.show();
+    }
+
+    document.getElementById("line-edit-save").addEventListener("click", () => {
+        if (!currentEditRow) return;
+        currentEditRow.querySelector('input[name$="-quantity"]').value = modalQty.value || 1;
+        currentEditRow.querySelector('input[name$="-unit_price_ht"]').value = modalPrice.value || 0;
+        currentEditRow.querySelector('input[name$="-tva_rate"]').value = modalTva.value || 0;
+        recomputeAll();
+        pendingAdvance = advanceOnSave;
+        lineEditModal.hide();
+    });
+
+    lineEditModalEl.addEventListener("hidden.bs.modal", () => {
+        currentEditRow = null;
+        if (pendingAdvance) {
+            pendingAdvance = false;
+            addRow(null);
+        }
+    });
+
     function fmt(n) {
         return Math.round(n).toLocaleString("fr-FR") + " " + currency;
+    }
+
+    function isMobile() {
+        return window.matchMedia("(max-width: 991.98px)").matches;
     }
 
     function reindexRows() {
@@ -267,6 +365,8 @@
         searchInput.value = "";
         searchBox.classList.add("d-none");
         selectedBox.classList.remove("d-none");
+        const editTrigger = row.querySelector(".line-edit-trigger");
+        if (editTrigger) editTrigger.classList.remove("d-none");
     }
 
     function clearSelectedPill(row) {
@@ -274,6 +374,8 @@
         picker.querySelector('input[name$="-product"]').value = "";
         picker.querySelector(".product-search-box").classList.remove("d-none");
         picker.querySelector(".product-selected").classList.add("d-none");
+        const editTrigger = row.querySelector(".line-edit-trigger");
+        if (editTrigger) editTrigger.classList.add("d-none");
     }
 
     function selectProduct(row, data) {
@@ -287,6 +389,9 @@
         renderSelectedPill(row, data);
         hideResults();
         recomputeAll();
+        if (isMobile()) {
+            openLineEditModal(row, {advanceOnSave: true});
+        }
     }
 
     function hideResults() {
@@ -368,6 +473,12 @@
         if (!clearBtn) return;
         clearSelectedPill(clearBtn.closest("tr"));
         recomputeAll();
+    });
+
+    tbody.addEventListener("click", (e) => {
+        const editTrigger = e.target.closest(".line-edit-trigger");
+        if (!editTrigger) return;
+        openLineEditModal(editTrigger.closest("tr"));
     });
 
     document.addEventListener("click", (e) => {
