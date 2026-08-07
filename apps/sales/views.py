@@ -1,4 +1,7 @@
+import csv
+import io
 import json
+import quopri
 from decimal import Decimal, InvalidOperation
 
 from django.contrib import messages
@@ -13,7 +16,7 @@ from apps.core.permissions import boutique_role_required
 from apps.tenants.models import Membership
 
 from . import services
-from .forms import ClientForm, InvoiceForm, InvoiceLineFormSet, PaymentForm, SaleForm
+from .forms import ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, PaymentForm, SaleForm
 from .models import Client, Invoice, Sale
 from .pdf import render_invoice_pdf
 from .whatsapp import build_message, build_share_link, normalize_phone
@@ -59,6 +62,229 @@ def client_create(request):
     else:
         form = ClientForm()
     return render(request, "sales/client_form.html", {"form": form})
+
+
+CLIENT_IMPORT_HEADER_ALIASES = {
+    "name": "name", "nom": "name", "nom complet": "name", "client": "name",
+    "phone": "phone", "telephone": "phone", "téléphone": "phone", "tel": "phone",
+    "téléphone portable": "phone", "phone number": "phone", "mobile": "phone",
+    "email": "email", "e-mail": "email", "mail": "email", "courriel": "email",
+    "address": "address", "adresse": "address",
+}
+
+
+def _parse_csv_contacts(text):
+    """Renvoie une liste de dicts {name, phone, email, address} à partir
+    d'un CSV. Seul le nom est obligatoire — téléphone/email/adresse sont
+    de simples chaînes vides si la colonne est absente ou la cellule vide."""
+
+    try:
+        dialect = csv.Sniffer().sniff(text[:2048], delimiters=",;\t")
+    except csv.Error:
+        dialect = csv.excel
+    reader = csv.DictReader(io.StringIO(text), dialect=dialect)
+
+    if not reader.fieldnames:
+        return None, "Fichier CSV vide ou illisible."
+
+    field_map = {}
+    for raw_header in reader.fieldnames:
+        key = CLIENT_IMPORT_HEADER_ALIASES.get(raw_header.strip().lower())
+        if key:
+            field_map[raw_header] = key
+
+    if "name" not in field_map.values():
+        return None, (
+            "Aucune colonne « nom » reconnue dans le fichier CSV. "
+            "Colonnes attendues : nom, téléphone, email, adresse."
+        )
+
+    contacts = []
+    for row in reader:
+        data = {"name": "", "phone": "", "email": "", "address": ""}
+        for raw_header, key in field_map.items():
+            data[key] = (row.get(raw_header) or "").strip()
+        contacts.append(data)
+    return contacts, None
+
+
+def _unfold_vcard_lines(text):
+    """Les lignes vCard peuvent être repliées sur plusieurs lignes physiques
+    (RFC 6350) : toute ligne commençant par une espace/tabulation est la
+    continuation de la précédente."""
+
+    lines = text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    unfolded = []
+    for line in lines:
+        if line.startswith((" ", "\t")) and unfolded:
+            unfolded[-1] += line[1:]
+        else:
+            unfolded.append(line)
+    return unfolded
+
+
+def _decode_vcard_value(raw_value, params):
+    value = raw_value
+    if params.get("ENCODING") == "QUOTED-PRINTABLE":
+        try:
+            charset = params.get("CHARSET", "utf-8")
+            value = quopri.decodestring(value.encode("ascii", errors="ignore")).decode(charset, errors="replace")
+        except (ValueError, LookupError):
+            pass
+    return (
+        value.replace("\\n", "\n").replace("\\N", "\n")
+        .replace("\\,", ",").replace("\\;", ";").replace("\\\\", "\\")
+    )
+
+
+def _parse_vcard_property_line(line):
+    if ":" not in line:
+        return None
+    head, value = line.split(":", 1)
+    parts = head.split(";")
+    prop = parts[0].strip().upper()
+    if "." in prop:  # groupe préfixé, ex "item1.TEL"
+        prop = prop.split(".")[-1]
+    params = {}
+    for part in parts[1:]:
+        if "=" in part:
+            key, val = part.split("=", 1)
+            params[key.strip().upper()] = val.strip().upper()
+    return prop, params, value
+
+
+def _parse_vcf_contacts(text):
+    """Renvoie une liste de dicts {name, phone, email, address} à partir
+    d'un fichier vCard (.vcf) — export standard des carnets de contacts
+    téléphone/iCloud/Google/Outlook. Seul le nom (FN ou N) est requis."""
+
+    contacts = []
+    current = None
+    for raw_line in _unfold_vcard_lines(text):
+        line = raw_line.strip("﻿").strip()
+        if not line:
+            continue
+        upper = line.upper()
+        if upper.startswith("BEGIN:VCARD"):
+            current = {"fn": "", "n": "", "phone": "", "email": "", "address": ""}
+            continue
+        if upper.startswith("END:VCARD"):
+            if current is not None:
+                name = (current["fn"] or current["n"]).strip()
+                if name:
+                    contacts.append({
+                        "name": name,
+                        "phone": current["phone"],
+                        "email": current["email"],
+                        "address": current["address"],
+                    })
+            current = None
+            continue
+        if current is None:
+            continue
+
+        parsed = _parse_vcard_property_line(line)
+        if not parsed:
+            continue
+        prop, params, raw_value = parsed
+        value = _decode_vcard_value(raw_value, params).strip()
+
+        if prop == "FN" and not current["fn"]:
+            current["fn"] = value
+        elif prop == "N" and not current["n"]:
+            components = value.split(";")
+            family = components[0] if len(components) > 0 else ""
+            given = components[1] if len(components) > 1 else ""
+            current["n"] = " ".join(p for p in [given, family] if p)
+        elif prop == "TEL" and not current["phone"]:
+            current["phone"] = value
+        elif prop == "EMAIL" and not current["email"]:
+            current["email"] = value
+        elif prop == "ADR" and not current["address"]:
+            components = [c.strip() for c in value.split(";") if c.strip()]
+            current["address"] = ", ".join(components)
+
+    if not contacts:
+        return None, "Aucun contact trouvé dans le fichier vCard."
+    return contacts, None
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def client_import(request):
+    """Import en masse de contacts clients depuis un fichier CSV ou vCard
+    (.vcf, export d'un téléphone/carnet de contacts). Seul le nom est
+    obligatoire — téléphone, email et adresse restent optionnels. Les
+    doublons (même nom + même téléphone déjà présents dans la boutique)
+    sont ignorés plutôt que dupliqués."""
+
+    if request.method == "POST":
+        form = ClientImportForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded = form.cleaned_data["file"]
+            raw_bytes = uploaded.read()
+            try:
+                text = raw_bytes.decode("utf-8-sig")
+            except UnicodeDecodeError:
+                try:
+                    text = raw_bytes.decode("latin-1")
+                except UnicodeDecodeError:
+                    messages.error(request, "Le fichier doit être encodé en UTF-8.")
+                    return render(request, "sales/client_import.html", {"form": form})
+
+            filename = (uploaded.name or "").lower()
+            is_vcf = filename.endswith(".vcf") or "BEGIN:VCARD" in text[:200].upper()
+
+            if is_vcf:
+                contacts, error = _parse_vcf_contacts(text)
+            else:
+                contacts, error = _parse_csv_contacts(text)
+
+            if error:
+                messages.error(request, error)
+                return render(request, "sales/client_import.html", {"form": form})
+
+            existing = set(
+                Client.objects.filter(boutique=request.boutique).values_list("name", "phone")
+            )
+            to_create = []
+            seen = set()
+            skipped = 0
+            for data in contacts:
+                if not data["name"]:
+                    skipped += 1
+                    continue
+
+                dedupe_key = (data["name"], data["phone"])
+                if dedupe_key in existing or dedupe_key in seen:
+                    skipped += 1
+                    continue
+                seen.add(dedupe_key)
+
+                to_create.append(
+                    Client(
+                        boutique=request.boutique,
+                        name=data["name"],
+                        phone=data["phone"],
+                        email=data["email"],
+                        address=data["address"],
+                    )
+                )
+
+            Client.objects.bulk_create(to_create)
+
+            if to_create:
+                messages.success(
+                    request,
+                    f"{len(to_create)} client(s) importé(s)."
+                    + (f" {skipped} ligne(s) ignorée(s) (doublon ou nom manquant)." if skipped else ""),
+                )
+            else:
+                messages.warning(request, "Aucun nouveau client importé (doublons ou fichier vide).")
+            return redirect("sales:client_list")
+    else:
+        form = ClientImportForm()
+    return render(request, "sales/client_import.html", {"form": form})
 
 
 def _extract_lines_data(formset):
@@ -179,6 +405,7 @@ def sale_confirm(request, sale_id):
     return redirect("sales:sale_detail", sale_id=sale.id)
 
 
+
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
 def sale_generate_invoice(request, sale_id):
@@ -219,6 +446,32 @@ def devis_list(request):
     return render(request, "sales/devis_list.html", {"devis": devis})
 
 
+def _preselected_products_for_formset(formset, compte):
+    """Infos (nom/image/prix/...) des produits déjà associés aux lignes du
+    formset, pour que le JS puisse redessiner la vignette de sélection sans
+    requête si le devis est réaffiché après une erreur de validation — la
+    recherche en direct ne peut pas retrouver ces infos, le champ produit
+    n'étant qu'un id caché."""
+
+    ids = {line_form["product"].value() for line_form in formset}
+    ids.discard(None)
+    ids.discard("")
+    if not ids:
+        return {}
+    products = Product.objects.filter(id__in=ids, compte=compte).select_related("unit")
+    return {
+        str(p.id): {
+            "name": p.name,
+            "sku": p.sku,
+            "unit": str(p.unit),
+            "price": p.default_sale_price,
+            "tva_rate": p.tva_rate,
+            "image_url": p.image.url if p.image else None,
+        }
+        for p in products
+    }
+
+
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
 def invoice_create(request):
@@ -244,11 +497,30 @@ def invoice_create(request):
         form = InvoiceForm(boutique=request.boutique)
         formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte})
 
-    return render(request, "sales/invoice_form.html", {"form": form, "formset": formset})
+    preselected_products = _preselected_products_for_formset(formset, request.compte)
+    return render(
+        request,
+        "sales/invoice_form.html",
+        {"form": form, "formset": formset, "preselected_products": preselected_products},
+    )
 
 
 def _public_pdf_url(request, invoice):
     return request.build_absolute_uri(reverse("sales:invoice_public_pdf", args=[invoice.id]))
+
+
+def _public_view_url(request, invoice):
+    """Page web publique (sans connexion) montrant le devis/facture — prix,
+    quantités, total — c'est le lien "détails" envoyé au client."""
+    return request.build_absolute_uri(reverse("sales:invoice_public_view", args=[invoice.id]))
+
+
+def _public_gallery_url(request, invoice):
+    """Page web publique (sans connexion) dédiée aux photos : toutes les
+    images de chaque produit de la commande (photo principale + photos
+    supplémentaires), pas seulement la première — c'est le second lien
+    envoyé au client, séparé de celui des prix."""
+    return request.build_absolute_uri(reverse("sales:invoice_public_gallery", args=[invoice.id]))
 
 
 @login_required
@@ -264,7 +536,10 @@ def invoice_detail(request, invoice_id):
     has_client_phone = bool(invoice.client and invoice.client.phone)
     if has_client_phone:
         whatsapp_url = build_share_link(
-            phone=invoice.client.phone, invoice=invoice, pdf_url=_public_pdf_url(request, invoice)
+            phone=invoice.client.phone,
+            invoice=invoice,
+            view_url=_public_view_url(request, invoice),
+            gallery_url=_public_gallery_url(request, invoice),
         )
 
     return render(
@@ -292,10 +567,12 @@ def invoice_send_whatsapp(request, invoice_id):
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
     pdf_url = _public_pdf_url(request, invoice)
+    view_url = _public_view_url(request, invoice)
+    gallery_url = _public_gallery_url(request, invoice)
     try:
         send_document(
             to=phone,
-            message=build_message(invoice),
+            message=build_message(invoice, view_link=view_url, gallery_link=gallery_url),
             document_url=pdf_url,
             filename=f"{invoice.number}.pdf",
         )
@@ -359,3 +636,36 @@ def invoice_public_pdf(request, invoice_id):
     response = HttpResponse(pdf_bytes, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="{invoice.number}.pdf"'
     return response
+
+
+def invoice_public_view(request, invoice_id):
+    """Page web publique (sans connexion), même principe de sécurité que
+    invoice_public_pdf (UUID non devinable) : prix, quantités, total —
+    le lien "détails" envoyé au client, distinct du lien galerie photos."""
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("client", "boutique").prefetch_related("lines__product"),
+        id=invoice_id,
+    )
+    return render(request, "sales/invoice_public.html", {"invoice": invoice})
+
+
+def invoice_public_gallery(request, invoice_id):
+    """Page web publique (sans connexion) dédiée aux photos : pour chaque
+    produit de la commande, toutes ses images (principale + les jusqu'à 2
+    supplémentaires), pas seulement la première — second lien, séparé de
+    celui des prix, envoyé au client pour qu'il voie les articles."""
+    invoice = get_object_or_404(
+        Invoice.objects.select_related("client", "boutique").prefetch_related(
+            "lines__product__extra_images"
+        ),
+        id=invoice_id,
+    )
+    products = []
+    seen_ids = set()
+    for line in invoice.lines.all():
+        if line.product_id and line.product_id not in seen_ids:
+            seen_ids.add(line.product_id)
+            products.append(line.product)
+    return render(
+        request, "sales/invoice_public_gallery.html", {"invoice": invoice, "products": products}
+    )

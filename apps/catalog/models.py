@@ -65,6 +65,26 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         return self.name
 
 
+class ProductImage(UUIDModel, TimeStampedModel):
+    """Photo supplémentaire d'un produit. `Product.image` reste la photo de
+    couverture utilisée partout comme vignette (listes, recherche POS,
+    devis) ; ce modèle ne porte que les photos additionnelles de la
+    galerie — 3 photos au total (couverture incluse) est la limite
+    imposée en formulaire."""
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="extra_images")
+    image = models.ImageField("photo", upload_to="produits/")
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "image produit"
+        verbose_name_plural = "images produit"
+        ordering = ["position", "created_at"]
+
+    def __str__(self):
+        return f"{self.product.name} — photo {self.position + 1}"
+
+
 class ProductBoutiquePrice(models.Model):
     """Surcharge optionnelle de prix/disponibilité pour une boutique
     donnée, sans dupliquer le produit (catalogue partagé au niveau du

@@ -8,6 +8,7 @@ urlpatterns = [
     path("clients/", views.client_list, name="client_list"),
     path("clients/rechercher/", views.client_search, name="client_search"),
     path("clients/nouveau/", views.client_create, name="client_create"),
+    path("clients/importer/", views.client_import, name="client_import"),
 
     path("ventes/", views.sale_list, name="sale_list"),
     path("ventes/nouvelle/", views.sale_create, name="sale_create"),
@@ -24,6 +25,8 @@ urlpatterns = [
     path("factures/<uuid:invoice_id>/pdf/", views.invoice_pdf, name="invoice_pdf"),
     path("factures/<uuid:invoice_id>/whatsapp/", views.invoice_send_whatsapp, name="invoice_send_whatsapp"),
 
-    # Lien public (sans connexion), utilisé pour le partage WhatsApp.
+    # Liens publics (sans connexion), utilisés pour le partage WhatsApp.
     path("partage/factures/<uuid:invoice_id>/pdf/", views.invoice_public_pdf, name="invoice_public_pdf"),
+    path("partage/factures/<uuid:invoice_id>/photos/", views.invoice_public_gallery, name="invoice_public_gallery"),
+    path("partage/factures/<uuid:invoice_id>/", views.invoice_public_view, name="invoice_public_view"),
 ]

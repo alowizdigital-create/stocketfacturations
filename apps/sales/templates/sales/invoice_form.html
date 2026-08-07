@@ -30,7 +30,7 @@
                 <table class="table mb-0" id="lines-table">
                     <thead>
                         <tr>
-                            <th style="min-width:180px">Produit</th>
+                            <th style="min-width:220px">Produit</th>
                             <th style="min-width:200px">Description</th>
                             <th style="width:90px">Qté</th>
                             <th style="width:120px">PU HT</th>
@@ -43,7 +43,22 @@
                     <tbody id="lines-tbody">
                         {% for line_form in formset %}
                         <tr class="line-row">
-                            <td>{{ line_form.product }}</td>
+                            <td>
+                                <div class="product-picker">
+                                    {{ line_form.product }}
+                                    <div class="product-search-box">
+                                        <input type="text" class="form-control form-control-sm product-search-input" placeholder="Rechercher un produit..." autocomplete="off">
+                                    </div>
+                                    <div class="product-selected d-none">
+                                        <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
+                                        <div class="product-selected-info">
+                                            <div class="product-selected-name"></div>
+                                            <div class="product-selected-meta text-muted small"></div>
+                                        </div>
+                                        <button type="button" class="btn btn-link text-danger p-0 product-clear"><i class="bi bi-x-lg"></i></button>
+                                    </div>
+                                </div>
+                            </td>
                             <td>{{ line_form.description }}</td>
                             <td>{{ line_form.quantity }}</td>
                             <td>{{ line_form.unit_price_ht }}</td>
@@ -88,7 +103,22 @@
 
 <template id="line-row-template">
     <tr class="line-row">
-        <td>{{ formset.empty_form.product }}</td>
+        <td>
+            <div class="product-picker">
+                {{ formset.empty_form.product }}
+                <div class="product-search-box">
+                    <input type="text" class="form-control form-control-sm product-search-input" placeholder="Rechercher un produit..." autocomplete="off">
+                </div>
+                <div class="product-selected d-none">
+                    <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
+                    <div class="product-selected-info">
+                        <div class="product-selected-name"></div>
+                        <div class="product-selected-meta text-muted small"></div>
+                    </div>
+                    <button type="button" class="btn btn-link text-danger p-0 product-clear"><i class="bi bi-x-lg"></i></button>
+                </div>
+            </div>
+        </td>
         <td>{{ formset.empty_form.description }}</td>
         <td>{{ formset.empty_form.quantity }}</td>
         <td>{{ formset.empty_form.unit_price_ht }}</td>
@@ -98,6 +128,9 @@
         <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
     </tr>
 </template>
+
+<div id="product-search-results" class="pos-results product-search-floating"></div>
+{{ preselected_products|json_script:"preselected-products-data" }}
 {% endblock %}
 
 {% block extra_js %}
@@ -145,7 +178,7 @@
             descInput.value = presetDescription;
             row.querySelector('input[name$="-unit_price_ht"]').focus();
         } else {
-            row.querySelector('select[name$="-product"]').focus();
+            row.querySelector('.product-search-input').focus();
         }
         return row;
     }
@@ -204,25 +237,151 @@
         recomputeAll();
     });
 
-    tbody.addEventListener("change", (e) => {
-        if (e.target.matches('select[name$="-product"]')) {
+    // --- Recherche produit en direct (même principe que l'écran de vente) ---
+    const searchUrl = "{% url 'catalog:product_search' %}";
+    const resultsEl = document.getElementById("product-search-results");
+    const preselectedProducts = JSON.parse(document.getElementById("preselected-products-data").textContent);
+    let searchTimer = null;
+    let activeRow = null;
+
+    function placeholderThumb() {
+        return '<i class="bi bi-image"></i>';
+    }
+
+    function renderSelectedPill(row, data) {
+        const picker = row.querySelector(".product-picker");
+        const searchBox = picker.querySelector(".product-search-box");
+        const selectedBox = picker.querySelector(".product-selected");
+        const searchInput = picker.querySelector(".product-search-input");
+
+        selectedBox.querySelector(".product-thumb-wrap").innerHTML = data.image_url
+            ? `<img src="${data.image_url}" alt="">` : placeholderThumb();
+        selectedBox.querySelector(".product-selected-name").textContent = data.name;
+        const price = data.price !== undefined && data.price !== null ? fmt(parseFloat(data.price)) : "";
+        selectedBox.querySelector(".product-selected-meta").textContent =
+            [data.unit, price, data.sku ? "Réf " + data.sku : ""].filter(Boolean).join(" · ");
+
+        searchInput.value = "";
+        searchBox.classList.add("d-none");
+        selectedBox.classList.remove("d-none");
+    }
+
+    function clearSelectedPill(row) {
+        const picker = row.querySelector(".product-picker");
+        picker.querySelector('input[name$="-product"]').value = "";
+        picker.querySelector(".product-search-box").classList.remove("d-none");
+        picker.querySelector(".product-selected").classList.add("d-none");
+    }
+
+    function selectProduct(row, data) {
+        row.querySelector('input[name$="-product"]').value = data.id;
+        const descInput = row.querySelector('input[name$="-description"]');
+        if (!descInput.value.trim()) {
+            descInput.value = data.name;
+        }
+        row.querySelector('input[name$="-unit_price_ht"]').value = data.price || 0;
+        row.querySelector('input[name$="-tva_rate"]').value = data.tva_rate || 0;
+        renderSelectedPill(row, data);
+        hideResults();
+        recomputeAll();
+    }
+
+    function hideResults() {
+        resultsEl.style.display = "none";
+        activeRow = null;
+    }
+
+    function positionResults(inputEl) {
+        const rect = inputEl.getBoundingClientRect();
+        const width = Math.max(rect.width, 280);
+        let left = rect.left;
+        if (left + width > window.innerWidth - 8) {
+            left = Math.max(window.innerWidth - width - 8, 8);
+        }
+        resultsEl.style.top = (rect.bottom + 4) + "px";
+        resultsEl.style.left = left + "px";
+        resultsEl.style.width = width + "px";
+    }
+
+    function renderResults(items) {
+        if (!items.length) {
+            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun produit trouvé</div>';
+        } else {
+            resultsEl.innerHTML = items.map((p) => {
+                const img = p.image_url ? `<img src="${p.image_url}" class="pos-thumb" alt="">` : `<span class="pos-thumb pos-thumb-placeholder">${(p.name || "?").trim().charAt(0).toUpperCase()}</span>`;
+                const stockBadge = p.stock_qty <= 0
+                    ? '<span class="badge-status badge-red">Rupture</span>'
+                    : `<span class="badge-status badge-gray">${p.stock_qty} en stock</span>`;
+                return `
+                <div class="pos-item" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
+                    ${img}
+                    <div class="pos-item-info">
+                        <div class="pos-item-name">${p.name}</div>
+                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
+                    </div>
+                    <div class="pos-item-price">${fmt(p.price)}</div>
+                </div>`;
+            }).join("");
+        }
+        resultsEl.style.display = "block";
+    }
+
+    async function runSearch(row, query) {
+        const resp = await fetch(searchUrl + "?q=" + encodeURIComponent(query), {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        const data = await resp.json();
+        if (activeRow !== row) return;
+        renderResults(data.results);
+    }
+
+    tbody.addEventListener("input", (e) => {
+        if (e.target.matches(".product-search-input")) {
             const row = e.target.closest("tr");
-            const selected = e.target.selectedOptions[0];
-            if (selected && selected.value) {
-                const descInput = row.querySelector('input[name$="-description"]');
-                if (!descInput.value.trim()) {
-                    descInput.value = selected.textContent.trim();
-                }
-                row.querySelector('input[name$="-unit_price_ht"]').value = selected.dataset.price || 0;
-                row.querySelector('input[name$="-tva_rate"]').value = selected.dataset.tva || 0;
-            }
+            activeRow = row;
+            positionResults(e.target);
+            clearTimeout(searchTimer);
+            const query = e.target.value;
+            searchTimer = setTimeout(() => runSearch(row, query), 200);
         }
         recomputeAll();
     });
 
-    tbody.addEventListener("input", recomputeAll);
+    tbody.addEventListener("focus", (e) => {
+        if (!e.target.matches(".product-search-input")) return;
+        const row = e.target.closest("tr");
+        activeRow = row;
+        positionResults(e.target);
+        runSearch(row, e.target.value);
+    }, true);
+
+    resultsEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".pos-item");
+        if (!item || !activeRow) return;
+        const product = JSON.parse(item.dataset.product.replace(/&apos;/g, "'"));
+        selectProduct(activeRow, product);
+    });
+
+    tbody.addEventListener("click", (e) => {
+        const clearBtn = e.target.closest(".product-clear");
+        if (!clearBtn) return;
+        clearSelectedPill(clearBtn.closest("tr"));
+        recomputeAll();
+    });
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".product-search-box") && !e.target.closest("#product-search-results")) {
+            hideResults();
+        }
+    });
+    window.addEventListener("scroll", hideResults, true);
+
     globalDiscountInput.addEventListener("input", recomputeAll);
 
+    tbody.querySelectorAll("tr.line-row").forEach((row) => {
+        const productId = row.querySelector('input[name$="-product"]').value;
+        if (productId && preselectedProducts[productId]) {
+            renderSelectedPill(row, Object.assign({id: productId}, preselectedProducts[productId]));
+        }
+    });
     reindexRows();
     recomputeAll();
 })();

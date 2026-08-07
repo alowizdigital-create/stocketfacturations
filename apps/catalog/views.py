@@ -8,7 +8,7 @@ from apps.core.permissions import boutique_role_required
 from apps.tenants.models import Membership
 
 from .forms import CategoryForm, ProductForm, UnitForm
-from .models import Category, Product, Unit
+from .models import Category, Product, ProductImage, Unit
 from .services import get_effective_price
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
@@ -71,7 +71,9 @@ def product_detail(request, product_id):
     from apps.stock.models import StockLevel
 
     product = get_object_or_404(
-        Product.objects.select_related("category", "unit"), id=product_id, compte=request.compte
+        Product.objects.select_related("category", "unit").prefetch_related("extra_images"),
+        id=product_id,
+        compte=request.compte,
     )
     stock_level = StockLevel.objects.filter(boutique=request.boutique, product=product).first()
     return render(
@@ -85,6 +87,16 @@ def product_detail(request, product_id):
     )
 
 
+def _save_extra_images(product, files):
+    # Boucle avec .save() individuel plutôt que bulk_create() : bulk_create
+    # n'exécute pas de façon fiable la sauvegarde physique du fichier dans
+    # le stockage pour un ImageField (effet de bord normalement déclenché
+    # par pre_save() lors d'un save() classique).
+    next_position = product.extra_images.count()
+    for i, f in enumerate(files):
+        ProductImage.objects.create(product=product, image=f, position=next_position + i)
+
+
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
 def product_create(request):
@@ -95,9 +107,10 @@ def product_create(request):
         return redirect("catalog:unit_create")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, compte=request.compte)
+        form = ProductForm(request.POST, request.FILES, compte=request.compte)
         if form.is_valid():
-            form.save()
+            product = form.save()
+            _save_extra_images(product, form.cleaned_data["extra_images"])
             messages.success(request, "Produit créé.")
             return redirect("catalog:product_list")
     else:
@@ -108,16 +121,29 @@ def product_create(request):
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
 def product_update(request, product_id):
-    product = get_object_or_404(Product, id=product_id, compte=request.compte)
+    product = get_object_or_404(Product.objects.prefetch_related("extra_images"), id=product_id, compte=request.compte)
     if request.method == "POST":
-        form = ProductForm(request.POST, instance=product, compte=request.compte)
+        form = ProductForm(request.POST, request.FILES, instance=product, compte=request.compte)
         if form.is_valid():
-            form.save()
+            product = form.save()
+            _save_extra_images(product, form.cleaned_data["extra_images"])
             messages.success(request, "Produit modifié.")
             return redirect("catalog:product_list")
     else:
         form = ProductForm(instance=product, compte=request.compte)
     return render(request, "catalog/product_form.html", {"form": form, "title": "Modifier le produit"})
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def product_image_delete(request, image_id):
+    image = get_object_or_404(ProductImage, id=image_id, product__compte=request.compte)
+    product_id = image.product_id
+    if request.method == "POST":
+        image.image.delete(save=False)
+        image.delete()
+        messages.success(request, "Photo supprimée.")
+    return redirect("catalog:product_update", product_id=product_id)
 
 
 @login_required

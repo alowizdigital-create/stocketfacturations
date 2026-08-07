@@ -1,5 +1,8 @@
 """Construction du message et du lien de partage WhatsApp pour une
-facture/devis. Deux usages :
+facture/devis. Deux liens distincts sont envoyés au client : un pour les
+détails (prix, quantités, total) et un pour les photos (toutes les images
+de chaque produit, pas seulement la principale) — voir
+apps.sales.views._public_view_url / _public_gallery_url. Deux usages :
   - build_share_link() : lien "click to chat" (wa.me), utilisé en secours
     quand l'API techsoft n'est pas configurée — ne peut que pré-remplir un
     texte, pas joindre de fichier.
@@ -23,7 +26,7 @@ def normalize_phone(raw_phone):
     return digits or None
 
 
-def build_message(invoice, *, with_link=None):
+def build_message(invoice, *, view_link=None, gallery_link=None):
     title = "facture" if invoice.type == invoice.FACTURE else "devis"
     client_name = invoice.client.name if invoice.client else ""
     greeting = f"Bonjour {client_name}, " if client_name else "Bonjour, "
@@ -32,14 +35,16 @@ def build_message(invoice, *, with_link=None):
         f"{greeting}voici votre {title} {invoice.number} de {invoice.boutique.name} "
         f"({amount} {invoice.currency})."
     )
-    if with_link:
-        message += f"\n{with_link}"
+    if view_link:
+        message += f"\nDétails : {view_link}"
+    if gallery_link:
+        message += f"\nPhotos des articles : {gallery_link}"
     return message
 
 
-def build_share_link(*, phone, invoice, pdf_url):
+def build_share_link(*, phone, invoice, view_url, gallery_url=None):
     number = normalize_phone(phone)
     if number is None:
         return None
-    message = build_message(invoice, with_link=pdf_url)
+    message = build_message(invoice, view_link=view_url, gallery_link=gallery_url)
     return f"{WA_ME_BASE}{number}?text={quote(message)}"

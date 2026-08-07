@@ -9,30 +9,29 @@ from apps.core.forms import BootstrapFormMixin
 from .models import Client, Invoice, Payment
  
 
-class ProductChoiceWidget(forms.Select):
-    """Select produit qui porte le prix/la TVA/l'unité de chaque option en
-    attributs `data-*`, pour que le JS du formulaire de devis puisse
-    pré-remplir automatiquement ces champs à la sélection — sans requête
-    supplémentaire, tout est déjà dans le HTML rendu par le serveur."""
-
-    def __init__(self, *args, products=None, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.products_by_id = {str(p.pk): p for p in (products or [])}
-
-    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
-        option = super().create_option(name, value, label, selected, index, subindex, attrs)
-        product = self.products_by_id.get(str(value))
-        if product is not None:
-            option["attrs"]["data-price"] = str(product.default_sale_price)
-            option["attrs"]["data-tva"] = str(product.tva_rate)
-            option["attrs"]["data-unit"] = str(product.unit)
-        return option
-
-
 class ClientForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Client
         fields = ["name", "phone", "email", "address"]
+
+
+class ClientImportForm(BootstrapFormMixin, forms.Form):
+    file = forms.FileField(
+        label="Fichier CSV ou vCard (.vcf)",
+        help_text=(
+            "CSV : colonnes nom, téléphone, email, adresse (name/phone/email/address acceptés aussi). "
+            "vCard : export standard d'un carnet de contacts téléphone/Google/Outlook. "
+            "Seul le nom est obligatoire."
+        ),
+        widget=forms.ClearableFileInput(attrs={"accept": ".csv,.vcf,text/csv,text/vcard"}),
+    )
+
+    def clean_file(self):
+        uploaded = self.cleaned_data["file"]
+        name = (uploaded.name or "").lower()
+        if not (name.endswith(".csv") or name.endswith(".vcf") or name.endswith(".txt")):
+            raise forms.ValidationError("Format non reconnu : utilisez un fichier .csv ou .vcf.")
+        return uploaded
 
 
 class InvoiceForm(BootstrapFormMixin, forms.Form):
@@ -64,9 +63,11 @@ class SaleForm(BootstrapFormMixin, forms.Form):
 
 
 class InvoiceLineForm(BootstrapFormMixin, forms.Form):
+    # La sélection se fait via la recherche en direct en JS (même principe
+    # que l'écran de vente) : ce champ ne porte que l'id du produit choisi.
     product = forms.ModelChoiceField(
         queryset=Product.objects.none(), required=False, label="Produit",
-        widget=ProductChoiceWidget(),
+        widget=forms.HiddenInput(),
     )
     description = forms.CharField(max_length=255, label="Description")
     quantity = forms.IntegerField(
@@ -83,9 +84,7 @@ class InvoiceLineForm(BootstrapFormMixin, forms.Form):
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)
         if compte is not None:
-            queryset = Product.objects.filter(compte=compte, is_active=True).select_related("unit")
-            self.fields["product"].queryset = queryset
-            self.fields["product"].widget.products_by_id = {str(p.pk): p for p in queryset}
+            self.fields["product"].queryset = Product.objects.filter(compte=compte, is_active=True)
 
     def clean_discount_amount(self):
         return self.cleaned_data.get("discount_amount") or 0

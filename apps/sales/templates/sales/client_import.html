@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}Importer des clients{% endblock %}
+{% block content %}
+<div class="page-header"><div><h1>Importer des clients</h1></div></div>
+<div class="card-app" style="max-width: 640px;">
+    <div class="card-app-body">
+        <p class="text-muted">
+            Importez vos contacts en une fois depuis un fichier <strong>CSV</strong> ou une <strong>vCard (.vcf)</strong>
+            (export de votre téléphone, de Google Contacts, d'Outlook ou d'un tableur Excel/LibreOffice).
+        </p>
+        <p class="text-muted small">
+            Seul le <strong>nom</strong> est obligatoire — téléphone, email et adresse sont facultatifs.
+            Pour un CSV, colonnes reconnues : <code>nom</code>, <code>téléphone</code>, <code>email</code>, <code>adresse</code>
+            (les en-têtes en anglais <code>name</code>/<code>phone</code>/<code>email</code>/<code>address</code> sont aussi acceptés).
+            Les clients déjà présents (même nom + même téléphone) sont ignorés automatiquement.
+        </p>
+        <div class="table-app mb-3">
+            <table class="table table-sm mb-0">
+                <thead><tr><th>nom</th><th>téléphone</th><th>email</th><th>adresse</th></tr></thead>
+                <tbody>
+                    <tr class="text-muted"><td>Jean Dupont</td><td>0102030405</td><td>jean@example.com</td><td>Cotonou</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <form method="post" enctype="multipart/form-data">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary">Importer</button>
+                <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary">Annuler</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

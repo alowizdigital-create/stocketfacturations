@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ invoice.number }} — {{ invoice.boutique.name }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root { --brand: #6f4a8e; --brand-lighter: #f1ecf6; --border: #e6e1ee; --text: #2b2233; --text-muted: #7c7488; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; padding: 0;
+            background: #f6f5fa;
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+        .wrap { max-width: 640px; margin: 0 auto; padding: 1.25rem 1rem 3rem; }
+        .header { text-align: center; margin-bottom: 1.25rem; }
+        .header img.logo { width: 64px; height: 64px; object-fit: cover; border-radius: 12px; margin-bottom: .5rem; }
+        .header h1 { font-size: 1.05rem; margin: 0; color: var(--brand); }
+        .header .sub { color: var(--text-muted); font-size: .85rem; margin-top: .2rem; }
+        .card { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; margin-bottom: 1rem; }
+        .card-title { font-weight: 700; font-size: .95rem; margin-bottom: .75rem; }
+        .meta-row { display: flex; justify-content: space-between; font-size: .85rem; padding: .25rem 0; color: var(--text-muted); }
+        .meta-row strong { color: var(--text); font-weight: 600; }
+        .line {
+            display: flex; align-items: center; gap: .75rem;
+            padding: .7rem 0; border-bottom: 1px solid var(--border);
+        }
+        .line:last-child { border-bottom: none; }
+        .line-thumb {
+            width: 52px; height: 52px; border-radius: 8px; flex-shrink: 0;
+            object-fit: cover; background: var(--brand-lighter);
+        }
+        .line-thumb-placeholder {
+            display: flex; align-items: center; justify-content: center;
+            color: #c3bcd1; font-size: 1.3rem;
+        }
+        .line-info { flex: 1; min-width: 0; }
+        .line-name { font-weight: 600; font-size: .9rem; }
+        .line-sub { color: var(--text-muted); font-size: .78rem; margin-top: .1rem; }
+        .line-total { font-weight: 700; font-size: .9rem; white-space: nowrap; }
+        .recap-row { display: flex; justify-content: space-between; padding: .3rem 0; font-size: .9rem; }
+        .recap-row.total { font-size: 1.15rem; font-weight: 700; border-top: 1px solid var(--border); margin-top: .4rem; padding-top: .6rem; }
+        .recap-row .discount { color: #c0392b; }
+        .btn-pdf {
+            display: flex; align-items: center; justify-content: center; gap: .5rem;
+            background: var(--brand); color: #fff; text-decoration: none;
+            padding: .8rem 1rem; border-radius: 10px; font-weight: 600; font-size: .95rem;
+        }
+        .footer { text-align: center; color: var(--text-muted); font-size: .75rem; margin-top: 1.5rem; }
+        .badge {
+            display: inline-block; font-size: .7rem; font-weight: 700; text-transform: uppercase;
+            padding: .2rem .55rem; border-radius: 999px; background: var(--brand-lighter); color: var(--brand);
+        }
+    </style>
+</head>
+<body>
+<div class="wrap">
+    <div class="header">
+        {% if invoice.boutique.logo %}
+        <img src="{{ invoice.boutique.logo.url }}" alt="" class="logo">
+        {% endif %}
+        <h1>{{ invoice.boutique.name }}</h1>
+        <div class="sub">{{ invoice.get_type_display }} {{ invoice.number }} — {{ invoice.issue_date|date:"d/m/Y" }}</div>
+    </div>
+
+    <div class="card">
+        <div class="meta-row"><span>Client</span><strong>{{ invoice.client.name|default:"Client de passage" }}</strong></div>
+        <div class="meta-row"><span>Statut</span><strong>{{ invoice.get_status_display }}</strong></div>
+    </div>
+
+    <div class="card">
+        <div class="card-title">Articles</div>
+        {% for line in invoice.lines.all %}
+        <div class="line">
+            {% if line.product and line.product.image %}
+            <img src="{{ line.product.image.url }}" alt="" class="line-thumb">
+            {% else %}
+            <div class="line-thumb line-thumb-placeholder"><i class="bi bi-box-seam"></i></div>
+            {% endif %}
+            <div class="line-info">
+                <div class="line-name">{{ line.description }}</div>
+                <div class="line-sub">{{ line.quantity }} × {{ line.unit_price_ht }} {{ invoice.currency }}</div>
+            </div>
+            <div class="line-total">{{ line.line_total_ttc }} {{ invoice.currency }}</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <div class="recap-row"><span>Sous-total HT</span><span>{{ invoice.subtotal_ht }} {{ invoice.currency }}</span></div>
+        <div class="recap-row"><span>TVA</span><span>{{ invoice.total_tva }} {{ invoice.currency }}</span></div>
+        {% if invoice.discount_amount %}
+        <div class="recap-row"><span>Remise</span><span class="discount">-{{ invoice.discount_amount }} {{ invoice.currency }}</span></div>
+        {% endif %}
+        <div class="recap-row total"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
+    </div>
+
+    <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn-pdf" style="margin-bottom:.6rem;">
+        <i class="bi bi-images"></i> Voir les photos des articles
+    </a>
+    <a href="{% url 'sales:invoice_public_pdf' invoice.id %}" class="btn-pdf" target="_blank" rel="noopener" style="background:#fff;color:var(--brand);border:1px solid var(--brand);">
+        <i class="bi bi-file-earmark-pdf"></i> Télécharger le PDF
+    </a>
+
+    <div class="footer">{{ invoice.boutique.name }}{% if invoice.boutique.phone %} — {{ invoice.boutique.phone }}{% endif %}</div>
+</div>
+</body>
+</html>

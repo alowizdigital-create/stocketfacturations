@@ -4,16 +4,39 @@
 <div class="page-header">
     <div><h1>{{ title }}</h1></div>
 </div>
+
+{% if form.instance.image or form.instance.extra_images.all %}
+<div class="card-app mb-3" style="max-width: 640px;">
+    <div class="card-app-body">
+        <div class="mb-2 text-muted small">Photos actuelles</div>
+        <div class="d-flex flex-wrap gap-2">
+            {% if form.instance.image %}
+            <div>
+                <img src="{{ form.instance.image.url }}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+                <div class="text-muted small text-center">Principale</div>
+            </div>
+            {% endif %}
+            {% for extra in form.instance.extra_images.all %}
+            <div>
+                <div class="position-relative">
+                    <img src="{{ extra.image.url }}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+                    <form method="post" action="{% url 'catalog:product_image_delete' extra.id %}" class="position-absolute top-0 end-0" onsubmit="return confirm('Supprimer cette photo ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-danger p-0" style="width:22px;height:22px;line-height:1;border-radius:50%;transform:translate(30%,-30%);"><i class="bi bi-x"></i></button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <div class="card-app" style="max-width: 640px;">
     <div class="card-app-body">
         <form method="post" enctype="multipart/form-data">
             {% csrf_token %}
             {{ form.non_field_errors }}
-            {% if form.instance.image %}
-            <div class="mb-3">
-                <img src="{{ form.instance.image.url }}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
-            </div>
-            {% endif %}
             {% for field in form %}
             <div class="mb-3">
                 <label class="form-label">{{ field.label }}</label>

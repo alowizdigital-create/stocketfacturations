@@ -9,7 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="{% static 'css/app.css' %}?v=mobile1" rel="stylesheet">
+    <link href="{% static 'css/app.css' %}?v=mobile4" rel="stylesheet">
 
     <!-- PWA — installation sur téléphone (Android/Chrome et iPhone/Safari) -->
     <link rel="manifest" href="{% static 'manifest.json' %}">
@@ -175,6 +175,41 @@
     backdrop.addEventListener("click", closeSidebar);
     sidebar.querySelectorAll(".nav-link").forEach(function (link) {
         link.addEventListener("click", closeSidebar);
+    });
+})();
+</script>
+<script>
+(function () {
+    // Empêche la double soumission des formulaires (double-clic, connexion
+    // lente) : au submit, le bouton est désactivé et affiche un spinner
+    // pendant que la page recharge. Un formulaire annulé en amont (ex.
+    // confirm() refusé sur les boutons "Supprimer") ne déclenche jamais
+    // cet effet, puisque l'événement est alors déjà annulé (defaultPrevented)
+    // avant d'atteindre ce gestionnaire posé au niveau du document.
+    document.addEventListener("submit", function (e) {
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement) || form.hasAttribute("data-no-lock")) return;
+        if (e.defaultPrevented) return;
+
+        var submitter = e.submitter || form.querySelector('button[type="submit"], input[type="submit"]');
+        if (!submitter || submitter.disabled) return;
+
+        submitter.dataset.originalHtml = submitter.innerHTML;
+        submitter.disabled = true;
+        submitter.classList.add("btn-loading");
+        submitter.innerHTML =
+            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Patientez…';
+
+        // Filet de sécurité : si la page ne navigue jamais (erreur réseau,
+        // soumission bloquée ailleurs), on redonne la main plutôt que de
+        // laisser le bouton bloqué indéfiniment.
+        window.setTimeout(function () {
+            if (submitter.dataset.originalHtml !== undefined) {
+                submitter.disabled = false;
+                submitter.innerHTML = submitter.dataset.originalHtml;
+                delete submitter.dataset.originalHtml;
+            }
+        }, 15000);
     });
 })();
 </script>

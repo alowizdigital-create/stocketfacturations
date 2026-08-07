@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Category, Product, ProductBoutiquePrice, Unit
+from .models import Category, Product, ProductBoutiquePrice, ProductImage, Unit
 
 
 @admin.register(Category)
@@ -26,3 +26,8 @@ class ProductAdmin(admin.ModelAdmin):
 class ProductBoutiquePriceAdmin(admin.ModelAdmin):
     list_display = ["product", "boutique", "price_override", "is_available"]
     list_filter = ["boutique"]
+
+
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ["product", "position"]

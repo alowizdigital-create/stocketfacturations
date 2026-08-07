@@ -25,8 +25,15 @@
                 {% if product.image %}
                 <img src="{{ product.image.url }}" alt="" style="width:100%;max-width:220px;aspect-ratio:1;object-fit:cover;border-radius:10px;">
                 {% else %}
-                <div class="d-inline-flex align-items-center justify-content-center" style="width:220px;height:220px;border-radius:10px;background:var(--brand-lighter);color:#c3bcd1;">
+                <div class="d-inline-flex align-items-center justify-content-center" style="width:100%;max-width:220px;aspect-ratio:1;border-radius:10px;background:var(--brand-lighter);color:#c3bcd1;">
                     <i class="bi bi-image fs-1"></i>
+                </div>
+                {% endif %}
+                {% if product.extra_images.all %}
+                <div class="d-flex justify-content-center flex-wrap gap-2 mt-2">
+                    {% for extra in product.extra_images.all %}
+                    <img src="{{ extra.image.url }}" alt="" style="width:56px;height:56px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
+                    {% endfor %}
                 </div>
                 {% endif %}
             </div>
