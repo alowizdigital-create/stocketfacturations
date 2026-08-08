@@ -13,11 +13,11 @@ User = get_user_model()
 class SignupForm(BootstrapFormMixin, forms.Form):
     entreprise_name = forms.CharField(label="Nom de l'entreprise", max_length=255)
     boutique_name = forms.CharField(label="Nom de la première boutique", max_length=255)
-    boutique_code = forms.CharField(
-        label="Code de la boutique",
-        max_length=10,
-        help_text="Ex: BTQ-001. Sert à numéroter les factures.",
-    )
+    # boutique_code = forms.CharField(
+    #     label="Code de la boutique",
+    #     max_length=10,
+    #     help_text="Ex: BTQ-001. Sert à numéroter les factures.",
+    # )
     email = forms.EmailField(label="Votre email")
     # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
     # last_name = forms.CharField(label="Nom", max_length=150, required=False)
