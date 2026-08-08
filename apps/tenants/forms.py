@@ -12,14 +12,14 @@ User = get_user_model()
 class SignupForm(BootstrapFormMixin, forms.Form):
     entreprise_name = forms.CharField(label="Nom de l'entreprise", max_length=255)
     boutique_name = forms.CharField(label="Nom de la première boutique", max_length=255)
-    boutique_code = forms.CharField(
-        label="Code de la boutique",
-        max_length=10,
-        help_text="Ex: BTQ-001. Sert à numéroter les factures.",
-    )
+    # boutique_code = forms.CharField(
+    #     label="Code de la boutique",
+    #     max_length=10,
+    #     help_text="Ex: BTQ-001. Sert à numéroter les factures.",
+    # )
     email = forms.EmailField(label="Votre email")
-    first_name = forms.CharField(label="Prénom", max_length=150, required=False)
-    last_name = forms.CharField(label="Nom", max_length=150, required=False)
+    # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
+    # last_name = forms.CharField(label="Nom", max_length=150, required=False)
     password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
     password_confirm = forms.CharField(label="Confirmer le mot de passe", widget=forms.PasswordInput)
 
@@ -48,8 +48,8 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
     une boutique avec un rôle."""
 
     email = forms.EmailField(label="Email de l'employé")
-    first_name = forms.CharField(label="Prénom", max_length=150, required=False)
-    last_name = forms.CharField(label="Nom", max_length=150, required=False)
+    # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
+    # last_name = forms.CharField(label="Nom", max_length=150, required=False)
     boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label="Boutique")
     role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label="Rôle")
     password = forms.CharField(label="Mot de passe initial", widget=forms.PasswordInput)

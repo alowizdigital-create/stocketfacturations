@@ -28,10 +28,14 @@ def signup(request):
                 # sélectionnée automatiquement à la connexion (voir
                 # CurrentTenantMiddleware) — pas besoin de choisir tant
                 # qu'il n'y en a qu'une.
+
+                entreprise_name = data["entreprise_name"].strip()
+                boutique_code = entreprise_name.replace(" ", "")[:3].upper()
+
                 boutique = Boutique.objects.create(
                     compte=compte,
                     name=data["boutique_name"],
-                    code=data["boutique_code"].upper(),
+                    code=boutique_code,
                     is_default=True,
                 )
                 Unit.objects.create(compte=compte, name="Pièce", symbol="pc")
@@ -41,8 +45,8 @@ def signup(request):
                 user = User.objects.create_user(
                     email=data["email"],
                     password=data["password"],
-                    first_name=data["first_name"],
-                    last_name=data["last_name"],
+                    # first_name=data["first_name"],
+                    # last_name=data["last_name"],
                 )
                 Membership.objects.create(
                     user=user, boutique=boutique, role=Membership.ADMIN_COMPTE
