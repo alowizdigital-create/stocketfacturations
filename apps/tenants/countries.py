@@ -55,6 +55,7 @@ AFRICAN_COUNTRIES = [
     ("255", "Tanzanie (+255)"),
     ("235", "Tchad (+235)"),
     ("228", "Togo (+228)"),
+    ("236", "Centrafrique (+236)"),
     ("216", "Tunisie (+216)"),
     ("260", "Zambie (+260)"),
     ("263", "Zimbabwe (+263)"),
