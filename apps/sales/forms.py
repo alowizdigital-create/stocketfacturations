@@ -77,8 +77,13 @@ class InvoiceLineForm(BootstrapFormMixin, forms.Form):
     tva_rate = forms.DecimalField(
         max_digits=5, decimal_places=2, min_value=Decimal("0"), initial=Decimal("0"), label="TVA %"
     )
+    # Pas de valeur initiale non-None : avec initial=0, Django considère à
+    # tort qu'une ligne vide non soumise (champ retiré de l'affichage) "a
+    # changé" (bug connu de Field.has_changed avec un initial falsy mais
+    # non-None face à une valeur absente), ce qui bloquait la validation de
+    # toute ligne vide restante en fin de tableau.
     discount_amount = forms.IntegerField(
-        label="Remise (FCFA)", min_value=0, required=False, initial=0,
+        label="Remise (FCFA)", min_value=0, required=False,
     )
 
     def __init__(self, *args, compte=None, **kwargs):
