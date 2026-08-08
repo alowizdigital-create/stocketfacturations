@@ -8,7 +8,14 @@ from django.views.decorators.http import require_POST
 from apps.catalog.models import Unit
 from apps.core.permissions import compte_admin_required
 
-from .forms import CompteSettingsForm, SignupForm, StaffCreateForm, StaffUpdateForm, SubscriptionForm
+from .forms import (
+    BoutiqueRegionalForm,
+    CompteSettingsForm,
+    SignupForm,
+    StaffCreateForm,
+    StaffUpdateForm,
+    SubscriptionForm,
+)
 from .models import Boutique, Compte, Membership, Plan, Subscription
 
 User = get_user_model()
@@ -152,15 +159,31 @@ def staff_update(request, membership_id):
 @compte_admin_required
 def company_settings(request):
     compte = request.compte
-    if request.method == "POST":
+    boutique = request.boutique
+
+    if request.method == "POST" and request.POST.get("form_name") == "boutique" and boutique is not None:
+        form = CompteSettingsForm(instance=compte)
+        boutique_form = BoutiqueRegionalForm(request.POST, instance=boutique)
+        if boutique_form.is_valid():
+            boutique_form.save()
+            messages.success(request, "Paramètres régionaux de la boutique mis à jour.")
+            return redirect("tenants:company_settings")
+    elif request.method == "POST":
         form = CompteSettingsForm(request.POST, request.FILES, instance=compte)
+        boutique_form = BoutiqueRegionalForm(instance=boutique) if boutique is not None else None
         if form.is_valid():
             form.save()
             messages.success(request, "Paramètres de l'entreprise mis à jour.")
             return redirect("tenants:company_settings")
     else:
         form = CompteSettingsForm(instance=compte)
-    return render(request, "tenants/company_settings.html", {"form": form})
+        boutique_form = BoutiqueRegionalForm(instance=boutique) if boutique is not None else None
+
+    return render(
+        request,
+        "tenants/company_settings.html",
+        {"form": form, "boutique_form": boutique_form},
+    )
 
 
 @login_required

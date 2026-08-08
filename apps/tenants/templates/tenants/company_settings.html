@@ -32,4 +32,32 @@
         </form>
     </div>
 </div>
+
+{% if boutique_form %}
+<div class="card-app mt-3" style="max-width: 520px;">
+    <div class="card-app-header">Paramètres régionaux — {{ request.boutique.name }}</div>
+    <div class="card-app-body">
+        <p class="text-muted small">
+            Pour que l'application fonctionne correctement quel que soit le pays :
+            la devise s'affiche partout (factures, devis, POS), et l'indicatif
+            téléphonique complète automatiquement les numéros WhatsApp saisis
+            sans code pays (ex: <code>07 12 34 56 78</code> → <code>+225 07 12 34 56 78</code>).
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="form_name" value="boutique">
+            {{ boutique_form.non_field_errors }}
+            {% for field in boutique_form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Enregistrer</button>
+        </form>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

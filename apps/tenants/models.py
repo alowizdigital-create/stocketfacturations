@@ -41,6 +41,15 @@ class Boutique(UUIDModel, TimeStampedModel):
     address = models.CharField(max_length=255, blank=True)
     phone = models.CharField(max_length=30, blank=True)
     devise = models.CharField(max_length=3, default="XOF")
+    country_calling_code = models.CharField(
+        "indicatif téléphonique du pays",
+        max_length=4,
+        blank=True,
+        help_text=(
+            "Complète automatiquement les numéros WhatsApp saisis sans "
+            "indicatif (ex: 07... devient +225 07...)."
+        ),
+    )
     is_active = models.BooleanField(default=True)
     is_default = models.BooleanField(
         "boutique par défaut",

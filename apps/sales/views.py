@@ -526,7 +526,7 @@ def _public_gallery_url(request, invoice):
 @login_required
 def invoice_detail(request, invoice_id):
     invoice = get_object_or_404(
-        Invoice.objects.select_related("client").prefetch_related("lines", "payments"),
+        Invoice.objects.select_related("client", "boutique").prefetch_related("lines", "payments"),
         id=invoice_id,
         boutique=request.boutique,
     )
@@ -559,9 +559,13 @@ def invoice_detail(request, invoice_id):
 @boutique_role_required(*MANAGE_ROLES)
 def invoice_send_whatsapp(request, invoice_id):
     invoice = get_object_or_404(
-        Invoice.objects.select_related("client"), id=invoice_id, boutique=request.boutique
+        Invoice.objects.select_related("client", "boutique"), id=invoice_id, boutique=request.boutique
     )
-    phone = normalize_phone(invoice.client.phone) if invoice.client else None
+    phone = (
+        normalize_phone(invoice.client.phone, country_calling_code=invoice.boutique.country_calling_code)
+        if invoice.client
+        else None
+    )
     if not phone:
         messages.error(request, "Ce client n'a pas de numéro de téléphone.")
         return redirect("sales:invoice_detail", invoice_id=invoice.id)

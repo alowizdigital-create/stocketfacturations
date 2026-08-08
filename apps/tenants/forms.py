@@ -4,6 +4,7 @@ from django.contrib.auth.password_validation import validate_password
 
 from apps.core.forms import BootstrapFormMixin
 
+from .countries import AFRICAN_COUNTRIES
 from .models import Boutique, Compte, Membership, Plan, Subscription
 
 User = get_user_model()
@@ -18,8 +19,8 @@ class SignupForm(BootstrapFormMixin, forms.Form):
         help_text="Ex: BTQ-001. Sert à numéroter les factures.",
     )
     email = forms.EmailField(label="Votre email")
-    first_name = forms.CharField(label="Prénom", max_length=150, required=False)
-    last_name = forms.CharField(label="Nom", max_length=150, required=False)
+    # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
+    # last_name = forms.CharField(label="Nom", max_length=150, required=False)
     password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
     password_confirm = forms.CharField(label="Confirmer le mot de passe", widget=forms.PasswordInput)
 
@@ -48,8 +49,8 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
     une boutique avec un rôle."""
 
     email = forms.EmailField(label="Email de l'employé")
-    first_name = forms.CharField(label="Prénom", max_length=150, required=False)
-    last_name = forms.CharField(label="Nom", max_length=150, required=False)
+    # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
+    # last_name = forms.CharField(label="Nom", max_length=150, required=False)
     boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label="Boutique")
     role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label="Rôle")
     password = forms.CharField(label="Mot de passe initial", widget=forms.PasswordInput)
@@ -102,6 +103,28 @@ class CompteSettingsForm(BootstrapFormMixin, forms.ModelForm):
             "phone": "Téléphone",
             "logo": "Logo",
         }
+
+
+class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
+    """Devise et pays de la boutique courante — permet à chaque boutique
+    de fonctionner correctement quel que soit le pays d'Afrique où
+    l'entreprise opère (montants affichés dans la bonne devise, numéros
+    WhatsApp complétés avec le bon indicatif)."""
+
+    country_calling_code = forms.ChoiceField(
+        label="Pays (indicatif téléphonique)",
+        choices=[("", "Non défini — numéros saisis tels quels")] + AFRICAN_COUNTRIES,
+        required=False,
+    )
+
+    class Meta:
+        model = Boutique
+        fields = ["devise", "country_calling_code"]
+        labels = {"devise": "Devise"}
+        help_texts = {"devise": "Code à 3 lettres, ex: XOF, XAF, GHS, NGN, MAD, KES..."}
+
+    def clean_devise(self):
+        return self.cleaned_data["devise"].strip().upper()
 
 
 class SubscriptionForm(BootstrapFormMixin, forms.ModelForm):
