@@ -119,9 +119,24 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = Boutique
-        fields = ["devise", "country_calling_code"]
-        labels = {"devise": "Devise"}
-        help_texts = {"devise": "Code à 3 lettres, ex: XOF, XAF, GHS, NGN, MAD, KES..."}
+        fields = [
+            "devise",
+            "country_calling_code",
+            "om_account_name",
+            "om_number",
+            "momo_account_name",
+            "momo_number",
+        ]
+        labels = {
+            "devise": "Devise",
+            "om_account_name": "Orange Money — nom du compte",
+            "om_number": "Orange Money — numéro",
+            "momo_account_name": "MTN MoMo — nom du compte",
+            "momo_number": "MTN MoMo — numéro",
+        }
+        help_texts = {
+            "devise": "Code à 3 lettres, ex: XOF, XAF, GHS, NGN, MAD, KES...",
+        }
 
     def clean_devise(self):
         return self.cleaned_data["devise"].strip().upper()

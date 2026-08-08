@@ -67,6 +67,9 @@
 
     <div class="card">
         <div class="meta-row"><span>Client</span><strong>{{ invoice.client.name|default:"Client de passage" }}</strong></div>
+        {% if invoice.client.phone %}
+        <div class="meta-row"><span>Téléphone</span><strong>{{ invoice.client.phone }}</strong></div>
+        {% endif %}
         <div class="meta-row"><span>Statut</span><strong>{{ invoice.get_status_display }}</strong></div>
     </div>
 
@@ -96,6 +99,18 @@
         {% endif %}
         <div class="recap-row total"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
     </div>
+
+    {% if invoice.boutique.payment_methods %}
+    <div class="card">
+        <div class="card-title">Paiement Mobile Money</div>
+        {% for method in invoice.boutique.payment_methods %}
+        <div class="meta-row">
+            <span>{{ method.label }}{% if method.account_name %} ({{ method.account_name }}){% endif %}</span>
+            <strong>{{ method.number }}</strong>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
 
     <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn-pdf" style="margin-bottom:.6rem;">
         <i class="bi bi-images"></i> Voir les photos des articles

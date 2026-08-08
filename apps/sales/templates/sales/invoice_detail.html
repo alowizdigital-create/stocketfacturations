@@ -13,14 +13,14 @@
             </span>
         </h1>
         <div class="text-muted">
-            {{ invoice.get_type_display }} — {{ invoice.client|default:"Client de passage" }} — {{ invoice.issue_date|date:"d/m/Y" }}
+            {{ invoice.get_type_display }} — {{ invoice.client|default:"Client de passage" }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %} — {{ invoice.issue_date|date:"d/m/Y" }}
             {% if invoice.sale %}— générée depuis la vente <a href="{% url 'sales:sale_detail' invoice.sale.id %}">{{ invoice.sale.number }}</a>{% endif %}
         </div>
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF (80 mm)</a>
-        <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a>
-        <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a>
+        <!-- <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a> -->
+        <!-- <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a> -->
         {% if has_client_phone and whatsapp_api_configured %}
         <form method="post" action="{% url 'sales:invoice_send_whatsapp' invoice.id %}">
             {% csrf_token %}
@@ -28,7 +28,7 @@
         </form>
         {% elif whatsapp_url %}
         <a href="{{ whatsapp_url }}" class="btn btn-whatsapp" target="_blank" rel="noopener" title="API WhatsApp non configurée : ceci ouvre WhatsApp avec un lien vers le PDF, sans pièce jointe automatique">
-            <i class="bi bi-whatsapp"></i> WhatsApp (lien)
+            <i class="bi bi-whatsapp"></i> Envoyer
         </a>
         {% elif invoice.client %}
         <span class="btn btn-outline-secondary disabled text-muted" title="Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp">

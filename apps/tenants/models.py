@@ -57,6 +57,14 @@ class Boutique(UUIDModel, TimeStampedModel):
         help_text="Boutique sélectionnée automatiquement à la connexion pour cette entreprise.",
     )
 
+    # Moyens de paiement Mobile Money — affichés sur les factures/devis
+    # (PDF et page publique) pour que le client sache où payer. Vides par
+    # défaut : rien ne s'affiche tant que la boutique ne les a pas remplis.
+    om_account_name = models.CharField("Orange Money — nom du compte", max_length=100, blank=True)
+    om_number = models.CharField("Orange Money — numéro", max_length=30, blank=True)
+    momo_account_name = models.CharField("MTN MoMo — nom du compte", max_length=100, blank=True)
+    momo_number = models.CharField("MTN MoMo — numéro", max_length=30, blank=True)
+
     class Meta:
         verbose_name = "boutique"
         verbose_name_plural = "boutiques"
@@ -71,6 +79,17 @@ class Boutique(UUIDModel, TimeStampedModel):
         if self.is_default:
             Boutique.objects.filter(compte=self.compte).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+    @property
+    def payment_methods(self):
+        """Moyens de paiement Mobile Money configurés, prêts à afficher sur
+        une facture/devis — liste vide si rien n'est renseigné."""
+        methods = []
+        if self.om_number:
+            methods.append({"label": "Orange Money", "account_name": self.om_account_name, "number": self.om_number})
+        if self.momo_number:
+            methods.append({"label": "MTN MoMo", "account_name": self.momo_account_name, "number": self.momo_number})
+        return methods
 
 
 class Membership(UUIDModel, TimeStampedModel):

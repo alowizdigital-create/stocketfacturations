@@ -106,22 +106,25 @@ class _ReceiptWriter:
         self.y -= 1.5 * mm
 
 
-def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount):
+def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, client_phone, payment_methods):
     n = 0
+    separator_count = 4  # header, infos client, après lignes, avant pied de page
     n += 3  # nom boutique + adresse/téléphone (jusqu'à 2 lignes)
-    n += 1  # séparateur
     n += 3  # numéro, date, client
-    n += 1  # séparateur
+    if client_phone:
+        n += 1  # téléphone du destinataire
     n += len(lines) * 2  # description + qté×PU = total
-    n += 1  # séparateur
     n += 3  # sous-total / TVA / total
     if has_global_discount:
         n += 1  # ligne remise globale
     if payments:
-        n += 1 + len(payments)  # séparateur + une ligne par paiement
-    n += 1  # séparateur
+        separator_count += 1
+        n += len(payments)  # une ligne par paiement
+    if payment_methods:
+        separator_count += 1
+        n += 1 + len(payment_methods) * 2  # titre + 2 lignes par moyen de paiement
     n += 3  # remerciement + entreprise
-    height = TOP_BOTTOM_PADDING + n * LINE_HEIGHT + 4 * SEPARATOR_HEIGHT + TITLE_HEIGHT
+    height = TOP_BOTTOM_PADDING + n * LINE_HEIGHT + separator_count * SEPARATOR_HEIGHT + TITLE_HEIGHT
     if logo_sized is not None:
         height += logo_sized[2] + 1.5 * mm
     return height
@@ -136,8 +139,12 @@ def render_invoice_pdf(invoice):
     logo_field = invoice.boutique.compte.logo
     logo_sized = _logo_size(logo_field)
     has_global_discount = bool(invoice.discount_amount)
+    client_phone = invoice.client.phone if invoice.client else ""
+    payment_methods = invoice.boutique.payment_methods
 
-    height = _estimate_height(invoice, lines, payments, logo_sized, has_global_discount)
+    height = _estimate_height(
+        invoice, lines, payments, logo_sized, has_global_discount, client_phone, payment_methods
+    )
 
     buffer = io.BytesIO()
     c = pdfcanvas.Canvas(buffer, pagesize=(PAGE_WIDTH, height))
@@ -157,6 +164,8 @@ def render_invoice_pdf(invoice):
     w.text(f"{title} {invoice.number}", font=FONT_BOLD)
     w.text(f"Date: {invoice.issue_date:%d/%m/%Y}")
     w.text(f"Client: {invoice.client.name if invoice.client else 'Client de passage'}")
+    if client_phone:
+        w.text(f"Tél: {client_phone}")
     w.separator()
 
     for line in lines:
@@ -179,8 +188,17 @@ def render_invoice_pdf(invoice):
         for payment in payments:
             w.two_columns(payment.get_method_display(), f"{_fmt(payment.amount)} {invoice.currency}")
 
+    if payment_methods:
+        w.separator()
+        w.text("Paiement Mobile Money", font=FONT_BOLD)
+        for method in payment_methods:
+            label = method["label"]
+            if method["account_name"]:
+                label += f" ({method['account_name']})"
+            w.two_columns(label, method["number"])
+
     w.separator()
-    w.text("Merci de votre achat !", align="center")
+    w.text("Merci pour la confiance!", align="center")
     w.text(invoice.boutique.name, font=FONT_SMALL, align="center")
 
     c.showPage()
