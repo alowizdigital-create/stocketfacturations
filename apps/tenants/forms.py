@@ -2,10 +2,11 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 
+from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
 from .countries import AFRICAN_COUNTRIES
-from .models import Boutique, Compte, Membership, Plan, Subscription
+from .models import Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -18,6 +19,12 @@ class SignupForm(BootstrapFormMixin, forms.Form):
     #     max_length=10,
     #     help_text="Ex: BTQ-001. Sert à numéroter les factures.",
     # )
+    devise = forms.ChoiceField(
+        label="Devise de la boutique",
+        choices=CURRENCY_CHOICES,
+        initial="XOF",
+        help_text="Toutes les ventes et devis de cette boutique utiliseront cette devise par défaut.",
+    )
     email = forms.EmailField(label="Votre email")
     # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
     # last_name = forms.CharField(label="Nom", max_length=150, required=False)
@@ -111,6 +118,7 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
     l'entreprise opère (montants affichés dans la bonne devise, numéros
     WhatsApp complétés avec le bon indicatif)."""
 
+    devise = forms.ChoiceField(label="Devise", choices=CURRENCY_CHOICES)
     country_calling_code = forms.ChoiceField(
         label="Pays (indicatif téléphonique)",
         choices=[("", "Non défini — numéros saisis tels quels")] + AFRICAN_COUNTRIES,
@@ -134,12 +142,40 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
             "momo_account_name": "MTN MoMo — nom du compte",
             "momo_number": "MTN MoMo — numéro",
         }
-        help_texts = {
-            "devise": "Code à 3 lettres, ex: XOF, XAF, GHS, NGN, MAD, KES...",
-        }
 
     def clean_devise(self):
         return self.cleaned_data["devise"].strip().upper()
+
+
+class ExchangeRateForm(BootstrapFormMixin, forms.ModelForm):
+    """Ajout d'un taux de change pour la boutique courante — voir
+    Boutique.exchange_rate_map, utilisé pour convertir les montants d'une
+    vente/d'un devis créé dans une devise différente de celle de la
+    boutique."""
+
+    currency = forms.ChoiceField(label="Devise")
+
+    class Meta:
+        model = ExchangeRate
+        fields = ["currency", "rate"]
+        labels = {"rate": "1 unité de cette devise = ? dans la devise de la boutique"}
+
+    def __init__(self, *args, boutique=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.boutique = boutique
+        if boutique is not None:
+            already_configured = set(boutique.exchange_rates.values_list("currency", flat=True))
+            excluded = already_configured | {boutique.devise}
+            self.fields["currency"].choices = [
+                (code, label) for code, label in CURRENCY_CHOICES if code not in excluded
+            ]
+
+    def save(self, commit=True):
+        instance = super().save(commit=False)
+        instance.boutique = self.boutique
+        if commit:
+            instance.save()
+        return instance
 
 
 class SubscriptionForm(BootstrapFormMixin, forms.ModelForm):

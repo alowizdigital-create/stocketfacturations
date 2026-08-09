@@ -19,6 +19,7 @@
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF (80 mm)</a>
+        <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> Imprimer</button>
         <!-- <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a> -->
         <!-- <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a> -->
         {% if has_client_phone and whatsapp_api_configured %}
@@ -119,8 +120,26 @@
                 {% endif %}
                 <hr>
                 <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
+                {% if invoice.amount_paid %}
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Payé</span><span class="text-success">{{ invoice.amount_paid }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">Reste à payer</span><span class="{% if invoice.balance_due %}text-danger fw-semibold{% endif %}">{{ invoice.balance_due }} {{ invoice.currency }}</span></div>
+                {% endif %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById("print-invoice-btn").addEventListener("click", function () {
+    var url = this.dataset.pdfUrl;
+    var iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    iframe.onload = function () {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    };
+});
+</script>
 {% endblock %}

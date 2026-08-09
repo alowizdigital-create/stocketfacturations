@@ -6,9 +6,14 @@
     {% csrf_token %}
     <div class="card-app mb-3">
         <div class="card-app-body row g-3">
-            <div class="col-md-8">
+            <div class="col-md-5">
                 <label class="form-label">{{ form.client.label }}</label>
                 {{ form.client }}
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">{{ form.currency.label }}</label>
+                {{ form.currency }}
+                {% if form.currency.help_text %}<div class="form-text">{{ form.currency.help_text }}</div>{% endif %}
             </div>
             <div class="col-md-4">
                 <label class="form-label">
@@ -131,6 +136,7 @@
 
 <div id="product-search-results" class="pos-results product-search-floating"></div>
 {{ preselected_products|json_script:"preselected-products-data" }}
+{{ rate_map|json_script:"rate-map-data" }}
 
 <!-- Téléphone/tablette uniquement : après avoir choisi un produit, ses
      informations (qté/prix/TVA) se modifient dans ce pop-up vertical
@@ -181,7 +187,18 @@
     const addProductBtn = document.getElementById("add-product-row");
     const addFeeBtn = document.getElementById("add-fee-row");
     const submitBtn = document.getElementById("devis-submit");
-    const currency = "{{ request.boutique.devise }}";
+    const currencySelect = document.getElementById("id_currency");
+    let currency = currencySelect.value || "{{ request.boutique.devise }}";
+    const boutiqueDevise = "{{ request.boutique.devise }}";
+    const rateMap = JSON.parse(document.getElementById("rate-map-data").textContent);
+
+    // Convertit un montant d'une devise à une autre via leur taux commun
+    // (voir Boutique.exchange_rate_map) — pas de conversion possible sans
+    // taux connu pour les deux devises, le montant est alors laissé tel quel.
+    function convert(amount, fromCur, toCur) {
+        if (fromCur === toCur || !rateMap[fromCur] || !rateMap[toCur]) return amount;
+        return Math.round(amount * parseFloat(rateMap[fromCur]) / parseFloat(rateMap[toCur]));
+    }
 
     const toggleGlobalBtn = document.getElementById("toggle-global-discount");
     const globalDiscountField = document.getElementById("global-discount-field");
@@ -349,6 +366,18 @@
         return '<i class="bi bi-image"></i>';
     }
 
+    function updatePillMeta(row, price) {
+        const selectedBox = row.querySelector(".product-selected");
+        if (!selectedBox) return;
+        const unit = selectedBox.dataset.unit || "";
+        const sku = selectedBox.dataset.sku || "";
+        const priceText = price !== undefined && price !== null && price !== "" ? fmt(parseFloat(price)) : "";
+        const metaEl = selectedBox.querySelector(".product-selected-meta");
+        if (metaEl) {
+            metaEl.textContent = [unit, priceText, sku ? "Réf " + sku : ""].filter(Boolean).join(" · ");
+        }
+    }
+
     function renderSelectedPill(row, data) {
         const picker = row.querySelector(".product-picker");
         const searchBox = picker.querySelector(".product-search-box");
@@ -358,9 +387,9 @@
         selectedBox.querySelector(".product-thumb-wrap").innerHTML = data.image_url
             ? `<img src="${data.image_url}" alt="">` : placeholderThumb();
         selectedBox.querySelector(".product-selected-name").textContent = data.name;
-        const price = data.price !== undefined && data.price !== null ? fmt(parseFloat(data.price)) : "";
-        selectedBox.querySelector(".product-selected-meta").textContent =
-            [data.unit, price, data.sku ? "Réf " + data.sku : ""].filter(Boolean).join(" · ");
+        selectedBox.dataset.unit = data.unit || "";
+        selectedBox.dataset.sku = data.sku || "";
+        updatePillMeta(row, data.price);
 
         searchInput.value = "";
         searchBox.classList.add("d-none");
@@ -384,9 +413,9 @@
         if (!descInput.value.trim()) {
             descInput.value = data.name;
         }
-        row.querySelector('input[name$="-unit_price_ht"]').value = data.price || 0;
+        row.querySelector('input[name$="-unit_price_ht"]').value = convert(data.price || 0, boutiqueDevise, currency);
         row.querySelector('input[name$="-tva_rate"]').value = data.tva_rate || 0;
-        renderSelectedPill(row, data);
+        renderSelectedPill(row, Object.assign({}, data, {price: convert(data.price || 0, boutiqueDevise, currency)}));
         hideResults();
         recomputeAll();
         if (isMobile()) {
@@ -427,7 +456,7 @@
                         <div class="pos-item-name">${p.name}</div>
                         <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
                     </div>
-                    <div class="pos-item-price">${fmt(p.price)}</div>
+                    <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
                 </div>`;
             }).join("");
         }
@@ -489,11 +518,34 @@
     window.addEventListener("scroll", hideResults, true);
 
     globalDiscountInput.addEventListener("input", recomputeAll);
+    currencySelect.addEventListener("change", () => {
+        const oldCurrency = currency;
+        const newCurrency = currencySelect.value;
+        tbody.querySelectorAll('tr.line-row').forEach((row) => {
+            const priceInput = row.querySelector('input[name$="-unit_price_ht"]');
+            if (priceInput.value) {
+                priceInput.value = convert(parseFloat(priceInput.value) || 0, oldCurrency, newCurrency);
+            }
+        });
+        if (!globalDiscountField.classList.contains("d-none") && globalDiscountInput.value) {
+            globalDiscountInput.value = convert(parseFloat(globalDiscountInput.value) || 0, oldCurrency, newCurrency);
+        }
+        // Réassigné avant la mise à jour des pastilles : fmt() (utilisé par
+        // updatePillMeta) doit refléter la nouvelle devise, pas l'ancienne.
+        currency = newCurrency;
+        tbody.querySelectorAll('tr.line-row').forEach((row) => {
+            const priceInput = row.querySelector('input[name$="-unit_price_ht"]');
+            if (priceInput.value) updatePillMeta(row, priceInput.value);
+        });
+        recomputeAll();
+    });
 
     tbody.querySelectorAll("tr.line-row").forEach((row) => {
         const productId = row.querySelector('input[name$="-product"]').value;
         if (productId && preselectedProducts[productId]) {
-            renderSelectedPill(row, Object.assign({id: productId}, preselectedProducts[productId]));
+            const data = Object.assign({}, preselectedProducts[productId], {id: productId});
+            data.price = convert(data.price, boutiqueDevise, currency);
+            renderSelectedPill(row, data);
         }
     });
     reindexRows();

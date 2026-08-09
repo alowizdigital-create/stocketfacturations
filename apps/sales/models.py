@@ -1,5 +1,8 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.db import models
+from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.models import BoutiqueScopedModel, CompteScopedModel, TimeStampedModel, UUIDModel
@@ -169,6 +172,14 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
         prefix = f"{boutique.code}-{issue_date:%Y%m%d}-"
         existing = Invoice.objects.filter(boutique=boutique, number__startswith=prefix).count()
         return f"{prefix}{existing + 1:04d}"
+
+    @property
+    def amount_paid(self):
+        return self.payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+
+    @property
+    def balance_due(self):
+        return max(self.total_ttc - self.amount_paid, Decimal("0"))
 
 
 class InvoiceLine(UUIDModel):

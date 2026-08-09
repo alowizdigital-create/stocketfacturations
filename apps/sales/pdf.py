@@ -119,7 +119,7 @@ def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, 
         n += 1  # ligne remise globale
     if payments:
         separator_count += 1
-        n += len(payments)  # une ligne par paiement
+        n += len(payments) + 2  # une ligne par paiement + payé + reste à payer
     if payment_methods:
         separator_count += 1
         n += 1 + len(payment_methods) * 2  # titre + 2 lignes par moyen de paiement
@@ -187,6 +187,8 @@ def render_invoice_pdf(invoice):
         w.separator()
         for payment in payments:
             w.two_columns(payment.get_method_display(), f"{_fmt(payment.amount)} {invoice.currency}")
+        w.two_columns("Payé", f"{_fmt(invoice.amount_paid)} {invoice.currency}")
+        w.two_columns("Reste à payer", f"{_fmt(invoice.balance_due)} {invoice.currency}", font=FONT_BOLD)
 
     if payment_methods:
         w.separator()

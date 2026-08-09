@@ -4,6 +4,7 @@ from django import forms
 from django.forms import formset_factory
 
 from apps.catalog.models import Product
+from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
 from .models import Client, Invoice, Payment
@@ -34,16 +35,45 @@ class ClientImportForm(BootstrapFormMixin, forms.Form):
         return uploaded
 
 
+def _currency_choices_for_boutique(boutique):
+    """Seules la devise de la boutique et les devises pour lesquelles un
+    taux de change est configuré (voir Boutique.exchange_rate_map) peuvent
+    être proposées : sans taux, impossible de convertir correctement les
+    montants d'une vente/d'un devis dans une autre devise."""
+    if boutique is None:
+        return CURRENCY_CHOICES
+    label_by_code = dict(CURRENCY_CHOICES)
+    codes = list(boutique.exchange_rate_map.keys())
+    codes.sort(key=lambda code: (code != boutique.devise, code))
+    choices = []
+    for code in codes:
+        label = label_by_code.get(code, code)
+        if code == boutique.devise:
+            label += " — devise de la boutique"
+        choices.append((code, label))
+    return choices
+
+
 class InvoiceForm(BootstrapFormMixin, forms.Form):
     client = forms.ModelChoiceField(queryset=Client.objects.none(), required=False, label="Client")
+    currency = forms.ChoiceField(
+        label="Devise",
+        required=False,
+        help_text="Devise de ce devis — par défaut celle de la boutique, modifiable au cas par cas.",
+    )
     discount_amount = forms.IntegerField(
         label="Remise globale (FCFA)", min_value=0, required=False, initial=0,
     )
 
     def __init__(self, *args, boutique=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["currency"].choices = _currency_choices_for_boutique(boutique)
         if boutique is not None:
             self.fields["client"].queryset = Client.objects.filter(boutique=boutique).order_by("name")
+            self.fields["currency"].initial = boutique.devise
+
+    def clean_currency(self):
+        return self.cleaned_data.get("currency") or ""
 
     def clean_discount_amount(self):
         return self.cleaned_data.get("discount_amount") or 0
@@ -55,11 +85,34 @@ class SaleForm(BootstrapFormMixin, forms.Form):
     client = forms.ModelChoiceField(
         queryset=Client.objects.none(), required=False, label="Client", widget=forms.HiddenInput()
     )
+    currency = forms.ChoiceField(
+        label="Devise",
+        required=False,
+        help_text="Devise de cette vente — par défaut celle de la boutique, modifiable au cas par cas.",
+    )
+    # Renseignés par le pop-up de paiement affiché au clic sur "Enregistrer
+    # la vente" (voir sale_form.html) : paiement complet ou acompte.
+    payment_type = forms.ChoiceField(
+        choices=[("full", "Payé en totalité"), ("partial", "Acompte")],
+        widget=forms.HiddenInput(), initial="full", required=False,
+    )
+    deposit_amount = forms.DecimalField(
+        max_digits=14, decimal_places=0, min_value=Decimal("0"),
+        widget=forms.HiddenInput(), required=False,
+    )
 
     def __init__(self, *args, boutique=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["currency"].choices = _currency_choices_for_boutique(boutique)
         if boutique is not None:
             self.fields["client"].queryset = Client.objects.filter(boutique=boutique).order_by("name")
+            self.fields["currency"].initial = boutique.devise
+
+    def clean_currency(self):
+        return self.cleaned_data.get("currency") or ""
+
+    def clean_deposit_amount(self):
+        return self.cleaned_data.get("deposit_amount") or Decimal("0")
 
 
 class InvoiceLineForm(BootstrapFormMixin, forms.Form):

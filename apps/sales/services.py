@@ -43,12 +43,14 @@ def _compute_totals(lines_data, discount_amount=Decimal("0")):
 
 @transaction.atomic
 def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None,
-                   discount_amount=Decimal("0")):
+                   discount_amount=Decimal("0"), currency=None):
     """Crée une facture/devis en BROUILLON avec ses lignes. `lines_data` :
     liste de dicts {product, description, quantity, unit_price_ht, tva_rate,
     discount_amount}. `discount_amount` est la remise globale de la
-    facture (montant fixe FCFA). Ne touche pas au stock — voir
-    validate_invoice()."""
+    facture (montant fixe FCFA). `currency` : devise de ce document
+    précis — par défaut celle de la boutique, mais peut être différente
+    (ex: devis facturé en USD pour un client étranger, boutique en XOF).
+    Ne touche pas au stock — voir validate_invoice()."""
 
     issue_date = issue_date or timezone.localdate()
     invoice = Invoice.objects.create(
@@ -57,6 +59,7 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
         type=type,
         number=Invoice.generate_number(boutique, issue_date),
         issue_date=issue_date,
+        currency=currency or boutique.devise,
         discount_amount=discount_amount,
         created_by=created_by,
     )
@@ -120,10 +123,12 @@ def record_payment(invoice, *, amount, method, reference="", created_by=None):
 
 
 @transaction.atomic
-def build_sale(*, boutique, client, created_by, lines_data, sale_date=None):
-    """Crée une vente en BROUILLON avec ses lignes (le panier). Ne touche
-    pas au stock — c'est confirm_sale() qui le fait, au moment où la vente
-    devient réelle."""
+def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, currency=None):
+    """Crée une vente en BROUILLON avec ses lignes (le panier). `currency` :
+    devise de cette vente précise — par défaut celle de la boutique, mais
+    peut être différente au cas par cas. Ne touche pas au stock —
+    c'est confirm_sale() qui le fait, au moment où la vente devient
+    réelle."""
 
     sale_date = sale_date or timezone.localdate()
     sale = Sale.objects.create(
@@ -131,6 +136,7 @@ def build_sale(*, boutique, client, created_by, lines_data, sale_date=None):
         client=client,
         number=Sale.generate_number(boutique, sale_date),
         sale_date=sale_date,
+        currency=currency or boutique.devise,
         created_by=created_by,
     )
 

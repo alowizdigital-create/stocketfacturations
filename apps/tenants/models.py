@@ -1,6 +1,7 @@
 import hashlib
 import secrets
 import uuid
+from decimal import Decimal
 
 from django.conf import settings
 from django.db import models
@@ -90,6 +91,45 @@ class Boutique(UUIDModel, TimeStampedModel):
         if self.momo_number:
             methods.append({"label": "MTN MoMo", "account_name": self.momo_account_name, "number": self.momo_number})
         return methods
+
+    @property
+    def exchange_rate_map(self):
+        """{code devise: taux}, taux exprimé en devise de la boutique pour
+        1 unité de cette devise (la devise de la boutique elle-même vaut
+        toujours 1). Utilisé pour convertir les montants d'une vente/d'un
+        devis quand une devise différente est choisie — voir
+        apps.sales.forms / sale_form.html / invoice_form.html."""
+        rates = {self.devise: Decimal("1")}
+        for rate in self.exchange_rates.all():
+            rates[rate.currency] = rate.rate
+        return rates
+
+
+class ExchangeRate(UUIDModel, TimeStampedModel):
+    """Taux de change d'une devise étrangère par rapport à la devise par
+    défaut de la boutique (ex: 1 EUR = 655,957 XOF) — permet de proposer
+    une vente/un devis dans une autre devise avec conversion automatique
+    des montants."""
+
+    boutique = models.ForeignKey(Boutique, on_delete=models.CASCADE, related_name="exchange_rates")
+    currency = models.CharField("devise", max_length=3)
+    rate = models.DecimalField(
+        "taux",
+        max_digits=14,
+        decimal_places=4,
+        help_text="Valeur de 1 unité de cette devise, exprimée dans la devise de la boutique. Ex: 1 EUR = 655.9570 XOF.",
+    )
+
+    class Meta:
+        verbose_name = "taux de change"
+        verbose_name_plural = "taux de change"
+        ordering = ["currency"]
+        constraints = [
+            models.UniqueConstraint(fields=["boutique", "currency"], name="unique_exchange_rate_par_devise"),
+        ]
+
+    def __str__(self):
+        return f"1 {self.currency} = {self.rate} {self.boutique.devise}"
 
 
 class Membership(UUIDModel, TimeStampedModel):

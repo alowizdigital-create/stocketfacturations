@@ -64,5 +64,15 @@
         </form>
     </div>
 </div>
+
+<div class="card-app mt-3" style="max-width: 520px;">
+    <div class="card-app-body d-flex justify-content-between align-items-center">
+        <div>
+            <div class="fw-semibold">Taux de change</div>
+            <div class="text-muted small">Pour proposer une vente/un devis dans une autre devise, convertie automatiquement.</div>
+        </div>
+        <a href="{% url 'tenants:exchange_rate_list' %}" class="btn btn-outline-secondary btn-sm">Gérer</a>
+    </div>
+</div>
 {% endif %}
 {% endblock %}

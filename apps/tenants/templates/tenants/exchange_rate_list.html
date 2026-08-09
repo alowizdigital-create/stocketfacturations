@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Taux de change{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>Taux de change — {{ boutique.name }}</h1>
+        <div class="text-muted">
+            Permet de proposer une vente ou un devis dans une autre devise que celle de la boutique
+            ({{ boutique.devise }}), avec conversion automatique des montants.
+        </div>
+    </div>
+    <a href="{% url 'tenants:company_settings' %}" class="btn btn-outline-secondary">Retour aux paramètres</a>
+</div>
+
+<div class="card-app mb-3" style="max-width: 560px;">
+    <div class="card-app-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+            <div class="mb-3">
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">Ajouter</button>
+        </form>
+    </div>
+</div>
+
+<div class="table-app" style="max-width: 560px;">
+    <table class="table mb-0">
+        <thead><tr><th>Devise</th><th>Taux</th><th></th></tr></thead>
+        <tbody>
+            {% for rate in rates %}
+            <tr>
+                <td class="fw-semibold">{{ rate.currency }}</td>
+                <td>1 {{ rate.currency }} = {{ rate.rate }} {{ boutique.devise }}</td>
+                <td class="text-end">
+                    <form method="post" action="{% url 'tenants:exchange_rate_delete' rate.id %}" onsubmit="return confirm('Supprimer ce taux de change ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3" class="text-muted text-center py-4">Aucun taux de change configuré — seule la devise de la boutique ({{ boutique.devise }}) est proposée sur les ventes/devis.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -4,24 +4,31 @@
 <div class="page-header">
     <div>
         <h1>Nouvelle vente</h1>
-        <div class="text-muted">La confirmation déduit le stock. La facture pourra être générée ensuite.</div>
+        <div class="text-muted">En enregistrant, le stock est déduit et la facture générée directement — vous choisirez le paiement (total ou acompte) à ce moment-là.</div>
     </div>
 </div>
 
 <form method="post" id="sale-form">
     {% csrf_token %}
     <div class="card-app mb-3">
-        <div class="card-app-body">
-            <label class="form-label">Client</label>
-            <div class="position-relative" style="max-width: 420px;">
-                <div id="client-selected" class="d-none align-items-center justify-content-between border rounded px-3 py-2" style="border-color: var(--border);">
-                    <span><i class="bi bi-person-check me-2"></i><span id="client-selected-name" class="fw-semibold"></span></span>
-                    <button type="button" id="client-clear" class="btn btn-link text-danger p-0"><i class="bi bi-x-lg"></i></button>
+        <div class="card-app-body row g-3">
+            <div class="col-md-8">
+                <label class="form-label">Client</label>
+                <div class="position-relative" style="max-width: 420px;">
+                    <div id="client-selected" class="d-none align-items-center justify-content-between border rounded px-3 py-2" style="border-color: var(--border);">
+                        <span><i class="bi bi-person-check me-2"></i><span id="client-selected-name" class="fw-semibold"></span></span>
+                        <button type="button" id="client-clear" class="btn btn-link text-danger p-0"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                    <input type="text" id="client-search" class="form-control" placeholder="Rechercher un client par nom... (laisser vide = client de passage)" autocomplete="off">
+                    <div id="client-results" class="client-suggestions"></div>
                 </div>
-                <input type="text" id="client-search" class="form-control" placeholder="Rechercher un client par nom... (laisser vide = client de passage)" autocomplete="off">
-                <div id="client-results" class="client-suggestions"></div>
+                {{ form.client }}
             </div>
-            {{ form.client }}
+            <div class="col-md-4">
+                <label class="form-label">{{ form.currency.label }}</label>
+                {{ form.currency }}
+                {% if form.currency.help_text %}<div class="form-text">{{ form.currency.help_text }}</div>{% endif %}
+            </div>
         </div>
     </div>
 
@@ -59,11 +66,52 @@
     </div>
 
     <input type="hidden" name="cart_json" id="cart_json">
+    {{ form.payment_type }}
+    {{ form.deposit_amount }}
+    {{ rate_map|json_script:"rate-map-data" }}
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" id="pos-submit" class="btn btn-primary" disabled>Enregistrer la vente</button>
+        <button type="button" id="pos-submit" class="btn btn-primary" disabled>Enregistrer la vente</button>
         <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
+
+<!-- Choix du paiement au moment d'enregistrer la vente : paiement complet
+     (facture payée, envoi immédiat possible) ou acompte (reste à payer
+     conservé sur la facture). -->
+<div class="modal fade" id="payment-choice-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Paiement de la vente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <span class="text-muted">Total à payer</span>
+                    <span class="fw-bold fs-5" id="payment-modal-total">0</span>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="payment-choice" id="payment-choice-full" value="full" checked>
+                    <label class="form-check-label" for="payment-choice-full">Le client paie la totalité</label>
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="radio" name="payment-choice" id="payment-choice-partial" value="partial">
+                    <label class="form-check-label" for="payment-choice-partial">Le client fait un acompte</label>
+                </div>
+                <div id="payment-deposit-field" class="d-none">
+                    <label class="form-label">Montant de l'acompte</label>
+                    <input type="number" min="1" step="1" class="form-control form-control-lg" id="payment-deposit-input">
+                    <div class="form-text">Le reste à payer sera enregistré sur la facture.</div>
+                    <div class="text-danger small mt-1 d-none" id="payment-deposit-error">Saisissez un montant valide, inférieur ou égal au total.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="payment-choice-confirm">Enregistrer la vente</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -76,13 +124,24 @@
     const cartEmptyEl = document.getElementById("pos-cart-empty");
     const cartJsonInput = document.getElementById("cart_json");
     const submitBtn = document.getElementById("pos-submit");
-    const currency = "{{ request.boutique.devise }}";
+    const currencySelect = document.getElementById("id_currency");
+    let currency = currencySelect.value || "{{ request.boutique.devise }}";
+    const boutiqueDevise = "{{ request.boutique.devise }}";
+    const rateMap = JSON.parse(document.getElementById("rate-map-data").textContent);
 
     let cart = [];
     let searchTimer = null;
 
     function fmt(n) {
         return Math.round(n).toLocaleString("fr-FR") + " " + currency;
+    }
+
+    // Convertit un montant d'une devise à une autre via leur taux commun
+    // (voir Boutique.exchange_rate_map) — pas de conversion possible sans
+    // taux connu pour les deux devises, le montant est alors laissé tel quel.
+    function convert(amount, fromCur, toCur) {
+        if (fromCur === toCur || !rateMap[fromCur] || !rateMap[toCur]) return amount;
+        return Math.round(amount * parseFloat(rateMap[fromCur]) / parseFloat(rateMap[toCur]));
     }
 
     function placeholderImg(name) {
@@ -109,7 +168,7 @@
                     <div class="pos-item-name">${p.name}</div>
                     <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
                 </div>
-                <div class="pos-item-price">${fmt(p.price)}</div>
+                <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
             </div>`;
         }).join("");
     }
@@ -145,7 +204,7 @@
                 sku: product.sku,
                 unit: product.unit,
                 image_url: product.image_url,
-                unit_price_ht: product.price,
+                unit_price_ht: convert(product.price, boutiqueDevise, currency),
                 tva_rate: product.tva_rate,
                 quantity: 1,
             });
@@ -221,6 +280,73 @@
     });
 
     runSearch("");
+
+    currencySelect.addEventListener("change", () => {
+        const newCurrency = currencySelect.value;
+        cart.forEach((line) => {
+            line.unit_price_ht = convert(line.unit_price_ht, currency, newCurrency);
+        });
+        currency = newCurrency;
+        renderCart();
+        runSearch(searchInput.value);
+    });
+
+    // --- Pop-up de choix du paiement (payer tout / faire un acompte) ------
+    const saleForm = document.getElementById("sale-form");
+    const paymentModalEl = document.getElementById("payment-choice-modal");
+    const paymentModal = new bootstrap.Modal(paymentModalEl);
+    const paymentModalTotal = document.getElementById("payment-modal-total");
+    const paymentChoiceFull = document.getElementById("payment-choice-full");
+    const paymentChoicePartial = document.getElementById("payment-choice-partial");
+    const paymentDepositField = document.getElementById("payment-deposit-field");
+    const paymentDepositInput = document.getElementById("payment-deposit-input");
+    const paymentDepositError = document.getElementById("payment-deposit-error");
+    const paymentTypeInput = document.getElementById("id_payment_type");
+    const depositAmountInput = document.getElementById("id_deposit_amount");
+
+    function saleTotal() {
+        let total = 0;
+        cart.forEach((line) => {
+            const lineHt = Math.round(line.quantity * line.unit_price_ht);
+            total += Math.round(lineHt * (1 + line.tva_rate / 100));
+        });
+        return total;
+    }
+
+    submitBtn.addEventListener("click", () => {
+        if (!cart.length) return;
+        paymentChoiceFull.checked = true;
+        paymentDepositField.classList.add("d-none");
+        paymentDepositInput.value = "";
+        paymentDepositError.classList.add("d-none");
+        paymentModalTotal.textContent = fmt(saleTotal());
+        paymentModal.show();
+    });
+
+    [paymentChoiceFull, paymentChoicePartial].forEach((radio) => {
+        radio.addEventListener("change", () => {
+            paymentDepositField.classList.toggle("d-none", !paymentChoicePartial.checked);
+            if (paymentChoicePartial.checked) paymentDepositInput.focus();
+        });
+    });
+
+    document.getElementById("payment-choice-confirm").addEventListener("click", () => {
+        const total = saleTotal();
+        if (paymentChoicePartial.checked) {
+            const amount = parseFloat(paymentDepositInput.value);
+            if (isNaN(amount) || amount <= 0 || amount > total) {
+                paymentDepositError.classList.remove("d-none");
+                return;
+            }
+            paymentTypeInput.value = "partial";
+            depositAmountInput.value = amount;
+        } else {
+            paymentTypeInput.value = "full";
+            depositAmountInput.value = total;
+        }
+        paymentModal.hide();
+        saleForm.requestSubmit();
+    });
 
     // --- Recherche client (même principe que la recherche produit) ---
     const clientSearchUrl = "{% url 'sales:client_search' %}";

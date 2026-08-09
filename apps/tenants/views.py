@@ -11,12 +11,13 @@ from apps.core.permissions import compte_admin_required
 from .forms import (
     BoutiqueRegionalForm,
     CompteSettingsForm,
+    ExchangeRateForm,
     SignupForm,
     StaffCreateForm,
     StaffUpdateForm,
     SubscriptionForm,
 )
-from .models import Boutique, Compte, Membership, Plan, Subscription
+from .models import Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -43,6 +44,7 @@ def signup(request):
                     compte=compte,
                     name=data["boutique_name"],
                     code=boutique_code,
+                    devise=data["devise"],
                     is_default=True,
                 )
                 Unit.objects.create(compte=compte, name="Pièce", symbol="pc")
@@ -188,6 +190,41 @@ def company_settings(request):
         "tenants/company_settings.html",
         {"form": form, "boutique_form": boutique_form},
     )
+
+
+@login_required
+@compte_admin_required
+def exchange_rate_list(request):
+    boutique = request.boutique
+    if boutique is None:
+        messages.error(request, "Aucune boutique sélectionnée.")
+        return redirect("tenants:company_settings")
+
+    if request.method == "POST":
+        form = ExchangeRateForm(request.POST, boutique=boutique)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Taux de change ajouté.")
+            return redirect("tenants:exchange_rate_list")
+    else:
+        form = ExchangeRateForm(boutique=boutique)
+
+    rates = boutique.exchange_rates.all()
+    return render(
+        request,
+        "tenants/exchange_rate_list.html",
+        {"form": form, "rates": rates, "boutique": boutique},
+    )
+
+
+@login_required
+@compte_admin_required
+def exchange_rate_delete(request, rate_id):
+    rate = get_object_or_404(ExchangeRate, id=rate_id, boutique__compte=request.compte)
+    if request.method == "POST":
+        rate.delete()
+        messages.success(request, "Taux de change supprimé.")
+    return redirect("tenants:exchange_rate_list")
 
 
 @login_required

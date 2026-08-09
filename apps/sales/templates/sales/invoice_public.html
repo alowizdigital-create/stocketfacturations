@@ -98,6 +98,10 @@
         <div class="recap-row"><span>Remise</span><span class="discount">-{{ invoice.discount_amount }} {{ invoice.currency }}</span></div>
         {% endif %}
         <div class="recap-row total"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
+        {% if invoice.amount_paid %}
+        <div class="recap-row" style="margin-top:.4rem;"><span>Payé</span><span>{{ invoice.amount_paid }} {{ invoice.currency }}</span></div>
+        <div class="recap-row"><span>Reste à payer</span><span class="{% if invoice.balance_due %}discount{% endif %}" style="font-weight:700;">{{ invoice.balance_due }} {{ invoice.currency }}</span></div>
+        {% endif %}
     </div>
 
     {% if invoice.boutique.payment_methods %}

@@ -17,7 +17,7 @@ from apps.tenants.models import Membership
 
 from . import services
 from .forms import ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, PaymentForm, SaleForm
-from .models import Client, Invoice, Sale
+from .models import Client, Invoice, Payment, Sale
 from .pdf import render_invoice_pdf
 from .whatsapp import build_message, build_share_link, normalize_phone
 from .whatsapp_api import WhatsAppSendError, is_configured, send_document
@@ -377,13 +377,36 @@ def sale_create(request):
                 client=form.cleaned_data["client"],
                 created_by=request.user,
                 lines_data=lines_data,
+                currency=form.cleaned_data["currency"] or request.boutique.devise,
             )
-            messages.success(request, f"{sale.number} créée en brouillon.")
-            return redirect("sales:sale_detail", sale_id=sale.id)
+            # La vente devient immédiatement réelle (stock déduit) et sa
+            # facture est générée directement : le caissier choisit au
+            # moment d'enregistrer si le client paie tout ou verse un
+            # acompte (pop-up JS), il n'y a pas d'étape manuelle
+            # "confirmer" / "facturer" séparée dans ce flux.
+            services.confirm_sale(sale, created_by=request.user)
+            invoice = services.generate_invoice_from_sale(sale, created_by=request.user)
+
+            if form.cleaned_data["payment_type"] == "partial":
+                paid_amount = min(form.cleaned_data["deposit_amount"], invoice.total_ttc)
+            else:
+                paid_amount = invoice.total_ttc
+
+            if paid_amount > 0:
+                services.record_payment(
+                    invoice, amount=paid_amount, method=Payment.ESPECES, created_by=request.user,
+                )
+
+            messages.success(request, f"{sale.number} enregistrée et {invoice.number} générée.")
+            return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = SaleForm(boutique=request.boutique)
 
-    return render(request, "sales/sale_form.html", {"form": form})
+    return render(
+        request,
+        "sales/sale_form.html",
+        {"form": form, "rate_map": request.boutique.exchange_rate_map},
+    )
 
 
 @login_required
@@ -490,6 +513,7 @@ def invoice_create(request):
                     created_by=request.user,
                     lines_data=lines_data,
                     discount_amount=Decimal(form.cleaned_data["discount_amount"]),
+                    currency=form.cleaned_data["currency"] or request.boutique.devise,
                 )
                 messages.success(request, f"{invoice.number} créé en brouillon.")
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
@@ -501,7 +525,12 @@ def invoice_create(request):
     return render(
         request,
         "sales/invoice_form.html",
-        {"form": form, "formset": formset, "preselected_products": preselected_products},
+        {
+            "form": form,
+            "formset": formset,
+            "preselected_products": preselected_products,
+            "rate_map": request.boutique.exchange_rate_map,
+        },
     )
 
 
