@@ -4,10 +4,11 @@ Serveur en ligne, déployé via Docker sur le VPS Hostinger (zweey.com).
 from .base import *  # noqa: F401,F403
 from .base import env
 from pathlib import Path
+import os
 
 
 # DEBUG = env.bool("DJANGO_DEBUG", default=False)
-DEBUG = True
+# DEBUG = True
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
@@ -23,6 +24,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+DEBUG = True
 
 DATABASES = {
     'default': {
