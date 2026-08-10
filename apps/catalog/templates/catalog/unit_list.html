@@ -2,11 +2,11 @@
 {% block title %}Unités{% endblock %}
 {% block content %}
 <div class="page-header">
-    <div>
-        <h1>Unités de mesure</h1>
+    <a href="{% url 'catalog:unit_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle unité</a>
+     <div>
+        <!-- <h1>Unités de mesure</h1> -->
         <div class="text-muted">Pièce, Kg, Litre, Carton... — définies par vous</div>
     </div>
-    <a href="{% url 'catalog:unit_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle unité</a>
 </div>
 
 <div class="table-app">

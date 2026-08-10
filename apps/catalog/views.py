@@ -54,13 +54,18 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
 @login_required
 def product_search(request):
+    """Recherche produit en direct pour la vente/le devis : ne renvoie que
+    les produits en stock dans la boutique courante — un produit en rupture
+    ne peut pas être vendu, donc ne doit pas apparaître dans la liste."""
     from apps.stock.models import StockLevel
 
     query = request.GET.get("q", "").strip()
 
     products = Product.objects.filter(
         compte=request.compte,
-        is_active=True
+        is_active=True,
+        stock_levels__boutique=request.boutique,
+        stock_levels__quantity__gt=0,
     ).select_related("unit")
 
     if query:
@@ -99,7 +104,6 @@ def product_search(request):
 
     return JsonResponse({"results": results})
 
-    return JsonResponse({"results": results})
 
 @login_required
 def product_list(request):

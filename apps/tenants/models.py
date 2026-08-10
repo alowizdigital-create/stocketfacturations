@@ -87,9 +87,9 @@ class Boutique(UUIDModel, TimeStampedModel):
         une facture/devis — liste vide si rien n'est renseigné."""
         methods = []
         if self.om_number:
-            methods.append({"label": "Orange Money", "account_name": self.om_account_name, "number": self.om_number})
+            methods.append({"label": "OM", "account_name": self.om_account_name, "number": self.om_number})
         if self.momo_number:
-            methods.append({"label": "MTN MoMo", "account_name": self.momo_account_name, "number": self.momo_number})
+            methods.append({"label": "MoMo", "account_name": self.momo_account_name, "number": self.momo_number})
         return methods
 
     @property

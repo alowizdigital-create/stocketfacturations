@@ -41,6 +41,14 @@
             {% csrf_token %}
             <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider le devis</button>
         </form>
+        {% elif invoice.type == "DEVIS" and invoice.status == "VALIDEE" %}
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#devis-payment-modal">
+            <i class="bi bi-receipt"></i> Générer la facture
+        </button>
+        {% elif invoice.type == "DEVIS" and invoice.status == "CONVERTIE" and converted_invoice %}
+        <a href="{% url 'sales:invoice_detail' converted_invoice.id %}" class="btn btn-primary">
+            <i class="bi bi-receipt"></i> Voir la facture {{ converted_invoice.number }}
+        </a>
         {% endif %}
     </div>
 </div>
@@ -129,6 +137,45 @@
     </div>
 </div>
 
+{% if invoice.type == "DEVIS" and invoice.status == "VALIDEE" %}
+<form method="post" action="{% url 'sales:devis_generate_invoice' invoice.id %}" id="devis-invoice-form">
+    {% csrf_token %}
+    <input type="hidden" name="payment_type" id="devis-payment-type" value="full">
+    <input type="hidden" name="deposit_amount" id="devis-deposit-amount" value="0">
+</form>
+
+<div class="modal fade" id="devis-payment-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Générer la facture</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Total du devis : <strong>{{ invoice.total_ttc }} {{ invoice.currency }}</strong></p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="devis-payment-choice" id="devis-payment-full" value="full" checked>
+                    <label class="form-check-label" for="devis-payment-full">Le client paie tout maintenant</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="devis-payment-choice" id="devis-payment-partial" value="partial">
+                    <label class="form-check-label" for="devis-payment-partial">Le client fait un acompte</label>
+                </div>
+                <div id="devis-deposit-wrapper" class="mt-2" style="display:none;">
+                    <label class="form-label" for="devis-deposit-input">Montant de l'acompte ({{ invoice.currency }})</label>
+                    <input type="number" min="0" step="1" class="form-control" id="devis-deposit-input">
+                    <div class="form-text text-danger" id="devis-deposit-error" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="devis-payment-confirm">Confirmer et générer la facture</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 <script>
 document.getElementById("print-invoice-btn").addEventListener("click", function () {
     var url = this.dataset.pdfUrl;
@@ -141,5 +188,40 @@ document.getElementById("print-invoice-btn").addEventListener("click", function 
         iframe.contentWindow.print();
     };
 });
+
+{% if invoice.type == "DEVIS" and invoice.status == "VALIDEE" %}
+(function () {
+    var invoiceTotal = {{ invoice.total_ttc }};
+    var fullRadio = document.getElementById("devis-payment-full");
+    var partialRadio = document.getElementById("devis-payment-partial");
+    var depositWrapper = document.getElementById("devis-deposit-wrapper");
+    var depositInput = document.getElementById("devis-deposit-input");
+    var depositError = document.getElementById("devis-deposit-error");
+
+    function toggleDepositWrapper() {
+        depositWrapper.style.display = partialRadio.checked ? "block" : "none";
+    }
+    fullRadio.addEventListener("change", toggleDepositWrapper);
+    partialRadio.addEventListener("change", toggleDepositWrapper);
+
+    document.getElementById("devis-payment-confirm").addEventListener("click", function () {
+        var paymentType = partialRadio.checked ? "partial" : "full";
+        var depositAmount = 0;
+
+        if (paymentType === "partial") {
+            depositAmount = parseFloat(depositInput.value);
+            if (isNaN(depositAmount) || depositAmount <= 0 || depositAmount > invoiceTotal) {
+                depositError.textContent = "Entrez un montant d'acompte valide (entre 1 et " + invoiceTotal + ").";
+                depositError.style.display = "block";
+                return;
+            }
+        }
+
+        document.getElementById("devis-payment-type").value = paymentType;
+        document.getElementById("devis-deposit-amount").value = depositAmount;
+        document.getElementById("devis-invoice-form").requestSubmit();
+    });
+})();
+{% endif %}
 </script>
 {% endblock %}

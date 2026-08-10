@@ -571,6 +571,10 @@ def invoice_detail(request, invoice_id):
             gallery_url=_public_gallery_url(request, invoice),
         )
 
+    converted_invoice = None
+    if invoice.type == Invoice.DEVIS and invoice.status == Invoice.CONVERTIE:
+        converted_invoice = invoice.conversions.filter(type=Invoice.FACTURE).first()
+
     return render(
         request,
         "sales/invoice_detail.html",
@@ -580,6 +584,7 @@ def invoice_detail(request, invoice_id):
             "whatsapp_url": whatsapp_url,
             "whatsapp_api_configured": is_configured(),
             "has_client_phone": has_client_phone,
+            "converted_invoice": converted_invoice,
         },
     )
 
@@ -623,6 +628,38 @@ def invoice_validate(request, invoice_id):
     services.validate_invoice(invoice, created_by=request.user)
     messages.success(request, f"{invoice.number} validé.")
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def devis_generate_invoice(request, invoice_id):
+    """Transforme un devis validé en facture réelle — le client a dit oui,
+    on facture pour de vrai (stock déduit) avec le même choix paiement
+    complet/acompte que juste après une vente (voir sale_create)."""
+    devis = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.DEVIS)
+    if devis.status != Invoice.VALIDEE:
+        messages.error(request, "Validez d'abord le devis avant de générer la facture.")
+        return redirect("sales:invoice_detail", invoice_id=devis.id)
+
+    if request.method == "POST":
+        payment_type = request.POST.get("payment_type", "full")
+        try:
+            deposit_amount = Decimal(request.POST.get("deposit_amount") or "0")
+        except InvalidOperation:
+            deposit_amount = Decimal("0")
+
+        invoice = services.convert_devis_to_invoice(devis, created_by=request.user)
+        paid_amount = min(deposit_amount, invoice.total_ttc) if payment_type == "partial" else invoice.total_ttc
+
+        if paid_amount > 0:
+            services.record_payment(
+                invoice, amount=paid_amount, method=Payment.ESPECES, created_by=request.user,
+            )
+
+        messages.success(request, f"{invoice.number} générée depuis {devis.number}.")
+        return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+    return redirect("sales:invoice_detail", invoice_id=devis.id)
 
 
 @login_required

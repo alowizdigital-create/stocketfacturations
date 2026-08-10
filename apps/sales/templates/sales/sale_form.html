@@ -158,16 +158,14 @@
             const img = p.image_url
                 ? `<img src="${p.image_url}" class="pos-thumb" alt="">`
                 : placeholderImg(p.name);
-            const stockBadge = p.stock_qty <= 0
-                ? '<span class="badge-status badge-red">Rupture</span>'
-                : `<span class="badge-status badge-gray">${p.stock_qty} en stock</span>`;
             return `
             <div class="pos-item" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
                 ${img}
                 <div class="pos-item-info">
                     <div class="pos-item-name">${p.name}</div>
-                    <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
+                    <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
                 </div>
+                <input type="number" min="1" step="1" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
                 <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
             </div>`;
         }).join("");
@@ -187,16 +185,20 @@
     });
 
     resultsEl.addEventListener("click", (e) => {
+        if (e.target.closest(".pos-item-qty")) return;
         const item = e.target.closest(".pos-item");
         if (!item) return;
         const product = JSON.parse(item.dataset.product.replace(/&apos;/g, "'"));
-        addToCart(product);
+        const qtyInput = item.querySelector(".pos-item-qty");
+        const qty = qtyInput ? (parseInt(qtyInput.value, 10) || 1) : 1;
+        addToCart(product, qty);
     });
 
-    function addToCart(product) {
+    function addToCart(product, qty) {
+        qty = qty && qty > 0 ? qty : 1;
         const existing = cart.find((line) => line.product_id === product.id);
         if (existing) {
-            existing.quantity += 1;
+            existing.quantity += qty;
         } else {
             cart.push({
                 product_id: product.id,
@@ -206,7 +208,7 @@
                 image_url: product.image_url,
                 unit_price_ht: convert(product.price, boutiqueDevise, currency),
                 tva_rate: product.tva_rate,
-                quantity: 1,
+                quantity: qty,
             });
         }
         renderCart();

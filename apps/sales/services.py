@@ -103,6 +103,67 @@ def validate_invoice(invoice, created_by=None):
 
 
 @transaction.atomic
+def convert_devis_to_invoice(devis, created_by=None):
+    """Transforme un devis validé par le client en facture réelle : copie
+    ses lignes dans une nouvelle Invoice(type=FACTURE), déduit le stock des
+    lignes reliées à un produit (le devis lui-même n'y touche jamais — voir
+    build_invoice) et marque le devis CONVERTIE. Idempotent : renvoie la
+    facture déjà générée si l'opération a déjà eu lieu."""
+
+    if devis.type != Invoice.DEVIS:
+        raise ValueError("Seul un devis peut être converti en facture.")
+
+    existing = devis.conversions.filter(type=Invoice.FACTURE).first()
+    if existing:
+        return existing
+
+    issue_date = timezone.localdate()
+    invoice = Invoice.objects.create(
+        boutique=devis.boutique,
+        client=devis.client,
+        type=Invoice.FACTURE,
+        status=Invoice.VALIDEE,
+        number=Invoice.generate_number(devis.boutique, issue_date),
+        issue_date=issue_date,
+        currency=devis.currency,
+        subtotal_ht=devis.subtotal_ht,
+        total_tva=devis.total_tva,
+        total_ttc=devis.total_ttc,
+        discount_amount=devis.discount_amount,
+        converted_from=devis,
+        created_by=created_by,
+    )
+
+    for line in devis.lines.all():
+        InvoiceLine.objects.create(
+            invoice=invoice,
+            product=line.product,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price_ht=line.unit_price_ht,
+            tva_rate=line.tva_rate,
+            discount_amount=line.discount_amount,
+            line_total_ht=line.line_total_ht,
+            line_total_ttc=line.line_total_ttc,
+            position=line.position,
+        )
+        if line.product is not None:
+            stock_services.apply_movement(
+                boutique=devis.boutique,
+                product=line.product,
+                type=StockMovement.VENTE,
+                quantity=-line.quantity,
+                reference_invoice=invoice,
+                created_by=created_by,
+                reason=f"Facture {invoice.number} (devis {devis.number})",
+            )
+
+    devis.status = Invoice.CONVERTIE
+    devis.save(update_fields=["status", "updated_at"])
+    return invoice
+
+
+@transaction.atomic
 def record_payment(invoice, *, amount, method, reference="", created_by=None):
     Payment.objects.create(
         invoice=invoice,

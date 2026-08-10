@@ -407,12 +407,13 @@
         if (editTrigger) editTrigger.classList.add("d-none");
     }
 
-    function selectProduct(row, data) {
+    function selectProduct(row, data, qty) {
         row.querySelector('input[name$="-product"]').value = data.id;
         const descInput = row.querySelector('input[name$="-description"]');
         if (!descInput.value.trim()) {
             descInput.value = data.name;
         }
+        row.querySelector('input[name$="-quantity"]').value = qty && qty > 0 ? qty : 1;
         row.querySelector('input[name$="-unit_price_ht"]').value = convert(data.price || 0, boutiqueDevise, currency);
         row.querySelector('input[name$="-tva_rate"]').value = data.tva_rate || 0;
         renderSelectedPill(row, Object.assign({}, data, {price: convert(data.price || 0, boutiqueDevise, currency)}));
@@ -446,16 +447,14 @@
         } else {
             resultsEl.innerHTML = items.map((p) => {
                 const img = p.image_url ? `<img src="${p.image_url}" class="pos-thumb" alt="">` : `<span class="pos-thumb pos-thumb-placeholder">${(p.name || "?").trim().charAt(0).toUpperCase()}</span>`;
-                const stockBadge = p.stock_qty <= 0
-                    ? '<span class="badge-status badge-red">Rupture</span>'
-                    : `<span class="badge-status badge-gray">${p.stock_qty} en stock</span>`;
                 return `
                 <div class="pos-item" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
                     ${img}
                     <div class="pos-item-info">
                         <div class="pos-item-name">${p.name}</div>
-                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} ${stockBadge}</div>
+                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
                     </div>
+                    <input type="number" min="1" step="1" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
                     <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
                 </div>`;
             }).join("");
@@ -491,10 +490,13 @@
     }, true);
 
     resultsEl.addEventListener("click", (e) => {
+        if (e.target.closest(".pos-item-qty")) return;
         const item = e.target.closest(".pos-item");
         if (!item || !activeRow) return;
         const product = JSON.parse(item.dataset.product.replace(/&apos;/g, "'"));
-        selectProduct(activeRow, product);
+        const qtyInput = item.querySelector(".pos-item-qty");
+        const qty = qtyInput ? (parseInt(qtyInput.value, 10) || 1) : 1;
+        selectProduct(activeRow, product, qty);
     });
 
     tbody.addEventListener("click", (e) => {

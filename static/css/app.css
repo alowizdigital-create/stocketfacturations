@@ -107,7 +107,7 @@ a:hover { color: var(--brand-dark); }
 .page-header {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 1rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
@@ -416,6 +416,12 @@ a:hover { color: var(--brand-dark); }
   overflow-y: auto;
 }
 .pos-item-price { font-weight: 700; font-size: .875rem; white-space: nowrap; }
+.pos-item-qty {
+  width: 60px;
+  text-align: center;
+  padding: .3rem;
+  flex-shrink: 0;
+}
 .pos-qty {
   width: 72px;
   text-align: center;
