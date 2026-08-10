@@ -4,7 +4,7 @@ Serveur en ligne, déployé via Docker sur le VPS Hostinger (zweey.com).
 from .base import *  # noqa: F401,F403
 from .base import env
 from pathlib import Path
-import os
+# import os
 
 
 # DEBUG = env.bool("DJANGO_DEBUG", default=False)
@@ -32,8 +32,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': env('DB_NAME', default='zweeydb'),
         'USER': env('DB_USER', default='zweeyuser'),
-        # 'PASSWORD': env('DB_PASSWORD'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'Jeanpierre236'),
+        'PASSWORD': env('DB_PASSWORD'),
+        # 'PASSWORD': os.getenv('DB_PASSWORD', 'Jeanpierre236'),
         'HOST': env('DB_HOST', default='stocketfacturation-zweeydatabase-pss441'),
         'PORT': env('DB_PORT', default='3306'),
         'OPTIONS': {
