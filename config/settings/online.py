@@ -6,7 +6,8 @@ from .base import env
 from pathlib import Path
 
 
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
+# DEBUG = env.bool("DJANGO_DEBUG", default=False)
+DEBUG = True
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
