@@ -178,6 +178,8 @@ class BoutiqueAPIToken(models.Model):
     token_hash = models.CharField(max_length=64, unique=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
+    last_push_at = models.DateTimeField(null=True, blank=True)
+    last_pull_at = models.DateTimeField(null=True, blank=True)
     is_active = models.BooleanField(default=True)
 
     class Meta:

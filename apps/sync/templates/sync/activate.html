@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Activation du poste{% endblock %}
+{% block auth_content %}
+<div class="auth-shell">
+    <div class="auth-card">
+        <div class="auth-brand"><i class="bi bi-boxes"></i> Stock &amp; Facturation</div>
+        <h1 class="h5 mb-2">Activation du poste</h1>
+        <p class="text-muted small mb-3">
+            Collez ci-dessous le jeton généré depuis les paramètres de la boutique
+            (page "Synchronisation hors-ligne") sur le poste en ligne. Une première
+            synchronisation complète sera lancée automatiquement.
+        </p>
+        <form method="post">
+            {% csrf_token %}
+            {% if form.non_field_errors %}
+            <div class="alert alert-danger py-2">{{ form.non_field_errors }}</div>
+            {% endif %}
+            <div class="mb-3">
+                <label class="form-label">{{ form.token.label }}</label>
+                {{ form.token }}
+                {% if form.token.help_text %}<div class="form-text">{{ form.token.help_text }}</div>{% endif %}
+                {{ form.token.errors }}
+            </div>
+            <button type="submit" class="btn btn-primary w-100 py-2">Activer ce poste</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

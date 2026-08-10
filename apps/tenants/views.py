@@ -17,7 +17,7 @@ from .forms import (
     StaffUpdateForm,
     SubscriptionForm,
 )
-from .models import Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
+from .models import BoutiqueAPIToken, Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -225,6 +225,44 @@ def exchange_rate_delete(request, rate_id):
         rate.delete()
         messages.success(request, "Taux de change supprimé.")
     return redirect("tenants:exchange_rate_list")
+
+
+@login_required
+@compte_admin_required
+def boutique_token(request):
+    """Écran de synchronisation hors-ligne : montre le statut du jeton
+    actuel de la boutique (BoutiqueAPIToken) — le poste offline s'active en
+    collant ce jeton une fois au premier lancement, voir apps.sync."""
+
+    boutique = request.boutique
+    if boutique is None:
+        messages.error(request, "Aucune boutique sélectionnée.")
+        return redirect("tenants:company_settings")
+
+    token = BoutiqueAPIToken.objects.filter(boutique=boutique).first()
+    return render(
+        request, "tenants/boutique_token.html",
+        {"boutique": boutique, "token": token, "raw_token": None},
+    )
+
+
+@login_required
+@compte_admin_required
+@require_POST
+def boutique_token_generate(request):
+    boutique = request.boutique
+    if boutique is None:
+        messages.error(request, "Aucune boutique sélectionnée.")
+        return redirect("tenants:company_settings")
+
+    token, raw_token = BoutiqueAPIToken.issue(boutique)
+    messages.warning(
+        request, "Notez ce jeton maintenant : il ne sera plus jamais affiché en clair."
+    )
+    return render(
+        request, "tenants/boutique_token.html",
+        {"boutique": boutique, "token": token, "raw_token": raw_token},
+    )
 
 
 @login_required

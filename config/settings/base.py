@@ -85,6 +85,12 @@ MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# True uniquement pour config.settings.offline — bascule le middleware sur
+# la boutique figée à l'activation plutôt que la résolution par session,
+# et active la mise en file d'attente des écritures pour la synchro
+# (voir apps.core.middleware.CurrentTenantMiddleware, apps.sync.outbox).
+IS_OFFLINE = False
+
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "accounts:login"

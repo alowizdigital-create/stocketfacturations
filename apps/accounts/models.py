@@ -41,6 +41,9 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     date_joined = models.DateTimeField(auto_now_add=True)
+    # Nécessaire pour le pull incrémental (`?since=`) de la synchro
+    # offline — voir apps.sync.views.PullUsersView.
+    updated_at = models.DateTimeField(auto_now=True)
 
     objects = UserManager()
 

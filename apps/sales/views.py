@@ -2,8 +2,10 @@ import csv
 import io
 import json
 import quopri
+import uuid
 from decimal import Decimal, InvalidOperation
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
@@ -13,6 +15,8 @@ from django.urls import reverse
 
 from apps.catalog.models import Product
 from apps.core.permissions import boutique_role_required
+from apps.sync import outbox
+from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from . import services
@@ -57,6 +61,8 @@ def client_create(request):
             client = form.save(commit=False)
             client.boutique = request.boutique
             client.save()
+            if settings.IS_OFFLINE:
+                outbox.enqueue(OutboxEntry.CLIENT, client.id)
             messages.success(request, "Client créé.")
             return redirect("sales:client_list")
     else:
@@ -397,6 +403,12 @@ def sale_create(request):
                     invoice, amount=paid_amount, method=Payment.ESPECES, created_by=request.user,
                 )
 
+            if settings.IS_OFFLINE:
+                # Une seule entrée pour toute la transaction (vente +
+                # facture + paiement) — pas une par étape — pour préserver
+                # l'atomicité du bundle côté serveur (push/sale-transactions/).
+                outbox.enqueue(OutboxEntry.SALE_TRANSACTION, sale.id)
+
             messages.success(request, f"{sale.number} enregistrée et {invoice.number} générée.")
             return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
@@ -515,6 +527,8 @@ def invoice_create(request):
                     discount_amount=Decimal(form.cleaned_data["discount_amount"]),
                     currency=form.cleaned_data["currency"] or request.boutique.devise,
                 )
+                if settings.IS_OFFLINE:
+                    outbox.enqueue(OutboxEntry.INVOICE, invoice.id)
                 messages.success(request, f"{invoice.number} créé en brouillon.")
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
@@ -641,6 +655,19 @@ def devis_generate_invoice(request, invoice_id):
         messages.error(request, "Validez d'abord le devis avant de générer la facture.")
         return redirect("sales:invoice_detail", invoice_id=devis.id)
 
+    if settings.IS_OFFLINE:
+        # convert_devis_to_invoice() n'est pas encore rejouable (pas
+        # d'id=/created_at=) et il n'existe aucun endpoint de push capable
+        # de reproduire "convertir + déduire le stock + marquer CONVERTIE"
+        # côté serveur — créer cette facture hors-ligne la condamnerait à
+        # ne jamais se synchroniser.
+        messages.error(
+            request,
+            "La conversion de devis en facture n'est pas encore disponible hors-ligne — "
+            "utilisez le poste en ligne.",
+        )
+        return redirect("sales:invoice_detail", invoice_id=devis.id)
+
     if request.method == "POST":
         payment_type = request.POST.get("payment_type", "full")
         try:
@@ -669,13 +696,21 @@ def payment_create(request, invoice_id):
     if request.method == "POST":
         form = PaymentForm(request.POST)
         if form.is_valid():
+            # id pré-généré (plutôt que de changer le contrat de retour de
+            # record_payment, qui renvoie la facture et est utilisé
+            # ailleurs) pour pouvoir mettre ce paiement en file d'attente
+            # de synchro offline (outbox.enqueue ci-dessous).
+            payment_id = uuid.uuid4()
             services.record_payment(
                 invoice,
                 amount=form.cleaned_data["amount"],
                 method=form.cleaned_data["method"],
                 reference=form.cleaned_data["reference"],
                 created_by=request.user,
+                id=payment_id,
             )
+            if settings.IS_OFFLINE:
+                outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
             messages.success(request, "Paiement enregistré.")
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 

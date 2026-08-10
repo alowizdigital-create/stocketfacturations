@@ -42,6 +42,13 @@ class StockMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     reference_sale = models.ForeignKey(
         "sales.Sale", on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_movements"
     )
+    # Ligne de vente précise à l'origine de ce mouvement — nécessaire pour
+    # reconstruire sans ambiguïté le `stock_movement_id` par ligne au
+    # moment du push offline (deux lignes du même produit sur la même
+    # vente ne peuvent pas être distinguées par `reference_sale` seul).
+    sale_line = models.ForeignKey(
+        "sales.SaleLine", on_delete=models.SET_NULL, null=True, blank=True, related_name="stock_movements"
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="stock_movements"
     )

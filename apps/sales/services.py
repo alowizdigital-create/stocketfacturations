@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.stock import services as stock_services
 from apps.stock.models import StockMovement
 
-from .models import Invoice, InvoiceLine, Payment, Sale, SaleLine
+from .models import Client, Invoice, InvoiceLine, Payment, Sale, SaleLine
 
 
 def _line_totals(quantity, unit_price_ht, tva_rate, discount_amount=Decimal("0")):
@@ -41,19 +41,43 @@ def _compute_totals(lines_data, discount_amount=Decimal("0")):
     return computed, subtotal_ht, total_tva, total_ttc
 
 
+def get_or_create_client(*, boutique, id=None, name, phone="", email="", address="", nif=""):
+    """Récupère un client déjà synchronisé par `id`, ou le crée sinon —
+    permet à un client créé hors-ligne d'être poussé avec son UUID
+    d'origine sans jamais créer de doublon au rejeu."""
+
+    if id is not None:
+        existing = Client.objects.filter(pk=id, boutique=boutique).first()
+        if existing is not None:
+            return existing
+
+    kwargs = dict(boutique=boutique, name=name, phone=phone, email=email, address=address, nif=nif)
+    if id is not None:
+        kwargs["id"] = id
+    return Client.objects.create(**kwargs)
+
+
 @transaction.atomic
 def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None,
-                   discount_amount=Decimal("0"), currency=None):
+                   discount_amount=Decimal("0"), currency=None, id=None, created_at=None):
     """Crée une facture/devis en BROUILLON avec ses lignes. `lines_data` :
     liste de dicts {product, description, quantity, unit_price_ht, tva_rate,
     discount_amount}. `discount_amount` est la remise globale de la
     facture (montant fixe FCFA). `currency` : devise de ce document
     précis — par défaut celle de la boutique, mais peut être différente
     (ex: devis facturé en USD pour un client étranger, boutique en XOF).
-    Ne touche pas au stock — voir validate_invoice()."""
+    `id`/`created_at` : rejeu idempotent d'une facture/devis créé
+    hors-ligne — si `id` existe déjà, la facture est renvoyée telle
+    quelle, sans recréer ses lignes. Ne touche pas au stock — voir
+    validate_invoice()."""
+
+    if id is not None:
+        existing = Invoice.objects.filter(pk=id).first()
+        if existing is not None:
+            return existing
 
     issue_date = issue_date or timezone.localdate()
-    invoice = Invoice.objects.create(
+    invoice_kwargs = dict(
         boutique=boutique,
         client=client,
         type=type,
@@ -63,6 +87,11 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
         discount_amount=discount_amount,
         created_by=created_by,
     )
+    if id is not None:
+        invoice_kwargs["id"] = id
+    if created_at is not None:
+        invoice_kwargs["created_at"] = created_at
+    invoice = Invoice.objects.create(**invoice_kwargs)
 
     computed, subtotal_ht, total_tva, total_ttc = _compute_totals(lines_data, discount_amount)
     for position, (line, line_total_ht, line_total_ttc) in enumerate(computed):
@@ -164,8 +193,15 @@ def convert_devis_to_invoice(devis, created_by=None):
 
 
 @transaction.atomic
-def record_payment(invoice, *, amount, method, reference="", created_by=None):
-    Payment.objects.create(
+def record_payment(invoice, *, amount, method, reference="", created_by=None, id=None, created_at=None):
+    """`id`/`created_at` : rejeu idempotent d'un paiement enregistré
+    hors-ligne — si `id` existe déjà, ne recrée rien et ne recalcule pas
+    le statut une seconde fois."""
+
+    if id is not None and Payment.objects.filter(pk=id).exists():
+        return invoice
+
+    payment_kwargs = dict(
         invoice=invoice,
         boutique=invoice.boutique,
         amount=amount,
@@ -173,6 +209,11 @@ def record_payment(invoice, *, amount, method, reference="", created_by=None):
         reference=reference,
         created_by=created_by,
     )
+    if id is not None:
+        payment_kwargs["id"] = id
+    if created_at is not None:
+        payment_kwargs["paid_at"] = created_at
+    Payment.objects.create(**payment_kwargs)
 
     total_paid = invoice.payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
     if total_paid >= invoice.total_ttc:
@@ -184,15 +225,23 @@ def record_payment(invoice, *, amount, method, reference="", created_by=None):
 
 
 @transaction.atomic
-def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, currency=None):
+def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, currency=None,
+                id=None, created_at=None):
     """Crée une vente en BROUILLON avec ses lignes (le panier). `currency` :
     devise de cette vente précise — par défaut celle de la boutique, mais
-    peut être différente au cas par cas. Ne touche pas au stock —
-    c'est confirm_sale() qui le fait, au moment où la vente devient
-    réelle."""
+    peut être différente au cas par cas. `id`/`created_at` : rejeu
+    idempotent d'une vente créée hors-ligne — si `id` existe déjà, la
+    vente est renvoyée telle quelle, sans recréer ses lignes. Ne touche
+    pas au stock — c'est confirm_sale() qui le fait, au moment où la
+    vente devient réelle."""
+
+    if id is not None:
+        existing = Sale.objects.filter(pk=id).first()
+        if existing is not None:
+            return existing
 
     sale_date = sale_date or timezone.localdate()
-    sale = Sale.objects.create(
+    sale_kwargs = dict(
         boutique=boutique,
         client=client,
         number=Sale.generate_number(boutique, sale_date),
@@ -200,6 +249,11 @@ def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, curr
         currency=currency or boutique.devise,
         created_by=created_by,
     )
+    if id is not None:
+        sale_kwargs["id"] = id
+    if created_at is not None:
+        sale_kwargs["created_at"] = created_at
+    sale = Sale.objects.create(**sale_kwargs)
 
     computed, subtotal_ht, total_tva, total_ttc = _compute_totals(lines_data)
     for position, (line, line_total_ht, line_total_ttc) in enumerate(computed):
@@ -223,15 +277,22 @@ def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, curr
 
 
 @transaction.atomic
-def confirm_sale(sale, created_by=None):
+def confirm_sale(sale, created_by=None, movement_ids=None, created_at=None,
+                  source=StockMovement.SOURCE_ONLINE):
     """Confirme la vente et déduit le stock des lignes reliées à un
     produit, dans la même transaction. C'est le seul moment où une vente
-    impacte le stock — idempotent : ne fait rien si déjà confirmée."""
+    impacte le stock — idempotent : ne fait rien si déjà confirmée.
+    `movement_ids` : liste optionnelle alignée sur `sale.lines` (position),
+    un UUID par ligne reliée à un produit — permet de rejouer les
+    mouvements de stock d'une vente confirmée hors-ligne avec leurs UUID
+    d'origine (voir apply_movement). `source` : traçabilité du mouvement
+    (ONLINE/OFFLINE) — à passer explicitement SOURCE_OFFLINE lors d'un
+    rejeu depuis le bundle de push (voir apps.sync.views)."""
 
     if sale.status != Sale.BROUILLON:
         return sale
 
-    for line in sale.lines.select_related("product"):
+    for index, line in enumerate(sale.lines.select_related("product")):
         if line.product is None:
             continue
         stock_services.apply_movement(
@@ -240,8 +301,12 @@ def confirm_sale(sale, created_by=None):
             type=StockMovement.VENTE,
             quantity=-line.quantity,
             reference_sale=sale,
+            sale_line=line,
             created_by=created_by,
             reason=f"Vente {sale.number}",
+            movement_id=movement_ids[index] if movement_ids else None,
+            created_at=created_at,
+            source=source,
         )
 
     sale.status = Sale.CONFIRMEE
@@ -250,12 +315,13 @@ def confirm_sale(sale, created_by=None):
 
 
 @transaction.atomic
-def generate_invoice_from_sale(sale, created_by=None):
+def generate_invoice_from_sale(sale, created_by=None, id=None, created_at=None):
     """Génère la facture correspondant à une vente déjà confirmée, en
     copiant ses lignes. Le stock a déjà été déduit à la confirmation de la
     vente : la facture est donc créée directement en statut VALIDEE, sans
     nouveau mouvement de stock. Idempotent : renvoie la facture existante
-    si elle a déjà été générée."""
+    si elle a déjà été générée. `id`/`created_at` : rejeu idempotent d'une
+    facture générée hors-ligne."""
 
     if sale.invoice_id:
         return sale.invoice
@@ -263,7 +329,7 @@ def generate_invoice_from_sale(sale, created_by=None):
     if sale.status != Sale.CONFIRMEE:
         raise ValueError("Seule une vente confirmée peut être facturée.")
 
-    invoice = Invoice.objects.create(
+    invoice_kwargs = dict(
         boutique=sale.boutique,
         client=sale.client,
         type=Invoice.FACTURE,
@@ -276,6 +342,11 @@ def generate_invoice_from_sale(sale, created_by=None):
         total_ttc=sale.total_ttc,
         created_by=created_by,
     )
+    if id is not None:
+        invoice_kwargs["id"] = id
+    if created_at is not None:
+        invoice_kwargs["created_at"] = created_at
+    invoice = Invoice.objects.create(**invoice_kwargs)
 
     for line in sale.lines.all():
         InvoiceLine.objects.create(

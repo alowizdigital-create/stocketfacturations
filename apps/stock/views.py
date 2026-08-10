@@ -1,9 +1,12 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from apps.catalog.services import get_effective_low_stock_threshold
 from apps.core.permissions import boutique_role_required
+from apps.sync import outbox
+from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from . import services
@@ -33,7 +36,7 @@ def movement_create(request):
     if request.method == "POST":
         form = StockMovementForm(request.POST, compte=request.compte)
         if form.is_valid():
-            services.apply_movement(
+            movement = services.apply_movement(
                 boutique=request.boutique,
                 product=form.cleaned_data["product"],
                 type=form.cleaned_data["type"],
@@ -41,6 +44,8 @@ def movement_create(request):
                 reason=form.cleaned_data["reason"],
                 created_by=request.user,
             )
+            if settings.IS_OFFLINE:
+                outbox.enqueue(OutboxEntry.STOCK_MOVEMENT, movement.id)
             messages.success(request, "Mouvement de stock enregistré.")
             return redirect("stock:stock_level_list")
     else:

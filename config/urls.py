@@ -14,6 +14,7 @@ urlpatterns = [
     path("stock/", include("apps.stock.urls")),
     path("", include("apps.sales.urls")),
     path("", include("apps.core.urls")),
+    path("api/v1/sync/", include("apps.sync.urls")),
 ]
 
 if settings.DEBUG:

@@ -14,5 +14,7 @@ urlpatterns = [
     path("parametres/", views.company_settings, name="company_settings"),
     path("parametres/taux-de-change/", views.exchange_rate_list, name="exchange_rate_list"),
     path("parametres/taux-de-change/<uuid:rate_id>/supprimer/", views.exchange_rate_delete, name="exchange_rate_delete"),
+    path("parametres/jeton/", views.boutique_token, name="boutique_token"),
+    path("parametres/jeton/generer/", views.boutique_token_generate, name="boutique_token_generate"),
     path("abonnement/", views.subscription_view, name="subscription"),
 ]

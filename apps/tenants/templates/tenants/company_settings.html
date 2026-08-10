@@ -74,5 +74,15 @@
         <a href="{% url 'tenants:exchange_rate_list' %}" class="btn btn-outline-secondary btn-sm">Gérer</a>
     </div>
 </div>
+
+<div class="card-app mt-3" style="max-width: 520px;">
+    <div class="card-app-body d-flex justify-content-between align-items-center">
+        <div>
+            <div class="fw-semibold">Synchronisation hors-ligne</div>
+            <div class="text-muted small">Générez le jeton d'activation du poste offline de cette boutique.</div>
+        </div>
+        <a href="{% url 'tenants:boutique_token' %}" class="btn btn-outline-secondary btn-sm">Gérer</a>
+    </div>
+</div>
 {% endif %}
 {% endblock %}

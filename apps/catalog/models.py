@@ -85,10 +85,11 @@ class ProductImage(UUIDModel, TimeStampedModel):
         return f"{self.product.name} — photo {self.position + 1}"
 
 
-class ProductBoutiquePrice(models.Model):
+class ProductBoutiquePrice(UUIDModel, TimeStampedModel):
     """Surcharge optionnelle de prix/disponibilité pour une boutique
     donnée, sans dupliquer le produit (catalogue partagé au niveau du
-    Compte)."""
+    Compte). UUID + horodatage : nécessaire pour le pull incrémental
+    (`?since=`) de l'API de synchronisation (voir apps.sync)."""
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="boutique_overrides")
     boutique = models.ForeignKey(Boutique, on_delete=models.CASCADE, related_name="product_overrides")

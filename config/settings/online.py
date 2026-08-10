@@ -1,15 +1,12 @@
 """
 Serveur en ligne, déployé via Docker sur le VPS Hostinger (zweey.com).
 """
-import os
 from .base import *  # noqa: F401,F403
 from .base import env
 from pathlib import Path
 
 
-# DEBUG = env.bool("DJANGO_DEBUG", default=False)
-
-DEBUG = True
+DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
@@ -21,17 +18,7 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["https://zweey.com", "https://www.zweey.com", "https://api.zweey.com"],
 )
 
-# DATABASES = {
-#     "default": env.db("DATABASE_URL", default="postgres://postgres:postgres@db:5432/postgres"),
-# }
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# DATABASES = {
-#     "default": {
-#         "ENGINE": "django.db.backends.sqlite3",
-#         "NAME": BASE_DIR / "db.sqlite3",
-#     }
-# }
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
@@ -39,11 +26,11 @@ MEDIA_ROOT = BASE_DIR / "media"
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': os.getenv('DB_NAME', 'zweeydb'),
-        'USER': os.getenv('DB_USER', 'zweeyuser'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'Jeanpierre236'),
-        'HOST': os.getenv('DB_HOST', 'stocketfacturation-zweeydatabase-pss441'),
-        'PORT': os.getenv('DB_PORT', '3306'),
+        'NAME': env('DB_NAME', default='zweeydb'),
+        'USER': env('DB_USER', default='zweeyuser'),
+        'PASSWORD': env('DB_PASSWORD'),
+        'HOST': env('DB_HOST', default='stocketfacturation-zweeydatabase-pss441'),
+        'PORT': env('DB_PORT', default='3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",

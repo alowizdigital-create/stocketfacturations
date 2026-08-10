@@ -9,6 +9,18 @@ from .base import *  # noqa: F401,F403
 
 DEBUG = False
 ALLOWED_HOSTS = ["127.0.0.1", "localhost"]
+IS_OFFLINE = True
+
+# DEBUG=False désactive le service automatique de /static/ par
+# runserver/django.contrib.staticfiles — WhiteNoise le remplace, ici
+# comme en ligne (config/settings/online.py). USE_FINDERS sert
+# directement depuis STATICFILES_DIRS, sans étape collectstatic.
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+    *[m for m in MIDDLEWARE if m != "django.middleware.security.SecurityMiddleware"],  # noqa: F405
+]
+WHITENOISE_USE_FINDERS = True
 
 if getattr(sys, "frozen", False):
     # Exe empaqueté par PyInstaller : la base et les logs vivent hors du
@@ -27,6 +39,10 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": DATA_DIR / "db.sqlite3",
+        # Le futur worker de synchro en tâche de fond partagera ce même
+        # process SQLite — délai d'attente généreux en prévision plutôt
+        # que des "database is locked" occasionnels.
+        "OPTIONS": {"timeout": 20},
     }
 }
 
@@ -46,6 +62,8 @@ LOGGING = {
     "root": {"handlers": ["file"], "level": "INFO"},
 }
 
-# Boutique/token d'activation de ce poste offline (renseignés par
-# desktop/activation.py au premier lancement, stockés en base locale).
+# Boutique/jeton d'activation de ce poste offline : voir
+# apps.sync.models.DeviceActivation (une ligne unique en base locale,
+# renseignée par l'écran d'activation — apps.sync.views.activate_device —
+# au premier lancement).
 SYNC_BASE_URL = env("SYNC_BASE_URL", default="https://zweey.com")  # noqa: F405

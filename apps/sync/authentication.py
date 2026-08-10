@@ -4,10 +4,26 @@ from rest_framework import authentication, exceptions
 from apps.tenants.models import BoutiqueAPIToken
 
 
+class BoutiquePrincipal:
+    """Se substitue à `request.user` pour une requête authentifiée par
+    jeton boutique — compatible avec `IsAuthenticated` (DRF vérifie
+    `request.user.is_authenticated`), sans être un vrai `User` Django."""
+
+    is_authenticated = True
+    is_anonymous = False
+
+    def __init__(self, boutique):
+        self.boutique = boutique
+        self.compte = boutique.compte
+
+    def __str__(self):
+        return f"boutique:{self.boutique.id}"
+
+
 class BoutiqueTokenAuthentication(authentication.BaseAuthentication):
     """Authentifie une requête de synchro par le jeton de la boutique
     (Authorization: Bearer <token>). La boutique n'est jamais déduite du
-    corps de la requête — toujours de ce jeton. Détaillé en Phase 3."""
+    corps de la requête — toujours de ce jeton."""
 
     keyword = "Bearer"
 
@@ -22,7 +38,9 @@ class BoutiqueTokenAuthentication(authentication.BaseAuthentication):
             raise exceptions.AuthenticationFailed("Jeton boutique invalide.")
 
         BoutiqueAPIToken.objects.filter(pk=token.pk).update(last_used_at=timezone.now())
-        # TODO Phase 3 : request.user doit être authenticated-compatible pour
-        # IsAuthenticated ; introduire un objet boutique-principal dédié
-        # plutôt que de retourner directement le modèle Boutique.
-        return (token.boutique, token)
+        return (BoutiquePrincipal(token.boutique), token)
+
+    def authenticate_header(self, request):
+        # Sans ceci, DRF renvoie 403 (Forbidden) au lieu de 401
+        # (Unauthorized) quand aucun jeton n'est fourni.
+        return self.keyword
