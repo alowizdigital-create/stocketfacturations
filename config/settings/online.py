@@ -29,7 +29,8 @@ DATABASES = {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': env('DB_NAME', default='zweeydb'),
         'USER': env('DB_USER', default='zweeyuser'),
-        'PASSWORD': env('DB_PASSWORD'),
+        # 'PASSWORD': env('DB_PASSWORD'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'Jeanpierre236'),
         'HOST': env('DB_HOST', default='stocketfacturation-zweeydatabase-pss441'),
         'PORT': env('DB_PORT', default='3306'),
         'OPTIONS': {
