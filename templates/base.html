@@ -134,7 +134,10 @@
         <main class="page">
             {% if messages %}
             {% for message in messages %}
-            <div class="alert alert-{{ message.tags|default:'info' }}">{{ message }}</div>
+            <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show js-flash-message" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
             {% endfor %}
             {% endif %}
             {% block content %}{% endblock %}
@@ -179,6 +182,20 @@
     backdrop.addEventListener("click", closeSidebar);
     sidebar.querySelectorAll(".nav-link").forEach(function (link) {
         link.addEventListener("click", closeSidebar);
+    });
+})();
+</script>
+<script>
+(function () {
+    // Messages flash (succès/erreur affichés après une action) : disparaissent
+    // tout seuls après quelques secondes plutôt que de rester à l'écran
+    // indéfiniment — l'utilisateur garde la main pour les fermer plus tôt
+    // via la croix (data-bs-dismiss déjà géré par Bootstrap).
+    document.querySelectorAll(".js-flash-message").forEach(function (el) {
+        setTimeout(function () {
+            var alert = bootstrap.Alert.getOrCreateInstance(el);
+            alert.close();
+        }, 5000);
     });
 })();
 </script>

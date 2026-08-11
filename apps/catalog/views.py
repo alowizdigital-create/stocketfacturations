@@ -207,6 +207,24 @@ def product_image_delete(request, image_id):
 
 
 @login_required
+@boutique_role_required(*MANAGE_ROLES)
+@block_when_offline("catalog:product_list")
+def product_delete(request, product_id):
+    product = get_object_or_404(Product, id=product_id, compte=request.compte)
+    if request.method == "POST":
+        try:
+            product.delete()
+            messages.success(request, "Produit supprimé.")
+        except ProtectedError:
+            messages.error(
+                request,
+                "Impossible de supprimer : ce produit a des mouvements de stock "
+                "(ventes, entrées...) liés — désactivez-le plutôt.",
+            )
+    return redirect("catalog:product_list")
+
+
+@login_required
 def category_list(request):
     categories = Category.objects.filter(compte=request.compte).select_related("parent").order_by("name")
     return render(request, "catalog/category_list.html", {"categories": categories})

@@ -35,7 +35,15 @@
                     <span class="badge-status badge-gray">Inactif</span>
                     {% endif %}
                 </td>
-                <td class="text-end"><a href="{% url 'catalog:product_update' product.id %}"><i class="bi bi-pencil"></i> Modifier</a></td>
+                <td class="text-end">
+                    <a href="{% url 'catalog:product_update' product.id %}" class="me-3"><i class="bi bi-pencil"></i> Modifier</a>
+                    {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
+                    <form method="post" action="{% url 'catalog:product_delete' product.id %}" class="d-inline" onsubmit="return confirm('Supprimer ce produit ?');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
+                    </form>
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
             <tr><td colspan="8" class="text-muted text-center py-4">Aucun produit pour le moment.</td></tr>
