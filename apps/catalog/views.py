@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import ProtectedError, Q
@@ -5,6 +6,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.permissions import block_when_offline, boutique_role_required
+from apps.sync import outbox as sync_outbox
+from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from .forms import CategoryForm, ProductForm, UnitForm
@@ -151,7 +154,6 @@ def _save_extra_images(product, files):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:product_list")
 def product_create(request):
     if not Unit.objects.filter(compte=request.compte).exists():
         messages.warning(
@@ -164,6 +166,8 @@ def product_create(request):
         if form.is_valid():
             product = form.save()
             _save_extra_images(product, form.cleaned_data["extra_images"])
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.PRODUCT, product.id)
             messages.success(request, "Produit créé.")
             return redirect("catalog:product_list")
     else:
@@ -173,7 +177,6 @@ def product_create(request):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:product_list")
 def product_update(request, product_id):
     product = get_object_or_404(Product.objects.prefetch_related("extra_images"), id=product_id, compte=request.compte)
     if request.method == "POST":
@@ -181,6 +184,8 @@ def product_update(request, product_id):
         if form.is_valid():
             product = form.save()
             _save_extra_images(product, form.cleaned_data["extra_images"])
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.PRODUCT, product.id)
             messages.success(request, "Produit modifié.")
             return redirect("catalog:product_list")
     else:
@@ -209,12 +214,13 @@ def category_list(request):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:category_list")
 def category_create(request):
     if request.method == "POST":
         form = CategoryForm(request.POST, compte=request.compte)
         if form.is_valid():
-            form.save()
+            category = form.save()
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
             messages.success(request, "Catégorie créée.")
             return redirect("catalog:category_list")
     else:
@@ -224,13 +230,14 @@ def category_create(request):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:category_list")
 def category_update(request, category_id):
     category = get_object_or_404(Category, id=category_id, compte=request.compte)
     if request.method == "POST":
         form = CategoryForm(request.POST, instance=category, compte=request.compte)
         if form.is_valid():
-            form.save()
+            category = form.save()
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
             messages.success(request, "Catégorie modifiée.")
             return redirect("catalog:category_list")
     else:
@@ -260,12 +267,13 @@ def unit_list(request):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:unit_list")
 def unit_create(request):
     if request.method == "POST":
         form = UnitForm(request.POST, compte=request.compte)
         if form.is_valid():
-            form.save()
+            unit = form.save()
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.UNIT, unit.id)
             messages.success(request, "Unité créée.")
             return redirect("catalog:unit_list")
     else:
@@ -275,13 +283,14 @@ def unit_create(request):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-@block_when_offline("catalog:unit_list")
 def unit_update(request, unit_id):
     unit = get_object_or_404(Unit, id=unit_id, compte=request.compte)
     if request.method == "POST":
         form = UnitForm(request.POST, instance=unit, compte=request.compte)
         if form.is_valid():
-            form.save()
+            unit = form.save()
+            if settings.IS_OFFLINE:
+                sync_outbox.enqueue(OutboxEntry.UNIT, unit.id)
             messages.success(request, "Unité modifiée.")
             return redirect("catalog:unit_list")
     else:

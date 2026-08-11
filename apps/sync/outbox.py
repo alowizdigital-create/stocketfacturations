@@ -133,12 +133,53 @@ def _serialize_sale_transaction(object_id):
     return payload
 
 
+def _serialize_category(object_id):
+    from apps.catalog.models import Category
+
+    category = Category.objects.get(pk=object_id)
+    return {
+        "id": str(category.id), "name": category.name,
+        "parent_id": str(category.parent_id) if category.parent_id else None,
+    }
+
+
+def _serialize_unit(object_id):
+    from apps.catalog.models import Unit
+
+    unit = Unit.objects.get(pk=object_id)
+    return {"id": str(unit.id), "name": unit.name, "symbol": unit.symbol}
+
+
+def _serialize_product(object_id):
+    from apps.catalog.models import Product
+
+    product = Product.objects.get(pk=object_id)
+    return {
+        "id": str(product.id),
+        "category_id": str(product.category_id) if product.category_id else None,
+        "name": product.name,
+        "sku": product.sku,
+        "barcode": product.barcode,
+        "unit_id": str(product.unit_id),
+        "default_sale_price": str(product.default_sale_price),
+        "tva_rate": str(product.tva_rate),
+        "low_stock_threshold_default": product.low_stock_threshold_default,
+        "is_active": product.is_active,
+    }
+
+
 PUSH_ENDPOINTS = {
     OutboxEntry.CLIENT: ("push/clients/", _serialize_client),
     OutboxEntry.STOCK_MOVEMENT: ("push/stock-movements/", _serialize_stock_movement),
     OutboxEntry.INVOICE: ("push/invoices/", _serialize_invoice),
     OutboxEntry.PAYMENT: ("push/payments/", _serialize_payment),
     OutboxEntry.SALE_TRANSACTION: ("push/sale-transactions/", _serialize_sale_transaction),
+    # Catégories/unités avant produits : Product.unit_id est une FK requise
+    # côté serveur (voir ProductPushSerializer) — si le produit est poussé
+    # avant son unité lors du même cycle, le push échoue inutilement.
+    OutboxEntry.CATEGORY: ("push/catalog/categories/", _serialize_category),
+    OutboxEntry.UNIT: ("push/catalog/units/", _serialize_unit),
+    OutboxEntry.PRODUCT: ("push/catalog/products/", _serialize_product),
 }
 
 

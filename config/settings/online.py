@@ -11,6 +11,8 @@ ALLOWED_HOSTS = env.list(
     default=["zweey.com", "www.zweey.com", "api.zweey.com"],
 )
 
+
+
 CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     default=["https://zweey.com", "https://www.zweey.com", "https://api.zweey.com"],

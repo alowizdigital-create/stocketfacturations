@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
-from apps.sales.models import Client, Invoice, Payment, TaxRate
+from apps.sales.models import Client, Invoice, InvoiceLine, Payment, Sale, SaleLine, TaxRate
 from apps.stock.models import StockLevel, StockMovement
 from apps.tenants.models import Boutique, ExchangeRate, Membership
 
@@ -118,6 +118,33 @@ class SaleTransactionPushSerializer(serializers.Serializer):
     invoice_id = serializers.UUIDField(required=False, allow_null=True)
     payment = SaleTransactionPaymentSerializer(required=False, allow_null=True)
     created_by_user_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class CategoryPushSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    name = serializers.CharField(max_length=255)
+    parent_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class UnitPushSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    name = serializers.CharField(max_length=50)
+    symbol = serializers.CharField(max_length=10, required=False, allow_blank=True, default="")
+
+
+class ProductPushSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    category_id = serializers.UUIDField(required=False, allow_null=True)
+    name = serializers.CharField(max_length=255)
+    sku = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    barcode = serializers.CharField(max_length=64, required=False, allow_blank=True, default="")
+    unit_id = serializers.UUIDField()
+    default_sale_price = serializers.DecimalField(max_digits=12, decimal_places=0)
+    tva_rate = serializers.DecimalField(
+        max_digits=5, decimal_places=2, required=False, default=Decimal("0")
+    )
+    low_stock_threshold_default = serializers.IntegerField(required=False, default=5)
+    is_active = serializers.BooleanField(required=False, default=True)
 
 
 # --------------------------------------------------------------------------
@@ -234,4 +261,59 @@ class ProductBoutiquePricePullSerializer(serializers.ModelSerializer):
         fields = [
             "id", "product_id", "boutique_id", "price_override",
             "low_stock_threshold_override", "is_available", "updated_at",
+        ]
+
+
+class InvoiceLinePullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = InvoiceLine
+        fields = [
+            "id", "product_id", "description", "quantity", "unit_price_ht",
+            "tva_rate", "discount_amount", "line_total_ht", "line_total_ttc", "position",
+        ]
+
+
+class PaymentPullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Payment
+        fields = ["id", "amount", "method", "reference", "paid_at", "created_by_id"]
+
+
+class InvoicePullSerializer(serializers.ModelSerializer):
+    """Facture/devis complet, lignes ET paiements imbriqués — pas de pull
+    séparé pour ces derniers : `record_payment`/les services facture
+    touchent toujours `invoice.save()` (voir apps.sales.services), donc
+    `invoice.updated_at` avance à chaque changement et le `?since=` sur
+    CETTE ressource suffit à faire redescendre l'état complet."""
+
+    lines = InvoiceLinePullSerializer(many=True, read_only=True)
+    payments = PaymentPullSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Invoice
+        fields = [
+            "id", "client_id", "number", "type", "status", "issue_date", "due_date",
+            "currency", "subtotal_ht", "total_tva", "total_ttc", "discount_amount",
+            "created_by_id", "lines", "payments", "updated_at",
+        ]
+
+
+class SaleLinePullSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleLine
+        fields = [
+            "id", "product_id", "description", "quantity", "unit_price_ht",
+            "tva_rate", "line_total_ht", "line_total_ttc", "position",
+        ]
+
+
+class SalePullSerializer(serializers.ModelSerializer):
+    lines = SaleLinePullSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Sale
+        fields = [
+            "id", "client_id", "number", "status", "sale_date", "currency",
+            "subtotal_ht", "total_tva", "total_ttc", "invoice_id", "created_by_id",
+            "lines", "updated_at",
         ]

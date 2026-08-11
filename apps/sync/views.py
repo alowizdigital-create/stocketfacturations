@@ -1,5 +1,6 @@
 import hashlib
 import json
+import uuid
 from functools import wraps
 
 import requests
@@ -18,7 +19,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
 from apps.sales import services as sales_services
-from apps.sales.models import Client, Payment, Sale, TaxRate
+from apps.sales.models import Client, Invoice, Payment, Sale, TaxRate
 from apps.stock import services as stock_services
 from apps.stock.models import StockLevel, StockMovement
 from apps.tenants.models import BoutiqueAPIToken, ExchangeRate, Membership
@@ -30,19 +31,24 @@ from .pull import run_pull_cycle
 from .serializers import (
     BoutiquePullSerializer,
     CategoryPullSerializer,
+    CategoryPushSerializer,
     ClientPullSerializer,
     ClientPushSerializer,
     ExchangeRatePullSerializer,
+    InvoicePullSerializer,
     InvoicePushSerializer,
     MembershipPullSerializer,
     PaymentPushSerializer,
     ProductBoutiquePricePullSerializer,
     ProductPullSerializer,
+    ProductPushSerializer,
+    SalePullSerializer,
     SaleTransactionPushSerializer,
     StockLevelPullSerializer,
     StockMovementPushSerializer,
     TaxRatePullSerializer,
     UnitPullSerializer,
+    UnitPushSerializer,
     UserPullSerializer,
 )
 
@@ -182,6 +188,64 @@ class PushClientsView(BasePushView):
             nif=data.get("nif", ""),
         )
         return {"id": str(client.id), "status": "duplicate" if was_existing else "created"}
+
+
+class PushCategoriesView(BasePushView):
+    endpoint_name = "push.categories"
+    item_serializer_class = CategoryPushSerializer
+
+    def handle_item(self, boutique, data):
+        item_id = data.get("id") or uuid.uuid4()
+        was_existing = Category.objects.filter(pk=item_id, compte=boutique.compte).exists()
+        parent_id = data.get("parent_id")
+        parent = Category.objects.filter(pk=parent_id, compte=boutique.compte).first() if parent_id else None
+        category, _ = Category.objects.update_or_create(
+            id=item_id,
+            defaults={"compte": boutique.compte, "name": data["name"], "parent": parent},
+        )
+        return {"id": str(category.id), "status": "duplicate" if was_existing else "created"}
+
+
+class PushUnitsView(BasePushView):
+    endpoint_name = "push.units"
+    item_serializer_class = UnitPushSerializer
+
+    def handle_item(self, boutique, data):
+        item_id = data.get("id") or uuid.uuid4()
+        was_existing = Unit.objects.filter(pk=item_id, compte=boutique.compte).exists()
+        unit, _ = Unit.objects.update_or_create(
+            id=item_id,
+            defaults={"compte": boutique.compte, "name": data["name"], "symbol": data.get("symbol", "")},
+        )
+        return {"id": str(unit.id), "status": "duplicate" if was_existing else "created"}
+
+
+class PushProductsView(BasePushView):
+    endpoint_name = "push.products"
+    item_serializer_class = ProductPushSerializer
+
+    def handle_item(self, boutique, data):
+        item_id = data.get("id") or uuid.uuid4()
+        was_existing = Product.objects.filter(pk=item_id, compte=boutique.compte).exists()
+
+        unit = Unit.objects.filter(pk=data["unit_id"], compte=boutique.compte).first()
+        if unit is None:
+            return {"id": str(item_id), "status": "error", "detail": "unit_id inconnu."}
+
+        category_id = data.get("category_id")
+        category = Category.objects.filter(pk=category_id, compte=boutique.compte).first() if category_id else None
+
+        product, _ = Product.objects.update_or_create(
+            id=item_id,
+            defaults={
+                "compte": boutique.compte, "category": category, "name": data["name"],
+                "sku": data.get("sku", ""), "barcode": data.get("barcode", ""), "unit": unit,
+                "default_sale_price": data["default_sale_price"], "tva_rate": data.get("tva_rate", 0),
+                "low_stock_threshold_default": data.get("low_stock_threshold_default", 5),
+                "is_active": data.get("is_active", True),
+            },
+        )
+        return {"id": str(product.id), "status": "duplicate" if was_existing else "created"}
 
 
 class PushStockMovementsView(BasePushView):
@@ -478,6 +542,23 @@ class PullProductBoutiquePricesView(BasePullView):
 
     def get_base_queryset(self):
         return ProductBoutiquePrice.objects.filter(boutique=self.boutique)
+
+
+class PullInvoicesView(BasePullView):
+    """Factures/devis créés côté web (ou par un autre poste offline) —
+    lignes et paiements imbriqués, voir InvoicePullSerializer."""
+
+    serializer_class = InvoicePullSerializer
+
+    def get_base_queryset(self):
+        return Invoice.objects.filter(boutique=self.boutique).prefetch_related("lines", "payments")
+
+
+class PullSalesView(BasePullView):
+    serializer_class = SalePullSerializer
+
+    def get_base_queryset(self):
+        return Sale.objects.filter(boutique=self.boutique).prefetch_related("lines")
 
 
 class PullStockLevelsView(BasePullView):

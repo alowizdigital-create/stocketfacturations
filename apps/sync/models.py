@@ -78,12 +78,18 @@ class OutboxEntry(UUIDModel, TimeStampedModel):
     INVOICE = "invoice"
     PAYMENT = "payment"
     SALE_TRANSACTION = "sale_transaction"
+    CATEGORY = "category"
+    UNIT = "unit"
+    PRODUCT = "product"
     KIND_CHOICES = [
         (CLIENT, "Client"),
         (STOCK_MOVEMENT, "Mouvement de stock"),
         (INVOICE, "Facture/devis"),
         (PAYMENT, "Paiement"),
         (SALE_TRANSACTION, "Vente"),
+        (CATEGORY, "Catégorie"),
+        (UNIT, "Unité"),
+        (PRODUCT, "Produit"),
     ]
 
     PENDING = "PENDING"

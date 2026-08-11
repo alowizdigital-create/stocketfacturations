@@ -162,6 +162,108 @@ def _upsert_product(items, compte_id):
         )
 
 
+def _existing_id(queryset, pk):
+    """Résolution défensive d'une FK optionnelle : un `id` fourni mais pas
+    (encore) présent localement devient `None` plutôt que de faire
+    échouer tout l'upsert sur une contrainte de clé étrangère SQLite."""
+
+    if not pk:
+        return None
+    return pk if queryset.filter(pk=pk).exists() else None
+
+
+def _upsert_invoice(items, boutique_id):
+    from apps.catalog.models import Product
+    from apps.sales.models import Client, Invoice, InvoiceLine, Payment
+
+    for item in items:
+        invoice, _ = Invoice.objects.update_or_create(
+            id=item["id"],
+            defaults={
+                "boutique_id": boutique_id,
+                "client_id": _existing_id(Client.objects, item.get("client_id")),
+                "number": item["number"],
+                "type": item["type"],
+                "status": item["status"],
+                "issue_date": item["issue_date"],
+                "due_date": item.get("due_date"),
+                "currency": item["currency"],
+                "subtotal_ht": item["subtotal_ht"],
+                "total_tva": item["total_tva"],
+                "total_ttc": item["total_ttc"],
+                "discount_amount": item.get("discount_amount", 0),
+                "created_by_id": item.get("created_by_id"),
+            },
+        )
+        for line in item.get("lines", []):
+            InvoiceLine.objects.update_or_create(
+                id=line["id"],
+                defaults={
+                    "invoice": invoice,
+                    "product_id": _existing_id(Product.objects, line.get("product_id")),
+                    "description": line["description"],
+                    "quantity": line["quantity"],
+                    "unit_price_ht": line["unit_price_ht"],
+                    "tva_rate": line.get("tva_rate", 0),
+                    "discount_amount": line.get("discount_amount", 0),
+                    "line_total_ht": line["line_total_ht"],
+                    "line_total_ttc": line["line_total_ttc"],
+                    "position": line.get("position", 0),
+                },
+            )
+        for payment in item.get("payments", []):
+            Payment.objects.update_or_create(
+                id=payment["id"],
+                defaults={
+                    "invoice": invoice,
+                    "boutique_id": boutique_id,
+                    "amount": payment["amount"],
+                    "method": payment.get("method", Payment.ESPECES),
+                    "reference": payment.get("reference", ""),
+                    "paid_at": payment["paid_at"],
+                    "created_by_id": payment.get("created_by_id"),
+                },
+            )
+
+
+def _upsert_sale(items, boutique_id):
+    from apps.catalog.models import Product
+    from apps.sales.models import Client, Invoice, Sale, SaleLine
+
+    for item in items:
+        sale, _ = Sale.objects.update_or_create(
+            id=item["id"],
+            defaults={
+                "boutique_id": boutique_id,
+                "client_id": _existing_id(Client.objects, item.get("client_id")),
+                "number": item["number"],
+                "status": item["status"],
+                "sale_date": item["sale_date"],
+                "currency": item["currency"],
+                "subtotal_ht": item["subtotal_ht"],
+                "total_tva": item["total_tva"],
+                "total_ttc": item["total_ttc"],
+                "invoice_id": _existing_id(Invoice.objects, item.get("invoice_id")),
+                "created_by_id": item.get("created_by_id"),
+            },
+        )
+        for line in item.get("lines", []):
+            SaleLine.objects.update_or_create(
+                id=line["id"],
+                defaults={
+                    "sale": sale,
+                    "product_id": _existing_id(Product.objects, line.get("product_id")),
+                    "description": line["description"],
+                    "quantity": line["quantity"],
+                    "unit_price_ht": line["unit_price_ht"],
+                    "tva_rate": line.get("tva_rate", 0),
+                    "line_total_ht": line["line_total_ht"],
+                    "line_total_ttc": line["line_total_ttc"],
+                    "position": line.get("position", 0),
+                },
+            )
+
+
 def _upsert_stock_level(items, boutique_id):
     from apps.stock.models import StockLevel
 
@@ -190,7 +292,9 @@ def _upsert_product_boutique_price(items, boutique_id):
 # Ordre de dépendance : tax_rates/categories/units/exchange_rates/users
 # n'ont besoin que du Compte/Boutique (déjà tirés par _pull_boutique) ;
 # memberships a besoin de users ; products a besoin de categories/units ;
-# product_boutique_prices a besoin de products.
+# product_boutique_prices a besoin de products ; invoices/sales ont besoin
+# de clients (déjà en tête) et de products (résolution FK défensive sinon,
+# voir _existing_id) ; sales a besoin d'invoices (Sale.invoice_id).
 PULL_RESOURCES = [
     ("clients", "pull/sales/clients/", _upsert_client, "boutique"),
     ("tax_rates", "pull/sales/tax-rates/", _upsert_tax_rate, "compte"),
@@ -202,6 +306,8 @@ PULL_RESOURCES = [
     ("products", "pull/catalog/products/", _upsert_product, "compte"),
     ("product_boutique_prices", "pull/catalog/product-boutique-prices/", _upsert_product_boutique_price, "boutique"),
     ("stock_levels", "pull/stock/levels/", _upsert_stock_level, "boutique"),
+    ("invoices", "pull/sales/invoices/", _upsert_invoice, "boutique"),
+    ("sales", "pull/sales/sales/", _upsert_sale, "boutique"),
 ]
 
 
