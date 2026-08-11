@@ -317,6 +317,7 @@ class PushInvoicesView(BasePushView):
             issue_date=data.get("issue_date"),
             discount_amount=data.get("discount_amount", 0),
             currency=data.get("currency") or None,
+            note=data.get("note", ""),
             id=item_id,
             created_at=data.get("created_at"),
         )

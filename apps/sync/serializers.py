@@ -56,7 +56,9 @@ class InvoiceLinePushSerializer(serializers.Serializer):
 class InvoicePushSerializer(serializers.Serializer):
     id = serializers.UUIDField(required=False)
     created_at = serializers.DateTimeField(required=False)
-    type = serializers.ChoiceField(choices=[Invoice.DEVIS, Invoice.FACTURE], default=Invoice.DEVIS)
+    type = serializers.ChoiceField(
+        choices=[Invoice.DEVIS, Invoice.FACTURE, Invoice.COMMANDE], default=Invoice.DEVIS
+    )
     client = ClientPushSerializer(required=False, allow_null=True)
     lines = InvoiceLinePushSerializer(many=True)
     discount_amount = serializers.DecimalField(
@@ -64,6 +66,7 @@ class InvoicePushSerializer(serializers.Serializer):
     )
     currency = serializers.CharField(max_length=3, required=False, allow_blank=True, default="")
     issue_date = serializers.DateField(required=False)
+    note = serializers.CharField(required=False, allow_blank=True, default="")
     created_by_user_id = serializers.UUIDField(required=False, allow_null=True)
 
 
@@ -293,7 +296,7 @@ class InvoicePullSerializer(serializers.ModelSerializer):
         model = Invoice
         fields = [
             "id", "client_id", "number", "type", "status", "issue_date", "due_date",
-            "currency", "subtotal_ht", "total_tva", "total_ttc", "discount_amount",
+            "currency", "subtotal_ht", "total_tva", "total_ttc", "discount_amount", "note",
             "created_by_id", "lines", "payments", "updated_at",
         ]
 

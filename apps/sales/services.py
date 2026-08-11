@@ -59,7 +59,7 @@ def get_or_create_client(*, boutique, id=None, name, phone="", email="", address
 
 @transaction.atomic
 def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None,
-                   discount_amount=Decimal("0"), currency=None, id=None, created_at=None):
+                   discount_amount=Decimal("0"), currency=None, note="", id=None, created_at=None):
     """Crée une facture/devis en BROUILLON avec ses lignes. `lines_data` :
     liste de dicts {product, description, quantity, unit_price_ht, tva_rate,
     discount_amount}. `discount_amount` est la remise globale de la
@@ -77,14 +77,20 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
             return existing
 
     issue_date = issue_date or timezone.localdate()
+    number = (
+        Invoice.generate_commande_number(boutique, issue_date)
+        if type == Invoice.COMMANDE
+        else Invoice.generate_number(boutique, issue_date)
+    )
     invoice_kwargs = dict(
         boutique=boutique,
         client=client,
         type=type,
-        number=Invoice.generate_number(boutique, issue_date),
+        number=number,
         issue_date=issue_date,
         currency=currency or boutique.devise,
         discount_amount=discount_amount,
+        note=note,
         created_by=created_by,
     )
     if id is not None:
@@ -193,6 +199,88 @@ def convert_devis_to_invoice(devis, created_by=None):
 
 
 @transaction.atomic
+def convert_commande_to_invoice(commande, created_by=None):
+    """Transforme une commande validée en facture réelle : copie ses
+    lignes dans une nouvelle Invoice(type=FACTURE), déduit le stock des
+    lignes reliées à un produit (comme convert_devis_to_invoice) et marque
+    la commande CONVERTIE. Contrairement au devis, une commande peut déjà
+    porter un acompte au moment de la conversion — ces paiements sont
+    reportés sur la facture générée (pas dupliqués) pour que le "reste à
+    payer" soit correct dès l'affichage. Idempotente : renvoie la facture
+    déjà générée si l'opération a déjà eu lieu."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être convertie en facture.")
+
+    existing = commande.conversions.filter(type=Invoice.FACTURE).first()
+    if existing:
+        return existing
+
+    issue_date = timezone.localdate()
+    invoice = Invoice.objects.create(
+        boutique=commande.boutique,
+        client=commande.client,
+        type=Invoice.FACTURE,
+        status=Invoice.VALIDEE,
+        number=Invoice.generate_number(commande.boutique, issue_date),
+        issue_date=issue_date,
+        currency=commande.currency,
+        subtotal_ht=commande.subtotal_ht,
+        total_tva=commande.total_tva,
+        total_ttc=commande.total_ttc,
+        discount_amount=commande.discount_amount,
+        converted_from=commande,
+        created_by=created_by,
+    )
+
+    for line in commande.lines.all():
+        InvoiceLine.objects.create(
+            invoice=invoice,
+            product=line.product,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price_ht=line.unit_price_ht,
+            tva_rate=line.tva_rate,
+            discount_amount=line.discount_amount,
+            line_total_ht=line.line_total_ht,
+            line_total_ttc=line.line_total_ttc,
+            position=line.position,
+        )
+        if line.product is not None:
+            stock_services.apply_movement(
+                boutique=commande.boutique,
+                product=line.product,
+                type=StockMovement.VENTE,
+                quantity=-line.quantity,
+                reference_invoice=invoice,
+                created_by=created_by,
+                reason=f"Facture {invoice.number} (commande {commande.number})",
+            )
+
+    commande.payments.update(invoice=invoice)
+    _apply_payment_status(invoice)
+
+    commande.status = Invoice.CONVERTIE
+    commande.save(update_fields=["status", "updated_at"])
+    return invoice
+
+
+def _apply_payment_status(invoice):
+    """Recalcule et sauvegarde le statut PAYEE/PARTIELLEMENT_PAYEE à partir
+    du total déjà payé — factorisé pour être réutilisé aussi bien après un
+    nouveau paiement (record_payment) qu'après un report de paiements
+    existants sur une nouvelle facture (convert_commande_to_invoice)."""
+
+    total_paid = invoice.payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
+    if total_paid >= invoice.total_ttc:
+        invoice.status = Invoice.PAYEE
+    elif total_paid > 0:
+        invoice.status = Invoice.PARTIELLEMENT_PAYEE
+    invoice.save(update_fields=["status", "updated_at"])
+    return invoice
+
+
+@transaction.atomic
 def record_payment(invoice, *, amount, method, reference="", created_by=None, id=None, created_at=None):
     """`id`/`created_at` : rejeu idempotent d'un paiement enregistré
     hors-ligne — si `id` existe déjà, ne recrée rien et ne recalcule pas
@@ -215,13 +303,7 @@ def record_payment(invoice, *, amount, method, reference="", created_by=None, id
         payment_kwargs["paid_at"] = created_at
     Payment.objects.create(**payment_kwargs)
 
-    total_paid = invoice.payments.aggregate(total=Sum("amount"))["total"] or Decimal("0")
-    if total_paid >= invoice.total_ttc:
-        invoice.status = Invoice.PAYEE
-    elif total_paid > 0:
-        invoice.status = Invoice.PARTIELLEMENT_PAYEE
-    invoice.save(update_fields=["status", "updated_at"])
-    return invoice
+    return _apply_payment_status(invoice)
 
 
 @transaction.atomic

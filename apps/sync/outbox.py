@@ -70,6 +70,7 @@ def _serialize_invoice(object_id):
         "discount_amount": str(invoice.discount_amount),
         "currency": invoice.currency,
         "issue_date": invoice.issue_date.isoformat(),
+        "note": invoice.note,
         "created_by_user_id": str(invoice.created_by_id) if invoice.created_by_id else None,
     }
     if invoice.client_id:

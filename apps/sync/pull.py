@@ -192,6 +192,7 @@ def _upsert_invoice(items, boutique_id):
                 "total_tva": item["total_tva"],
                 "total_ttc": item["total_ttc"],
                 "discount_amount": item.get("discount_amount", 0),
+                "note": item.get("note", ""),
                 "created_by_id": item.get("created_by_id"),
             },
         )

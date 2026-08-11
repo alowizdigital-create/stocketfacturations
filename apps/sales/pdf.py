@@ -150,7 +150,12 @@ def render_invoice_pdf(invoice):
     c = pdfcanvas.Canvas(buffer, pagesize=(PAGE_WIDTH, height))
     w = _ReceiptWriter(c, height)
 
-    title = "FACTURE" if invoice.type == invoice.FACTURE else "DEVIS"
+    if invoice.type == invoice.FACTURE:
+        title = "FACTURE"
+    elif invoice.type == invoice.COMMANDE:
+        title = "COMMANDE"
+    else:
+        title = "DEVIS"
 
     if logo_sized is not None:
         w.logo(logo_sized)

@@ -36,7 +36,12 @@
             <i class="bi bi-whatsapp"></i> WhatsApp (pas de téléphone)
         </span>
         {% endif %}
-        {% if invoice.status == "BROUILLON" %}
+        {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
+        <form method="post" action="{% url 'sales:commande_generate_invoice' invoice.id %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider la commande</button>
+        </form>
+        {% elif invoice.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider le devis</button>
@@ -49,18 +54,52 @@
         <a href="{% url 'sales:invoice_detail' converted_invoice.id %}" class="btn btn-primary">
             <i class="bi bi-receipt"></i> Voir la facture {{ converted_invoice.number }}
         </a>
+        {% elif invoice.type == "COMMANDE" and invoice.status == "CONVERTIE" and converted_invoice %}
+        <a href="{% url 'sales:invoice_detail' converted_invoice.id %}" class="btn btn-primary">
+            <i class="bi bi-receipt"></i> Voir la facture {{ converted_invoice.number }}
+        </a>
         {% endif %}
     </div>
 </div>
+
+{% if invoice.type == "COMMANDE" %}
+<div class="card-app mb-3">
+    <div class="card-app-header">Informations de la commande</div>
+    <div class="card-app-body">
+        <div class="row g-2">
+            <div class="col-sm-4"><span class="text-muted small">Client</span><br>{{ invoice.client|default:"Client de passage" }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %}</div>
+            <div class="col-sm-4"><span class="text-muted small">Date</span><br>{{ invoice.issue_date|date:"d/m/Y" }}</div>
+            <div class="col-sm-4"><span class="text-muted small">Devise</span><br>{{ invoice.currency }}</div>
+        </div>
+        {% if invoice.note %}
+        <hr>
+        <!-- <div class="text-muted small mb-1"><i class="bi bi-eye-slash"></i> Note interne — jamais sur le reçu/PDF envoyé au client</div> -->
+        <div style="white-space: pre-wrap;">{{ invoice.note }}</div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="table-app mb-3">
             <table class="table mb-0">
-                <thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Remise</th><th>Total TTC</th></tr></thead>
+                <thead><tr>
+                    {% if invoice.type == "COMMANDE" %}<th></th>{% endif %}
+                    <th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Remise</th><th>Total TTC</th>
+                </tr></thead>
                 <tbody>
                     {% for line in invoice.lines.all %}
                     <tr>
+                        {% if invoice.type == "COMMANDE" %}
+                        <td style="width:48px;">
+                            {% if line.product.image %}
+                            <img src="{{ line.product.image.url }}" alt="" style="width:40px;height:40px;object-fit:cover;border-radius:6px;">
+                            {% else %}
+                            <span class="pos-thumb pos-thumb-placeholder">{{ line.description|slice:":1"|upper }}</span>
+                            {% endif %}
+                        </td>
+                        {% endif %}
                         <td>{{ line.description }}</td>
                         <td>{{ line.quantity }}</td>
                         <td>{{ line.unit_price_ht }}</td>
@@ -93,7 +132,7 @@
                 </table>
             </div>
             {% if invoice.status != "ANNULEE" %}
-            <div class="card-app-body border-top">
+            <!-- <div class="card-app-body border-top">
                 <form method="post" action="{% url 'sales:payment_create' invoice.id %}" class="row g-2 align-items-end">
                     {% csrf_token %}
                     <div class="col-md-3">
@@ -112,9 +151,11 @@
                         <button type="submit" class="btn btn-primary w-100">Enregistrer</button>
                     </div>
                 </form>
-            </div>
+            </div> -->
             {% endif %}
         </div>
+
+        
     </div>
 
     <div class="col-lg-4">

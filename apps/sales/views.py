@@ -481,6 +481,15 @@ def devis_list(request):
     return render(request, "sales/devis_list.html", {"devis": devis})
 
 
+@login_required
+def commande_list(request):
+    commandes = (
+        Invoice.objects.filter(boutique=request.boutique, type=Invoice.COMMANDE)
+        .select_related("client")
+    )
+    return render(request, "sales/commande_list.html", {"commandes": commandes})
+
+
 def _preselected_products_for_formset(formset, compte):
     """Infos (nom/image/prix/...) des produits déjà associés aux lignes du
     formset, pour que le JS puisse redessiner la vignette de sélection sans
@@ -548,6 +557,64 @@ def invoice_create(request):
     )
 
 
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def commande_create(request):
+    """Même mécanique que invoice_create (devis) : la commande est créée en
+    BROUILLON, sans impact sur le stock — voir services.build_invoice. Seul
+    le type diffère ; convert_commande_to_invoice() s'occupe de la
+    conversion en facture (stock déduit à ce moment-là)."""
+    if request.method == "POST":
+        form = InvoiceForm(request.POST, boutique=request.boutique)
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        if form.is_valid() and formset.is_valid():
+            lines_data = _extract_lines_data(formset)
+            if not lines_data:
+                messages.error(request, "Ajoutez au moins une ligne à la commande.")
+            else:
+                invoice = services.build_invoice(
+                    boutique=request.boutique,
+                    client=form.cleaned_data["client"],
+                    type=Invoice.COMMANDE,
+                    created_by=request.user,
+                    lines_data=lines_data,
+                    discount_amount=Decimal(form.cleaned_data["discount_amount"]),
+                    currency=form.cleaned_data["currency"] or request.boutique.devise,
+                    note=form.cleaned_data["note"],
+                )
+
+                deposit_amount = min(form.cleaned_data["deposit_amount"], invoice.total_ttc)
+                if deposit_amount > 0:
+                    payment_id = uuid.uuid4()
+                    services.record_payment(
+                        invoice, amount=deposit_amount, method=Payment.ESPECES,
+                        created_by=request.user, id=payment_id,
+                    )
+                    if settings.IS_OFFLINE:
+                        outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
+
+                if settings.IS_OFFLINE:
+                    outbox.enqueue(OutboxEntry.INVOICE, invoice.id)
+                messages.success(request, f"{invoice.number} créée en brouillon.")
+                return redirect("sales:invoice_detail", invoice_id=invoice.id)
+    else:
+        form = InvoiceForm(boutique=request.boutique)
+        formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte})
+
+    preselected_products = _preselected_products_for_formset(formset, request.compte)
+    return render(
+        request,
+        "sales/invoice_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "preselected_products": preselected_products,
+            "rate_map": request.boutique.exchange_rate_map,
+            "document_kind": "commande",
+        },
+    )
+
+
 def _public_pdf_url(request, invoice):
     return request.build_absolute_uri(reverse("sales:invoice_public_pdf", args=[invoice.id]))
 
@@ -569,7 +636,7 @@ def _public_gallery_url(request, invoice):
 @login_required
 def invoice_detail(request, invoice_id):
     invoice = get_object_or_404(
-        Invoice.objects.select_related("client", "boutique").prefetch_related("lines", "payments"),
+        Invoice.objects.select_related("client", "boutique").prefetch_related("lines__product", "payments"),
         id=invoice_id,
         boutique=request.boutique,
     )
@@ -586,7 +653,7 @@ def invoice_detail(request, invoice_id):
         )
 
     converted_invoice = None
-    if invoice.type == Invoice.DEVIS and invoice.status == Invoice.CONVERTIE:
+    if invoice.type in (Invoice.DEVIS, Invoice.COMMANDE) and invoice.status == Invoice.CONVERTIE:
         converted_invoice = invoice.conversions.filter(type=Invoice.FACTURE).first()
 
     return render(
@@ -687,6 +754,39 @@ def devis_generate_invoice(request, invoice_id):
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
     return redirect("sales:invoice_detail", invoice_id=devis.id)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def commande_generate_invoice(request, invoice_id):
+    """Valide une commande en un seul clic : contrairement au devis, pas de
+    choix paiement complet/acompte ici — l'acompte éventuel a déjà été
+    saisi séparément via le formulaire de paiement générique (voir
+    payment_create) et sera reporté automatiquement sur la facture par
+    services.convert_commande_to_invoice()."""
+    commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
+    if commande.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
+        messages.error(request, "Cette commande ne peut plus être validée.")
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    if settings.IS_OFFLINE:
+        # Même limite que devis_generate_invoice : convert_commande_to_invoice()
+        # n'est pas rejouable (pas d'id=/created_at=) et il n'existe aucun
+        # endpoint de push capable de reproduire "convertir + déduire le
+        # stock + marquer CONVERTIE" côté serveur.
+        messages.error(
+            request,
+            "La validation de commande en facture n'est pas encore disponible hors-ligne — "
+            "utilisez le poste en ligne.",
+        )
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    if request.method == "POST":
+        invoice = services.convert_commande_to_invoice(commande, created_by=request.user)
+        messages.success(request, f"{invoice.number} générée depuis {commande.number}.")
+        return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+    return redirect("sales:invoice_detail", invoice_id=commande.id)
 
 
 @login_required

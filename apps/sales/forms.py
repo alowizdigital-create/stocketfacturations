@@ -59,10 +59,20 @@ class InvoiceForm(BootstrapFormMixin, forms.Form):
     currency = forms.ChoiceField(
         label="Devise",
         required=False,
-        help_text="Devise de ce devis — par défaut celle de la boutique, modifiable au cas par cas.",
+        help_text="Devise de ce document — par défaut celle de la boutique, modifiable au cas par cas.",
     )
     discount_amount = forms.IntegerField(
         label="Remise globale (FCFA)", min_value=0, required=False, initial=0,
+    )
+    # Ces deux champs ne concernent qu'une commande (voir invoice_form.html)
+    # — un devis n'a ni acompte ni note interne dans le périmètre actuel.
+    # Renseignés via le pop-up affiché au clic sur "Créer la commande"
+    # (même principe que payment_type/deposit_amount sur SaleForm), jamais
+    # affichés directement comme champs de formulaire classiques.
+    note = forms.CharField(required=False, widget=forms.HiddenInput())
+    deposit_amount = forms.DecimalField(
+        max_digits=14, decimal_places=0, min_value=Decimal("0"),
+        widget=forms.HiddenInput(), required=False,
     )
 
     def __init__(self, *args, boutique=None, **kwargs):
@@ -77,6 +87,9 @@ class InvoiceForm(BootstrapFormMixin, forms.Form):
 
     def clean_discount_amount(self):
         return self.cleaned_data.get("discount_amount") or 0
+
+    def clean_deposit_amount(self):
+        return self.cleaned_data.get("deposit_amount") or Decimal("0")
 
 
 class SaleForm(BootstrapFormMixin, forms.Form):

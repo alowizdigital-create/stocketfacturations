@@ -63,6 +63,9 @@
             <a class="nav-link {% if '/devis' in request.path %}active{% endif %}" href="{% url 'sales:devis_list' %}">
                 <i class="bi bi-file-earmark-text"></i> Devis
             </a>
+            <a class="nav-link {% if '/commandes' in request.path %}active{% endif %}" href="{% url 'sales:commande_list' %}">
+                <i class="bi bi-bag-check"></i> Commandes
+            </a>
             <a class="nav-link {% if request.path == '/factures/' %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
                 <i class="bi bi-receipt"></i> Factures
             </a>

@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}Nouveau devis{% endblock %}
+{% block title %}{% if document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Nouveau devis</h1></div></div>
+<div class="page-header"><div><h1>{% if document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}</h1></div></div>
 <form method="post" id="devis-form">
     {% csrf_token %}
     <div class="card-app mb-3">
@@ -100,11 +100,50 @@
         </div>
     </div>
 
+    {{ form.note }}
+    {{ form.deposit_amount }}
     <div class="d-flex gap-2 mt-4">
-        <button type="submit" id="devis-submit" class="btn btn-primary">Créer le devis</button>
-        <a href="{% url 'sales:devis_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if document_kind == "commande" %}Créer la commande{% else %}Créer le devis{% endif %}</button>
+        <a href="{% if document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
+
+{% if document_kind == "commande" %}
+<!-- Note + acompte demandés au moment de créer la commande (même principe
+     que le pop-up de paiement de sale_form.html) — le client n'a pas
+     forcément encore payé, l'acompte reste optionnel (0 = aucun acompte). -->
+<div class="modal fade" id="commande-info-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Finaliser la commande</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                    <span class="text-muted">Total de la commande</span>
+                    <span class="fw-bold fs-5" id="commande-modal-total">0</span>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label" for="commande-deposit-input">Acompte encaissé (FCFA)</label>
+                    <input type="number" min="0" step="1" class="form-control form-control-lg" id="commande-deposit-input" value="0">
+                    <div class="form-text">Laissez 0 si le client n'a encore rien versé.</div>
+                    <div class="text-danger small mt-1 d-none" id="commande-deposit-error">Entrez un montant valide, entre 0 et le total.</div>
+                </div>
+                <div>
+                    <label class="form-label" for="commande-note-input">Note (usage interne)</label>
+                    <textarea class="form-control" id="commande-note-input" rows="3"></textarea>
+                    <div class="form-text">N'apparaît jamais sur le reçu/PDF envoyé au client.</div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="commande-info-confirm">Créer la commande</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 <template id="line-row-template">
     <tr class="line-row">
@@ -191,6 +230,7 @@
     let currency = currencySelect.value || "{{ request.boutique.devise }}";
     const boutiqueDevise = "{{ request.boutique.devise }}";
     const rateMap = JSON.parse(document.getElementById("rate-map-data").textContent);
+    let currentTotal = 0;
 
     // Convertit un montant d'une devise à une autre via leur taux commun
     // (voir Boutique.exchange_rate_map) — pas de conversion possible sans
@@ -331,6 +371,7 @@
             discountRow.classList.add("d-none");
         }
         const finalTotal = Math.max(subtotal + tva - globalDiscount, 0);
+        currentTotal = finalTotal;
         document.getElementById("recap-subtotal").textContent = fmt(subtotal);
         document.getElementById("recap-tva").textContent = fmt(tva);
         document.getElementById("recap-total").textContent = fmt(finalTotal);
@@ -552,6 +593,40 @@
     });
     reindexRows();
     recomputeAll();
+
+    {% if document_kind == "commande" %}
+    // --- Pop-up "note + acompte" affiché au clic sur "Créer la commande" --
+    const commandeModalEl = document.getElementById("commande-info-modal");
+    const commandeModal = new bootstrap.Modal(commandeModalEl);
+    const commandeModalTotal = document.getElementById("commande-modal-total");
+    const commandeDepositInput = document.getElementById("commande-deposit-input");
+    const commandeDepositError = document.getElementById("commande-deposit-error");
+    const commandeNoteInput = document.getElementById("commande-note-input");
+    const noteHidden = document.getElementById("id_note");
+    const depositAmountHidden = document.getElementById("id_deposit_amount");
+    const commandeForm = document.getElementById("devis-form");
+
+    submitBtn.addEventListener("click", () => {
+        if (submitBtn.disabled) return;
+        commandeModalTotal.textContent = fmt(currentTotal);
+        commandeDepositInput.value = depositAmountHidden.value || "0";
+        commandeNoteInput.value = noteHidden.value || "";
+        commandeDepositError.classList.add("d-none");
+        commandeModal.show();
+    });
+
+    document.getElementById("commande-info-confirm").addEventListener("click", () => {
+        const amount = commandeDepositInput.value === "" ? 0 : parseFloat(commandeDepositInput.value);
+        if (isNaN(amount) || amount < 0 || amount > currentTotal) {
+            commandeDepositError.classList.remove("d-none");
+            return;
+        }
+        depositAmountHidden.value = amount;
+        noteHidden.value = commandeNoteInput.value;
+        commandeModal.hide();
+        commandeForm.requestSubmit();
+    });
+    {% endif %}
 })();
 </script>
 {% endblock %}

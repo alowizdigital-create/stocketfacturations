@@ -113,7 +113,8 @@ class SaleLine(UUIDModel):
 class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     DEVIS = "DEVIS"
     FACTURE = "FACTURE"
-    TYPE_CHOICES = [(DEVIS, "Devis"), (FACTURE, "Facture")]
+    COMMANDE = "COMMANDE"
+    TYPE_CHOICES = [(DEVIS, "Devis"), (FACTURE, "Facture"), (COMMANDE, "Commande")]
 
     BROUILLON = "BROUILLON"
     VALIDEE = "VALIDEE"
@@ -145,6 +146,10 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     discount_amount = models.DecimalField(
         "remise globale (FCFA)", max_digits=14, decimal_places=0, default=0
     )
+    note = models.TextField(
+        "note interne", blank=True,
+        help_text="Usage interne uniquement — n'apparaît jamais sur le reçu/PDF.",
+    )
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"
     )
@@ -170,6 +175,16 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
         avec le serveur central."""
         issue_date = issue_date or timezone.localdate()
         prefix = f"{boutique.code}-{issue_date:%Y%m%d}-"
+        existing = Invoice.objects.filter(boutique=boutique, number__startswith=prefix).count()
+        return f"{prefix}{existing + 1:04d}"
+
+    @staticmethod
+    def generate_commande_number(boutique, issue_date=None):
+        """Préfixe `-CMD-` distinct (même principe que Sale.generate_number
+        avec `-V-`) : une commande se repère au premier coup d'œil et ne
+        partage jamais son compteur avec les devis/factures."""
+        issue_date = issue_date or timezone.localdate()
+        prefix = f"{boutique.code}-CMD-{issue_date:%Y%m%d}-"
         existing = Invoice.objects.filter(boutique=boutique, number__startswith=prefix).count()
         return f"{prefix}{existing + 1:04d}"
 
