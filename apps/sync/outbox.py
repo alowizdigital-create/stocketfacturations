@@ -1,6 +1,7 @@
 import uuid
 
 from django.conf import settings
+from django.db import models
 from django.utils import timezone
 
 from .activation import get_active_client
@@ -141,13 +142,25 @@ PUSH_ENDPOINTS = {
 }
 
 
+MAX_ATTEMPTS = 20  # au-delà, une entrée en erreur cesse d'être retentée automatiquement
+
+
 def run_push_cycle(client=None):
     client = client or get_active_client()
     summary = {}
 
     for kind, (path, serialize_fn) in PUSH_ENDPOINTS.items():
+        # Les entrées ERROR sont retentées (pas seulement PENDING) : une
+        # erreur peut être transitoire (ex: produit pas encore présent
+        # localement au moment du premier essai, mais arrivé depuis via un
+        # pull plus récent) — sans ça, une entrée en erreur ne se
+        # synchronise plus jamais, même une fois la cause corrigée.
         pending = list(
-            OutboxEntry.objects.filter(kind=kind, status=OutboxEntry.PENDING)
+            OutboxEntry.objects.filter(kind=kind)
+            .filter(
+                models.Q(status=OutboxEntry.PENDING)
+                | models.Q(status=OutboxEntry.ERROR, attempts__lt=MAX_ATTEMPTS)
+            )
             .order_by("created_at")[:BATCH_SIZE]
         )
         if not pending:

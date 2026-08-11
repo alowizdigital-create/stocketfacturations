@@ -86,6 +86,20 @@ def _upsert_unit(items, compte_id):
         )
 
 
+def _upsert_client(items, boutique_id):
+    from apps.sales.models import Client
+
+    for item in items:
+        Client.objects.update_or_create(
+            id=item["id"],
+            defaults={
+                "boutique_id": boutique_id, "name": item["name"], "phone": item.get("phone", ""),
+                "email": item.get("email", ""), "address": item.get("address", ""),
+                "nif": item.get("nif", ""),
+            },
+        )
+
+
 def _upsert_exchange_rate(items, boutique_id):
     from apps.tenants.models import ExchangeRate
 
@@ -178,6 +192,7 @@ def _upsert_product_boutique_price(items, boutique_id):
 # memberships a besoin de users ; products a besoin de categories/units ;
 # product_boutique_prices a besoin de products.
 PULL_RESOURCES = [
+    ("clients", "pull/sales/clients/", _upsert_client, "boutique"),
     ("tax_rates", "pull/sales/tax-rates/", _upsert_tax_rate, "compte"),
     ("categories", "pull/catalog/categories/", _upsert_category, "compte"),
     ("units", "pull/catalog/units/", _upsert_unit, "compte"),

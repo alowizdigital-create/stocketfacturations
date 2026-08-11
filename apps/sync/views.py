@@ -18,7 +18,7 @@ from rest_framework.views import APIView
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
 from apps.sales import services as sales_services
-from apps.sales.models import Payment, Sale, TaxRate
+from apps.sales.models import Client, Payment, Sale, TaxRate
 from apps.stock import services as stock_services
 from apps.stock.models import StockLevel, StockMovement
 from apps.tenants.models import BoutiqueAPIToken, ExchangeRate, Membership
@@ -30,6 +30,7 @@ from .pull import run_pull_cycle
 from .serializers import (
     BoutiquePullSerializer,
     CategoryPullSerializer,
+    ClientPullSerializer,
     ClientPushSerializer,
     ExchangeRatePullSerializer,
     InvoicePushSerializer,
@@ -424,6 +425,17 @@ class PullMembershipsView(BasePullView):
 
     def get_base_queryset(self):
         return Membership.objects.filter(boutique__compte=self.compte, is_active=True).select_related("user")
+
+
+class PullClientsView(BasePullView):
+    """Redescend les clients créés côté web (ou par un autre poste offline)
+    — pas seulement ceux créés par ce poste précis. Sans ça, un caissier
+    hors-ligne ne retrouve jamais un client enregistré en ligne."""
+
+    serializer_class = ClientPullSerializer
+
+    def get_base_queryset(self):
+        return Client.objects.filter(boutique=self.boutique)
 
 
 class PullExchangeRatesView(BasePullView):

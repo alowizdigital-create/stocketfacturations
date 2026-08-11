@@ -18,6 +18,7 @@ urlpatterns = [
     path("pull/accounts/users/", views.PullUsersView.as_view(), name="pull_users"),
     path("pull/tenants/memberships/", views.PullMembershipsView.as_view(), name="pull_memberships"),
     path("pull/tenants/exchange-rates/", views.PullExchangeRatesView.as_view(), name="pull_exchange_rates"),
+    path("pull/sales/clients/", views.PullClientsView.as_view(), name="pull_clients"),
     path("pull/sales/tax-rates/", views.PullTaxRatesView.as_view(), name="pull_tax_rates"),
     path("pull/catalog/categories/", views.PullCategoriesView.as_view(), name="pull_categories"),
     path("pull/catalog/units/", views.PullUnitsView.as_view(), name="pull_units"),

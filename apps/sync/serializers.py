@@ -4,7 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
-from apps.sales.models import Invoice, Payment, TaxRate
+from apps.sales.models import Client, Invoice, Payment, TaxRate
 from apps.stock.models import StockLevel, StockMovement
 from apps.tenants.models import Boutique, ExchangeRate, Membership
 
@@ -163,6 +163,16 @@ class MembershipPullSerializer(serializers.ModelSerializer):
             "id", "user_id", "user_email", "user_first_name", "user_last_name",
             "role", "is_active", "updated_at",
         ]
+
+
+class ClientPullSerializer(serializers.ModelSerializer):
+    """Clients créés côté web (ou par un autre poste offline via push) —
+    redescendus vers ce poste pour qu'un caissier puisse les retrouver
+    hors-ligne, pas seulement ceux qu'il a lui-même créés localement."""
+
+    class Meta:
+        model = Client
+        fields = ["id", "name", "phone", "email", "address", "nif", "updated_at"]
 
 
 class ExchangeRatePullSerializer(serializers.ModelSerializer):
