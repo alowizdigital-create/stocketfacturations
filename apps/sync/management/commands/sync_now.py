@@ -24,14 +24,25 @@ class Command(BaseCommand):
         except RuntimeError as exc:
             raise CommandError(str(exc))
 
+        # Pull et push tentés indépendamment : un pull en échec (réseau,
+        # ressource en erreur) ne doit jamais empêcher le push de tourner
+        # — voir desktop/sync_worker.py pour la même logique en continu.
         self.stdout.write("Pull...")
-        pull_summary = run_pull_cycle(client)
-        for resource, count in pull_summary.items():
-            self.stdout.write(f"  {resource}: {count}")
+        try:
+            pull_summary = run_pull_cycle(client)
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(self.style.ERROR(f"  Échec du pull : {exc}"))
+        else:
+            for resource, count in pull_summary.items():
+                self.stdout.write(f"  {resource}: {count}")
 
         self.stdout.write("Push...")
-        push_summary = run_push_cycle(client)
-        for kind, result in push_summary.items():
-            self.stdout.write(f"  {kind}: {result}")
+        try:
+            push_summary = run_push_cycle(client)
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(self.style.ERROR(f"  Échec du push : {exc}"))
+        else:
+            for kind, result in push_summary.items():
+                self.stdout.write(f"  {kind}: {result}")
 
         self.stdout.write(self.style.SUCCESS("Synchronisation terminée."))

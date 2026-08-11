@@ -106,6 +106,84 @@ def test_upsert_sale_links_known_invoice_and_ignores_unknown_invoice():
     assert sale_b.invoice_id is None  # facture inconnue localement -> résolution défensive
 
 
+def test_upsert_invoice_number_collision_is_skipped_without_crashing_other_items():
+    """Régression réelle observée en production : deux factures tirées
+    dans la même page qui finissent avec le même (boutique, number) —
+    l'update_or_create() de la seconde lève IntegrityError. Avant le
+    correctif, cette exception remontait telle quelle jusqu'à
+    desktop.sync_worker, qui exécutait pull puis push dans le MÊME bloc
+    try/except : le push n'était donc plus jamais atteint, tant que cette
+    facture restait en conflit — plus aucune donnée locale ne partait,
+    silencieusement, à chaque cycle. _upsert_invoice doit maintenant
+    absorber l'erreur sur CET item et continuer avec les autres."""
+    boutique = BoutiqueFactory()
+    existing_id = str(uuid.uuid4())
+    colliding_id = str(uuid.uuid4())
+    other_id = str(uuid.uuid4())
+
+    Invoice.objects.create(boutique=boutique, id=existing_id, number="BTQ-DUP-0001", total_ttc=1000)
+
+    colliding_item = {
+        # Même numéro que la facture déjà locale, mais un id différent :
+        # l'update_or_create(id=colliding_id, defaults={"number": ...})
+        # crée une nouvelle ligne, qui viole la contrainte unique.
+        "id": colliding_id, "client_id": None, "number": "BTQ-DUP-0001",
+        "type": Invoice.FACTURE, "status": Invoice.VALIDEE, "issue_date": "2026-01-01",
+        "due_date": None, "currency": "XOF", "subtotal_ht": "1000", "total_tva": "180",
+        "total_ttc": "1180", "discount_amount": "0", "created_by_id": None,
+        "lines": [], "payments": [],
+    }
+    other_item = {
+        "id": other_id, "client_id": None, "number": "BTQ-OK-0002",
+        "type": Invoice.FACTURE, "status": Invoice.VALIDEE, "issue_date": "2026-01-01",
+        "due_date": None, "currency": "XOF", "subtotal_ht": "500", "total_tva": "90",
+        "total_ttc": "590", "discount_amount": "0", "created_by_id": None,
+        "lines": [], "payments": [],
+    }
+
+    pull_module._upsert_invoice([colliding_item, other_item], boutique.id)
+
+    assert not Invoice.objects.filter(pk=colliding_id).exists()
+    assert Invoice.objects.filter(pk=other_id, number="BTQ-OK-0002").exists()
+
+
+def test_run_pull_cycle_continues_after_one_resource_fails(monkeypatch):
+    boutique = BoutiqueFactory()
+    _activate(boutique)
+
+    def failing_upsert(items, scope_id):
+        raise RuntimeError("upsert cassé pour cette ressource")
+
+    # PULL_RESOURCES capture la fonction _upsert_category par référence
+    # directe à l'import : patcher l'attribut du module ne suffit pas, il
+    # faut remplacer l'entrée correspondante dans la liste elle-même.
+    patched_resources = [
+        (resource, path, failing_upsert if resource == "categories" else upsert_fn, scope)
+        for resource, path, upsert_fn, scope in pull_module.PULL_RESOURCES
+    ]
+    monkeypatch.setattr(pull_module, "PULL_RESOURCES", patched_resources)
+
+    mock_client = MagicMock()
+
+    def fake_get(path, params=None):
+        if path == "pull/tenants/boutique/":
+            return {
+                "id": str(boutique.id), "name": boutique.name, "code": boutique.code,
+                "devise": boutique.devise, "compte_id": str(boutique.compte_id),
+                "compte_name": boutique.compte.name, "server_time": "2026-01-01T00:00:00Z",
+            }
+        return {"results": [], "next": None, "server_time": "2026-01-01T00:00:00Z"}
+
+    mock_client.get.side_effect = fake_get
+
+    summary = pull_module.run_pull_cycle(client=mock_client)  # ne doit jamais lever
+
+    assert summary["categories"] == "error"
+    assert summary["units"] == 0  # les ressources suivantes sont bien traitées malgré tout
+    called_paths = [call.args[0] for call in mock_client.get.call_args_list]
+    assert "pull/catalog/units/" in called_paths
+
+
 def test_run_pull_cycle_pulls_invoices_and_sales_resources():
     boutique = BoutiqueFactory()
     _activate(boutique)

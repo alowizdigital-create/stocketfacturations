@@ -1,5 +1,9 @@
+import logging
+
 from .activation import get_active_client
 from .models import DeviceActivation, SyncCursor
+
+log = logging.getLogger("apps.sync.pull")
 
 
 def _pull_boutique(client):
@@ -173,96 +177,114 @@ def _existing_id(queryset, pk):
 
 
 def _upsert_invoice(items, boutique_id):
+    from django.db import transaction
+
     from apps.catalog.models import Product
     from apps.sales.models import Client, Invoice, InvoiceLine, Payment
 
     for item in items:
-        invoice, _ = Invoice.objects.update_or_create(
-            id=item["id"],
-            defaults={
-                "boutique_id": boutique_id,
-                "client_id": _existing_id(Client.objects, item.get("client_id")),
-                "number": item["number"],
-                "type": item["type"],
-                "status": item["status"],
-                "issue_date": item["issue_date"],
-                "due_date": item.get("due_date"),
-                "currency": item["currency"],
-                "subtotal_ht": item["subtotal_ht"],
-                "total_tva": item["total_tva"],
-                "total_ttc": item["total_ttc"],
-                "discount_amount": item.get("discount_amount", 0),
-                "note": item.get("note", ""),
-                "created_by_id": item.get("created_by_id"),
-            },
-        )
-        for line in item.get("lines", []):
-            InvoiceLine.objects.update_or_create(
-                id=line["id"],
-                defaults={
-                    "invoice": invoice,
-                    "product_id": _existing_id(Product.objects, line.get("product_id")),
-                    "description": line["description"],
-                    "quantity": line["quantity"],
-                    "unit_price_ht": line["unit_price_ht"],
-                    "tva_rate": line.get("tva_rate", 0),
-                    "discount_amount": line.get("discount_amount", 0),
-                    "line_total_ht": line["line_total_ht"],
-                    "line_total_ttc": line["line_total_ttc"],
-                    "position": line.get("position", 0),
-                },
-            )
-        for payment in item.get("payments", []):
-            Payment.objects.update_or_create(
-                id=payment["id"],
-                defaults={
-                    "invoice": invoice,
-                    "boutique_id": boutique_id,
-                    "amount": payment["amount"],
-                    "method": payment.get("method", Payment.ESPECES),
-                    "reference": payment.get("reference", ""),
-                    "paid_at": payment["paid_at"],
-                    "created_by_id": payment.get("created_by_id"),
-                },
-            )
+        # Un item par transaction, jamais laissé à moitié écrit — et une
+        # erreur sur CET item (ex: collision de numéro, voir _existing_id
+        # pour le même principe côté FK) ne doit jamais empêcher les
+        # autres factures de la même page d'être tirées.
+        try:
+            with transaction.atomic():
+                invoice, _ = Invoice.objects.update_or_create(
+                    id=item["id"],
+                    defaults={
+                        "boutique_id": boutique_id,
+                        "client_id": _existing_id(Client.objects, item.get("client_id")),
+                        "number": item["number"],
+                        "type": item["type"],
+                        "status": item["status"],
+                        "issue_date": item["issue_date"],
+                        "due_date": item.get("due_date"),
+                        "currency": item["currency"],
+                        "subtotal_ht": item["subtotal_ht"],
+                        "total_tva": item["total_tva"],
+                        "total_ttc": item["total_ttc"],
+                        "discount_amount": item.get("discount_amount", 0),
+                        "note": item.get("note", ""),
+                        "created_by_id": item.get("created_by_id"),
+                    },
+                )
+                for line in item.get("lines", []):
+                    InvoiceLine.objects.update_or_create(
+                        id=line["id"],
+                        defaults={
+                            "invoice": invoice,
+                            "product_id": _existing_id(Product.objects, line.get("product_id")),
+                            "description": line["description"],
+                            "quantity": line["quantity"],
+                            "unit_price_ht": line["unit_price_ht"],
+                            "tva_rate": line.get("tva_rate", 0),
+                            "discount_amount": line.get("discount_amount", 0),
+                            "line_total_ht": line["line_total_ht"],
+                            "line_total_ttc": line["line_total_ttc"],
+                            "position": line.get("position", 0),
+                        },
+                    )
+                for payment in item.get("payments", []):
+                    Payment.objects.update_or_create(
+                        id=payment["id"],
+                        defaults={
+                            "invoice": invoice,
+                            "boutique_id": boutique_id,
+                            "amount": payment["amount"],
+                            "method": payment.get("method", Payment.ESPECES),
+                            "reference": payment.get("reference", ""),
+                            "paid_at": payment["paid_at"],
+                            "created_by_id": payment.get("created_by_id"),
+                        },
+                    )
+        except Exception:  # noqa: BLE001 — une facture en erreur ne doit jamais bloquer les autres
+            log.exception("Échec de l'upsert de la facture %s pendant le pull.", item.get("id"))
+            continue
 
 
 def _upsert_sale(items, boutique_id):
+    from django.db import transaction
+
     from apps.catalog.models import Product
     from apps.sales.models import Client, Invoice, Sale, SaleLine
 
     for item in items:
-        sale, _ = Sale.objects.update_or_create(
-            id=item["id"],
-            defaults={
-                "boutique_id": boutique_id,
-                "client_id": _existing_id(Client.objects, item.get("client_id")),
-                "number": item["number"],
-                "status": item["status"],
-                "sale_date": item["sale_date"],
-                "currency": item["currency"],
-                "subtotal_ht": item["subtotal_ht"],
-                "total_tva": item["total_tva"],
-                "total_ttc": item["total_ttc"],
-                "invoice_id": _existing_id(Invoice.objects, item.get("invoice_id")),
-                "created_by_id": item.get("created_by_id"),
-            },
-        )
-        for line in item.get("lines", []):
-            SaleLine.objects.update_or_create(
-                id=line["id"],
-                defaults={
-                    "sale": sale,
-                    "product_id": _existing_id(Product.objects, line.get("product_id")),
-                    "description": line["description"],
-                    "quantity": line["quantity"],
-                    "unit_price_ht": line["unit_price_ht"],
-                    "tva_rate": line.get("tva_rate", 0),
-                    "line_total_ht": line["line_total_ht"],
-                    "line_total_ttc": line["line_total_ttc"],
-                    "position": line.get("position", 0),
-                },
-            )
+        try:
+            with transaction.atomic():
+                sale, _ = Sale.objects.update_or_create(
+                    id=item["id"],
+                    defaults={
+                        "boutique_id": boutique_id,
+                        "client_id": _existing_id(Client.objects, item.get("client_id")),
+                        "number": item["number"],
+                        "status": item["status"],
+                        "sale_date": item["sale_date"],
+                        "currency": item["currency"],
+                        "subtotal_ht": item["subtotal_ht"],
+                        "total_tva": item["total_tva"],
+                        "total_ttc": item["total_ttc"],
+                        "invoice_id": _existing_id(Invoice.objects, item.get("invoice_id")),
+                        "created_by_id": item.get("created_by_id"),
+                    },
+                )
+                for line in item.get("lines", []):
+                    SaleLine.objects.update_or_create(
+                        id=line["id"],
+                        defaults={
+                            "sale": sale,
+                            "product_id": _existing_id(Product.objects, line.get("product_id")),
+                            "description": line["description"],
+                            "quantity": line["quantity"],
+                            "unit_price_ht": line["unit_price_ht"],
+                            "tva_rate": line.get("tva_rate", 0),
+                            "line_total_ht": line["line_total_ht"],
+                            "line_total_ttc": line["line_total_ttc"],
+                            "position": line.get("position", 0),
+                        },
+                    )
+        except Exception:  # noqa: BLE001 — une vente en erreur ne doit jamais bloquer les autres
+            log.exception("Échec de l'upsert de la vente %s pendant le pull.", item.get("id"))
+            continue
 
 
 def _upsert_stock_level(items, boutique_id):
@@ -321,11 +343,21 @@ def run_pull_cycle(client=None):
 
     summary = {"boutique": 1}
     for resource, path, upsert_fn, scope in PULL_RESOURCES:
-        cursor = SyncCursor.objects.filter(resource=resource).first()
-        since = cursor.last_synced_at if cursor else None
-        items, server_time = _pull_paginated_resource(client, path, since)
-        upsert_fn(items, scope_ids[scope])
-        if server_time:
-            SyncCursor.objects.update_or_create(resource=resource, defaults={"last_synced_at": server_time})
-        summary[resource] = len(items)
+        # Une ressource en échec (page illisible, upsert qui lève malgré la
+        # résilience par item — ex: erreur avant même la boucle) ne doit
+        # jamais empêcher les ressources suivantes d'être tirées, ni faire
+        # avancer son propre curseur (retentée telle quelle au cycle
+        # suivant) : sans cet isolement, un seul incident bloquerait tout
+        # le pull — et par ricochet le push, voir desktop/sync_worker.py.
+        try:
+            cursor = SyncCursor.objects.filter(resource=resource).first()
+            since = cursor.last_synced_at if cursor else None
+            items, server_time = _pull_paginated_resource(client, path, since)
+            upsert_fn(items, scope_ids[scope])
+            if server_time:
+                SyncCursor.objects.update_or_create(resource=resource, defaults={"last_synced_at": server_time})
+            summary[resource] = len(items)
+        except Exception:  # noqa: BLE001 — voir commentaire ci-dessus
+            log.exception("Échec du pull de la ressource « %s ».", resource)
+            summary[resource] = "error"
     return summary
