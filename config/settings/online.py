@@ -19,6 +19,9 @@ CSRF_TRUSTED_ORIGINS = env.list(
     default=["https://zweey.com", "https://www.zweey.com", "https://api.zweey.com"],
 )
 
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
 # BASE_DIR est déjà correctement défini par base.py (from .base import *) —
 # ne JAMAIS le redéfinir ici : une redéfinition avec un niveau de dossier
 # en moins (bug précédent) fait pointer tous les chemins dérivés
