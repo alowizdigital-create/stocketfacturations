@@ -40,7 +40,16 @@
             {% for field in form %}
             <div class="mb-3">
                 <label class="form-label">{{ field.label }}</label>
+                {% if field.name == "category" %}
+                <div class="d-flex gap-2 align-items-start">
+                    <div class="flex-grow-1">{{ field }}</div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-category-modal" title="Nouvelle catégorie">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                {% else %}
                 {{ field }}
+                {% endif %}
                 {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
                 {{ field.errors }}
             </div>
@@ -52,4 +61,84 @@
         </form>
     </div>
 </div>
+
+<!-- Création rapide d'une catégorie sans quitter cette page — voir
+     apps.catalog.views.category_quick_create (réponse JSON). -->
+<div class="modal fade" id="quick-category-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouvelle catégorie</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="quick-category-name">Nom</label>
+                <input type="text" id="quick-category-name" class="form-control" autocomplete="off">
+                <div class="text-danger small mt-1 d-none" id="quick-category-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="quick-category-confirm">Créer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    var modalEl = document.getElementById("quick-category-modal");
+    if (!modalEl) return;
+    var modal = new bootstrap.Modal(modalEl);
+    var nameInput = document.getElementById("quick-category-name");
+    var errorEl = document.getElementById("quick-category-error");
+    var confirmBtn = document.getElementById("quick-category-confirm");
+    var categorySelect = document.getElementById("id_category");
+    var csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+    modalEl.addEventListener("shown.bs.modal", function () {
+        nameInput.value = "";
+        errorEl.classList.add("d-none");
+        nameInput.focus();
+    });
+
+    confirmBtn.addEventListener("click", function () {
+        var name = nameInput.value.trim();
+        if (!name) {
+            errorEl.textContent = "Le nom est obligatoire.";
+            errorEl.classList.remove("d-none");
+            return;
+        }
+        confirmBtn.disabled = true;
+        var formData = new FormData();
+        formData.append("name", name);
+        fetch("{% url 'catalog:category_quick_create' %}", {
+            method: "POST",
+            headers: {"X-CSRFToken": csrfToken},
+            body: formData,
+        })
+            .then(function (resp) { return resp.json().then(function (data) { return {ok: resp.ok, data: data}; }); })
+            .then(function (result) {
+                confirmBtn.disabled = false;
+                if (!result.ok) {
+                    var errors = result.data.errors;
+                    var message = errors && errors.name ? errors.name[0] : "Impossible de créer la catégorie.";
+                    errorEl.textContent = message;
+                    errorEl.classList.remove("d-none");
+                    return;
+                }
+                var option = document.createElement("option");
+                option.value = result.data.id;
+                option.textContent = result.data.name;
+                option.selected = true;
+                categorySelect.appendChild(option);
+                modal.hide();
+            })
+            .catch(function () {
+                confirmBtn.disabled = false;
+                errorEl.textContent = "Erreur réseau — réessayez.";
+                errorEl.classList.remove("d-none");
+            });
+    });
+});
+</script>
 {% endblock %}

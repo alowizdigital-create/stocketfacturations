@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -6,6 +8,8 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.core.permissions import block_when_offline, boutique_role_required
+from apps.stock import services as stock_services
+from apps.stock.models import StockMovement
 from apps.sync import outbox as sync_outbox
 from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
@@ -162,16 +166,30 @@ def product_create(request):
         return redirect("catalog:unit_create")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, request.FILES, compte=request.compte)
+        form = ProductForm(request.POST, request.FILES, compte=request.compte, include_quantity=True)
         if form.is_valid():
             product = form.save()
             _save_extra_images(product, form.cleaned_data["extra_images"])
+
+            initial_quantity = form.cleaned_data.get("initial_quantity") or Decimal("0")
+            if initial_quantity > 0:
+                movement = stock_services.apply_movement(
+                    boutique=request.boutique,
+                    product=product,
+                    type=StockMovement.ENTREE,
+                    quantity=initial_quantity,
+                    reason="Stock initial",
+                    created_by=request.user,
+                )
+                if settings.IS_OFFLINE:
+                    sync_outbox.enqueue(OutboxEntry.STOCK_MOVEMENT, movement.id)
+
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.PRODUCT, product.id)
             messages.success(request, "Produit créé.")
             return redirect("catalog:product_list")
     else:
-        form = ProductForm(compte=request.compte)
+        form = ProductForm(compte=request.compte, include_quantity=True)
     return render(request, "catalog/product_form.html", {"form": form, "title": "Nouveau produit"})
 
 
@@ -244,6 +262,24 @@ def category_create(request):
     else:
         form = CategoryForm(compte=request.compte)
     return render(request, "catalog/category_form.html", {"form": form, "title": "Nouvelle catégorie"})
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def category_quick_create(request):
+    """Création rapide en JSON, utilisée par la pop-up du formulaire
+    produit (voir product_form.html) — évite de quitter la page pour
+    ajouter une catégorie manquante. Même logique de sauvegarde que
+    category_create, juste une réponse JSON au lieu d'une redirection."""
+    if request.method != "POST":
+        return JsonResponse({"detail": "Méthode non autorisée."}, status=405)
+    form = CategoryForm(request.POST, compte=request.compte)
+    if form.is_valid():
+        category = form.save()
+        if settings.IS_OFFLINE:
+            sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
+        return JsonResponse({"id": str(category.id), "name": category.name})
+    return JsonResponse({"errors": form.errors}, status=400)
 
 
 @login_required

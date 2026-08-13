@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from apps.core.forms import BootstrapFormMixin
@@ -32,6 +34,15 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         required=False,
         help_text=f"Jusqu'à {MAX_PRODUCT_IMAGES} photos au total par produit (photo principale incluse).",
     )
+    # Uniquement à la création (voir include_quantity) — modifier le stock
+    # d'un produit existant passe par le module Mouvements de stock, pas
+    # par ce formulaire.
+    initial_quantity = forms.DecimalField(
+        label="Quantité en stock",
+        max_digits=12, decimal_places=3, min_value=Decimal("0"),
+        required=False, initial=0,
+        help_text="Quantité disponible dès la création du produit (laisser à 0 si aucun stock pour l'instant).",
+    )
 
     class Meta:
         model = Product
@@ -55,12 +66,21 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "is_active": "Actif",
         }
 
-    def __init__(self, *args, compte=None, **kwargs):
+    def __init__(self, *args, compte=None, include_quantity=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.compte = compte
         if compte is not None:
             self.fields["category"].queryset = Category.objects.filter(compte=compte)
             self.fields["unit"].queryset = Unit.objects.filter(compte=compte)
+        if not include_quantity:
+            del self.fields["initial_quantity"]
+        else:
+            self.order_fields(
+                ["name", "image", "category", "unit", "default_sale_price", "initial_quantity", "is_active"]
+            )
+
+    def clean_initial_quantity(self):
+        return self.cleaned_data.get("initial_quantity") or Decimal("0")
 
     def clean_extra_images(self):
         files = self.cleaned_data.get("extra_images") or []

@@ -14,6 +14,7 @@ urlpatterns = [
     path("produits/<uuid:product_id>/supprimer/", views.product_delete, name="product_delete"),
     path("categories/", views.category_list, name="category_list"),
     path("categories/nouvelle/", views.category_create, name="category_create"),
+    path("categories/creation-rapide/", views.category_quick_create, name="category_quick_create"),
     path("categories/<uuid:category_id>/modifier/", views.category_update, name="category_update"),
     path("categories/<uuid:category_id>/supprimer/", views.category_delete, name="category_delete"),
     path("unites/", views.unit_list, name="unit_list"),
