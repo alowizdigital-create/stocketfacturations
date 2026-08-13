@@ -26,5 +26,15 @@ class SyncClient:
         resp.raise_for_status()
         return resp.json()
 
+    def post_file(self, path, field_name, filename, content, content_type=None, timeout=None):
+        """Upload multipart d'un seul fichier — utilisé pour les photos
+        produit, à part du protocole JSON par lots (voir apps.sync.outbox)
+        car une image dépasse vite DATA_UPLOAD_MAX_MEMORY_SIZE si elle
+        était encodée en base64 dans un corps JSON."""
+        files = {field_name: (filename, content, content_type or "application/octet-stream")}
+        resp = self.session.post(self._url(path), files=files, timeout=timeout or self.timeout)
+        resp.raise_for_status()
+        return resp.json()
+
     def ping(self):
         return self.get("ping/")

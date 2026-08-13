@@ -1,3 +1,4 @@
+import logging
 import uuid
 
 from django.conf import settings
@@ -6,6 +7,8 @@ from django.utils import timezone
 
 from .activation import get_active_client
 from .models import OutboxEntry
+
+log = logging.getLogger("apps.sync.outbox")
 
 BATCH_SIZE = 50
 
@@ -169,18 +172,48 @@ def _serialize_product(object_id):
     }
 
 
+def _push_product_image(object_id, client):
+    """Appelée une fois la fiche produit elle-même confirmée SENT — envoie
+    la photo locale, si présente, via l'endpoint multipart dédié (voir
+    apps.sync.views.PushProductImageView). Best-effort : une erreur ici
+    (réseau, fichier illisible) ne remet jamais l'entrée déjà envoyée en
+    ERROR, elle est juste loguée — la photo repartira au prochain edit du
+    produit (chaque sauvegarde offline recrée une OutboxEntry, voir
+    apps.catalog.views)."""
+    from apps.catalog.models import Product
+
+    try:
+        product = Product.objects.get(pk=object_id)
+    except Product.DoesNotExist:
+        return
+    if not product.image:
+        return
+    try:
+        with product.image.open("rb") as f:
+            content = f.read()
+        client.post_file(
+            f"push/products/{product.id}/image/",
+            "image",
+            product.image.name.rsplit("/", 1)[-1],
+            content,
+            timeout=30,
+        )
+    except Exception:  # noqa: BLE001 — best-effort, voir docstring
+        log.exception("Échec de l'envoi de la photo du produit %s.", object_id)
+
+
 PUSH_ENDPOINTS = {
-    OutboxEntry.CLIENT: ("push/clients/", _serialize_client),
-    OutboxEntry.STOCK_MOVEMENT: ("push/stock-movements/", _serialize_stock_movement),
-    OutboxEntry.INVOICE: ("push/invoices/", _serialize_invoice),
-    OutboxEntry.PAYMENT: ("push/payments/", _serialize_payment),
-    OutboxEntry.SALE_TRANSACTION: ("push/sale-transactions/", _serialize_sale_transaction),
+    OutboxEntry.CLIENT: ("push/clients/", _serialize_client, None),
+    OutboxEntry.STOCK_MOVEMENT: ("push/stock-movements/", _serialize_stock_movement, None),
+    OutboxEntry.INVOICE: ("push/invoices/", _serialize_invoice, None),
+    OutboxEntry.PAYMENT: ("push/payments/", _serialize_payment, None),
+    OutboxEntry.SALE_TRANSACTION: ("push/sale-transactions/", _serialize_sale_transaction, None),
     # Catégories/unités avant produits : Product.unit_id est une FK requise
     # côté serveur (voir ProductPushSerializer) — si le produit est poussé
     # avant son unité lors du même cycle, le push échoue inutilement.
-    OutboxEntry.CATEGORY: ("push/catalog/categories/", _serialize_category),
-    OutboxEntry.UNIT: ("push/catalog/units/", _serialize_unit),
-    OutboxEntry.PRODUCT: ("push/catalog/products/", _serialize_product),
+    OutboxEntry.CATEGORY: ("push/catalog/categories/", _serialize_category, None),
+    OutboxEntry.UNIT: ("push/catalog/units/", _serialize_unit, None),
+    OutboxEntry.PRODUCT: ("push/catalog/products/", _serialize_product, _push_product_image),
 }
 
 
@@ -191,7 +224,7 @@ def run_push_cycle(client=None):
     client = client or get_active_client()
     summary = {}
 
-    for kind, (path, serialize_fn) in PUSH_ENDPOINTS.items():
+    for kind, (path, serialize_fn, on_sent) in PUSH_ENDPOINTS.items():
         # Les entrées ERROR sont retentées (pas seulement PENDING) : une
         # erreur peut être transitoire (ex: produit pas encore présent
         # localement au moment du premier essai, mais arrivé depuis via un
@@ -244,6 +277,8 @@ def run_push_cycle(client=None):
                 entry.sent_at = timezone.now()
                 entry.save(update_fields=["status", "sent_at", "updated_at"])
                 sent += 1
+                if on_sent is not None:
+                    on_sent(entry.object_id, client)
             else:
                 entry.status = OutboxEntry.ERROR
                 entry.attempts += 1

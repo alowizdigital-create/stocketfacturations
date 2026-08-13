@@ -1,5 +1,7 @@
 import logging
 
+import requests
+
 from .activation import get_active_client
 from .models import DeviceActivation, SyncCursor
 
@@ -142,14 +144,10 @@ def _upsert_membership(items, boutique_id):
 
 
 def _upsert_product(items, compte_id):
-    # Les photos ne sont pas rapatriées dans cet incrément — seul
-    # `image_url` (lien vers le fichier côté serveur) est reçu, le champ
-    # local Product.image reste vide (placeholder à l'affichage). Ne
-    # bloque pas la vente hors-ligne, traité comme une lacune connue.
     from apps.catalog.models import Product
 
     for item in items:
-        Product.objects.update_or_create(
+        product, _ = Product.objects.update_or_create(
             id=item["id"],
             defaults={
                 "compte_id": compte_id,
@@ -164,6 +162,26 @@ def _upsert_product(items, compte_id):
                 "is_active": item.get("is_active", True),
             },
         )
+        # Ne télécharge que si le champ local est encore vide : couvre les
+        # nouveaux produits ET rattrape, dès le prochain cycle, tous ceux
+        # déjà tirés avant que ce mécanisme n'existe — mais ne re-télécharge
+        # jamais un fichier déjà présent (une photo changée en ligne après
+        # coup ne se repropage pas toute seule, lacune connue et acceptée).
+        image_url = item.get("image_url")
+        if image_url and not product.image:
+            _download_product_image(product, image_url)
+
+
+def _download_product_image(product, image_url):
+    from django.core.files.base import ContentFile
+
+    try:
+        resp = requests.get(image_url, timeout=15)
+        resp.raise_for_status()
+        filename = image_url.rsplit("/", 1)[-1].split("?", 1)[0] or f"{product.id}.jpg"
+        product.image.save(filename, ContentFile(resp.content), save=True)
+    except Exception:  # noqa: BLE001 — best-effort, ne bloque jamais l'upsert des métadonnées
+        log.exception("Échec du téléchargement de la photo du produit %s.", product.id)
 
 
 def _existing_id(queryset, pk):

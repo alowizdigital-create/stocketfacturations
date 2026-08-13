@@ -16,6 +16,11 @@ urlpatterns = [
     path("push/catalog/categories/", views.PushCategoriesView.as_view(), name="push_categories"),
     path("push/catalog/units/", views.PushUnitsView.as_view(), name="push_units"),
     path("push/catalog/products/", views.PushProductsView.as_view(), name="push_products"),
+    path(
+        "push/products/<uuid:product_id>/image/",
+        views.PushProductImageView.as_view(),
+        name="push_product_image",
+    ),
 
     path("pull/tenants/boutique/", views.PullBoutiqueView.as_view(), name="pull_boutique"),
     path("pull/accounts/users/", views.PullUsersView.as_view(), name="pull_users"),

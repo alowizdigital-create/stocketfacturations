@@ -8,7 +8,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
 from django.http import Http404
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import generics, pagination, status
@@ -246,6 +246,21 @@ class PushProductsView(BasePushView):
             },
         )
         return {"id": str(product.id), "status": "duplicate" if was_existing else "created"}
+
+
+class PushProductImageView(BoutiqueScopedMixin, APIView):
+    """Upload de la photo d'un produit — à part du protocole JSON par lots
+    (voir PushProductsView) : un seul fichier par appel, pas de mélange
+    JSON/binaire, pas de SyncLog/Idempotency-Key (un rejeu écrase juste
+    avec le même contenu, sans effet de bord à protéger)."""
+
+    def post(self, request, product_id):
+        product = get_object_or_404(Product, pk=product_id, compte=self.compte)
+        image_file = request.FILES.get("image")
+        if image_file is None:
+            return Response({"detail": "Fichier 'image' requis."}, status=status.HTTP_400_BAD_REQUEST)
+        product.image.save(image_file.name, image_file, save=True)
+        return Response({"status": "ok"})
 
 
 class PushStockMovementsView(BasePushView):

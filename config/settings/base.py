@@ -5,6 +5,7 @@ Settings communs aux modes en ligne, offline et dev.
 from pathlib import Path
 
 import environ
+from django.contrib.messages import constants as message_constants
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
@@ -94,6 +95,32 @@ IS_OFFLINE = False
 LOGIN_URL = "accounts:login"
 LOGIN_REDIRECT_URL = "core:home"
 LOGOUT_REDIRECT_URL = "accounts:login"
+
+# Le tag Django par défaut pour messages.error() est "error", mais Bootstrap
+# n'a pas de classe .alert-error (seulement .alert-danger) — sans ce
+# mapping, templates/base.html génère `class="alert alert-error"`, une
+# classe qui n'existe pas : le message s'affiche donc sans la couleur rouge
+# attendue.
+MESSAGE_TAGS = {
+    message_constants.ERROR: "danger",
+}
+
+# --- Email (mot de passe oublié, notifications futures) -------------------
+# Backend console par défaut (affiche l'email dans les logs au lieu de
+# l'envoyer) tant qu'aucun serveur SMTP n'est configuré via les variables
+# d'environnement ci-dessous — évite un crash en production si l'envoi
+# réel n'est pas encore branché, au prix d'un lien de réinitialisation
+# invisible pour l'utilisateur (visible uniquement dans les logs du
+# conteneur) jusqu'à configuration.
+EMAIL_BACKEND = env(
+    "EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend"
+)
+EMAIL_HOST = env("EMAIL_HOST", default="")
+EMAIL_PORT = env.int("EMAIL_PORT", default=587)
+EMAIL_HOST_USER = env("EMAIL_HOST_USER", default="")
+EMAIL_HOST_PASSWORD = env("EMAIL_HOST_PASSWORD", default="")
+EMAIL_USE_TLS = env.bool("EMAIL_USE_TLS", default=True)
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="no-reply@zweey.com")
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
