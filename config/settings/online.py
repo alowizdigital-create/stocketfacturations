@@ -5,7 +5,8 @@ from .base import *  # noqa: F401,F403
 from .base import env
 import os
 
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
+DEBUG = True
+# DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
@@ -18,6 +19,9 @@ CSRF_TRUSTED_ORIGINS = env.list(
     "DJANGO_CSRF_TRUSTED_ORIGINS",
     default=["https://zweey.com", "https://www.zweey.com", "https://api.zweey.com"],
 )
+
+STATIC_URL = "/static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
 # BASE_DIR est déjà correctement défini par base.py (from .base import *) —
 # ne JAMAIS le redéfinir ici : une redéfinition avec un niveau de dossier
