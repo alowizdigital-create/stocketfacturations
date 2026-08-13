@@ -116,11 +116,15 @@ def product_search(request):
 def product_list(request):
     from apps.stock.models import StockLevel
 
-    products = list(
-        Product.objects.filter(compte=request.compte)
-        .select_related("category", "unit")
-        .order_by("name")
-    )
+    query = request.GET.get("q", "").strip()
+
+    products = Product.objects.filter(compte=request.compte).select_related("category", "unit")
+    if query:
+        products = products.filter(
+            Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
+        )
+    products = list(products.order_by("name"))
+
     stock_by_product = {
         level.product_id: level.quantity
         for level in StockLevel.objects.filter(boutique=request.boutique, product__in=products)
@@ -128,7 +132,7 @@ def product_list(request):
     for product in products:
         stock_qty = stock_by_product.get(product.id, 0)
         product.is_low_stock = stock_qty <= get_effective_low_stock_threshold(product, request.boutique)
-    return render(request, "catalog/product_list.html", {"products": products})
+    return render(request, "catalog/product_list.html", {"products": products, "query": query})
 
 
 @login_required
@@ -290,6 +294,23 @@ def category_quick_create(request):
         if settings.IS_OFFLINE:
             sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
         return JsonResponse({"id": str(category.id), "name": category.name})
+    return JsonResponse({"errors": form.errors}, status=400)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def unit_quick_create(request):
+    """Création rapide en JSON, utilisée par la pop-up du formulaire
+    produit (voir product_form.html) — même patron que
+    category_quick_create pour l'unité."""
+    if request.method != "POST":
+        return JsonResponse({"detail": "Méthode non autorisée."}, status=405)
+    form = UnitForm(request.POST, compte=request.compte)
+    if form.is_valid():
+        unit = form.save()
+        if settings.IS_OFFLINE:
+            sync_outbox.enqueue(OutboxEntry.UNIT, unit.id)
+        return JsonResponse({"id": str(unit.id), "name": str(unit)})
     return JsonResponse({"errors": form.errors}, status=400)
 
 

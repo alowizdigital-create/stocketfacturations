@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import forms
 
 from apps.catalog.models import Product
@@ -34,3 +36,12 @@ class StockMovementForm(BootstrapFormMixin, forms.Form):
         if self.cleaned_data["type"] == StockMovement.SORTIE:
             return -quantity
         return quantity
+
+
+class ProductQuickMovementForm(BootstrapFormMixin, forms.Form):
+    """Mouvement rapide (compléter/retirer) depuis la fiche produit — le
+    produit est déjà connu de l'URL, pas besoin de le resélectionner comme
+    dans le formulaire générique de mouvement."""
+
+    quantity = forms.DecimalField(label="Quantité", min_value=Decimal("0.001"), max_digits=12, decimal_places=3)
+    reason = forms.CharField(label="Motif (optionnel)", max_length=255, required=False)

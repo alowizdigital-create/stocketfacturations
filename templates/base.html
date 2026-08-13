@@ -20,8 +20,27 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="Zweey">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+    <!-- Style en dur (pas de dépendance à app.css, pas encore chargé à ce
+         stade) pour que l'écran de chargement s'affiche correctement dès
+         le tout début du rendu de la page. -->
+    <style>
+        #page-loader {
+            position: fixed; inset: 0; z-index: 2000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 16px; background: #f6f5fa;
+        }
+        #page-loader img { width: 72px; height: 72px; border-radius: 18px; }
+        #page-loader .page-loader-spinner {
+            width: 30px; height: 30px; border-radius: 50%;
+            border: 3px solid #e4defa; border-top-color: #6f4a8e;
+            animation: page-loader-spin .7s linear infinite;
+        }
+        @keyframes page-loader-spin { to { transform: rotate(360deg); } }
+        #page-loader.page-loader-done { display: none; }
+    </style>
 </head>
 <body>
+<div id="page-loader"><img src="{% static 'icons/icon-192.png' %}" alt=""><div class="page-loader-spinner"></div></div>
 {% if user.is_authenticated and request.boutique %}
 <div class="app-shell">
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
@@ -284,6 +303,49 @@
 
     window.addEventListener("appinstalled", function () {
         installBtn.style.display = "none";
+    });
+})();
+</script>
+<script>
+(function () {
+    // Écran de chargement (logo + spinner) affiché tant que la page
+    // demandée n'est pas prête : visible dès le tout début du rendu HTML
+    // (voir le <div id="page-loader"> juste après <body>), masqué une fois
+    // la page chargée, puis réaffiché avant toute navigation interne pour
+    // couvrir le temps de réponse serveur de la page suivante.
+    var loader = document.getElementById("page-loader");
+    if (!loader) return;
+
+    function hideLoader() { loader.classList.add("page-loader-done"); }
+    function showLoader() { loader.classList.remove("page-loader-done"); }
+
+    if (document.readyState === "complete") {
+        hideLoader();
+    } else {
+        window.addEventListener("load", hideLoader);
+    }
+    // Retour arrière/avant depuis le cache navigateur (bfcache) : la page
+    // réapparaît sans re-déclencher "load", donc sans ce filet le loader
+    // resterait affiché si l'utilisateur l'avait revu juste avant de partir.
+    window.addEventListener("pageshow", hideLoader);
+
+    document.addEventListener("click", function (e) {
+        var link = e.target.closest("a[href]");
+        if (!link || e.defaultPrevented || e.button !== 0) return;
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        if (link.target === "_blank" || link.hasAttribute("download") || link.dataset.bsToggle) return;
+        var href = link.getAttribute("href");
+        if (!href || href.charAt(0) === "#") return;
+        var url;
+        try { url = new URL(link.href, window.location.href); } catch (err) { return; }
+        if (url.origin !== window.location.origin || !/^https?:$/.test(url.protocol)) return;
+        showLoader();
+    });
+
+    document.addEventListener("submit", function (e) {
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement) || e.defaultPrevented || form.target === "_blank") return;
+        showLoader();
     });
 })();
 </script>

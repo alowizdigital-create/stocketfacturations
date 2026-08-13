@@ -47,6 +47,13 @@
                         <i class="bi bi-plus-lg"></i>
                     </button>
                 </div>
+                {% elif field.name == "unit" %}
+                <div class="d-flex gap-2 align-items-start">
+                    <div class="flex-grow-1">{{ field }}</div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-unit-modal" title="Nouvelle unité">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
                 {% else %}
                 {{ field }}
                 {% endif %}
@@ -79,6 +86,30 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
                 <button type="button" class="btn btn-primary" id="quick-category-confirm">Créer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Création rapide d'une unité sans quitter cette page — voir
+     apps.catalog.views.unit_quick_create (réponse JSON). -->
+<div class="modal fade" id="quick-unit-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nouvelle unité</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="quick-unit-name">Nom</label>
+                <input type="text" id="quick-unit-name" class="form-control" autocomplete="off">
+                <label class="form-label mt-2" for="quick-unit-symbol">Symbole (optionnel)</label>
+                <input type="text" id="quick-unit-symbol" class="form-control" autocomplete="off">
+                <div class="text-danger small mt-1 d-none" id="quick-unit-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary" id="quick-unit-confirm">Créer</button>
             </div>
         </div>
     </div>
@@ -137,6 +168,62 @@ document.addEventListener("DOMContentLoaded", function () {
                 confirmBtn.disabled = false;
                 errorEl.textContent = "Erreur réseau — réessayez.";
                 errorEl.classList.remove("d-none");
+            });
+    });
+
+    var unitModalEl = document.getElementById("quick-unit-modal");
+    if (!unitModalEl) return;
+    var unitModal = new bootstrap.Modal(unitModalEl);
+    var unitNameInput = document.getElementById("quick-unit-name");
+    var unitSymbolInput = document.getElementById("quick-unit-symbol");
+    var unitErrorEl = document.getElementById("quick-unit-error");
+    var unitConfirmBtn = document.getElementById("quick-unit-confirm");
+    var unitSelect = document.getElementById("id_unit");
+
+    unitModalEl.addEventListener("shown.bs.modal", function () {
+        unitNameInput.value = "";
+        unitSymbolInput.value = "";
+        unitErrorEl.classList.add("d-none");
+        unitNameInput.focus();
+    });
+
+    unitConfirmBtn.addEventListener("click", function () {
+        var name = unitNameInput.value.trim();
+        if (!name) {
+            unitErrorEl.textContent = "Le nom est obligatoire.";
+            unitErrorEl.classList.remove("d-none");
+            return;
+        }
+        unitConfirmBtn.disabled = true;
+        var formData = new FormData();
+        formData.append("name", name);
+        formData.append("symbol", unitSymbolInput.value.trim());
+        fetch("{% url 'catalog:unit_quick_create' %}", {
+            method: "POST",
+            headers: {"X-CSRFToken": csrfToken},
+            body: formData,
+        })
+            .then(function (resp) { return resp.json().then(function (data) { return {ok: resp.ok, data: data}; }); })
+            .then(function (result) {
+                unitConfirmBtn.disabled = false;
+                if (!result.ok) {
+                    var errors = result.data.errors;
+                    var message = errors && errors.name ? errors.name[0] : "Impossible de créer l'unité.";
+                    unitErrorEl.textContent = message;
+                    unitErrorEl.classList.remove("d-none");
+                    return;
+                }
+                var option = document.createElement("option");
+                option.value = result.data.id;
+                option.textContent = result.data.name;
+                option.selected = true;
+                unitSelect.appendChild(option);
+                unitModal.hide();
+            })
+            .catch(function () {
+                unitConfirmBtn.disabled = false;
+                unitErrorEl.textContent = "Erreur réseau — réessayez.";
+                unitErrorEl.classList.remove("d-none");
             });
     });
 });

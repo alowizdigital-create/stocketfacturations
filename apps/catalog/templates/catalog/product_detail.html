@@ -76,7 +76,14 @@
         </div>
 
         <div class="card-app mt-3">
-            <div class="card-app-header">Stock — {{ request.boutique.name }}</div>
+            <div class="card-app-header d-flex justify-content-between align-items-center">
+                <span>Stock — {{ request.boutique.name }}</span>
+                {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
+                <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stock-movement-modal">
+                    <i class="bi bi-arrow-left-right"></i> Mouvement de stock
+                </button>
+                {% endif %}
+            </div>
             <div class="card-app-body">
                 <div class="stat-value">{{ stock_qty }} {{ product.unit.symbol|default:product.unit.name }}</div>
                 <div class="text-muted small">Quantité actuellement en stock dans cette boutique</div>
@@ -84,4 +91,36 @@
         </div>
     </div>
 </div>
+
+{% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
+<div class="modal fade" id="stock-movement-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'stock:product_quick_movement' product.id %}">
+                {% csrf_token %}
+                <input type="hidden" name="type" id="movement-type-input">
+                <div class="modal-header">
+                    <h5 class="modal-title">Mouvement de stock — {{ product.name }}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="text-muted small mb-3">Stock actuel : {{ stock_qty }} {{ product.unit.symbol|default:product.unit.name }}</div>
+                    <div class="mb-3">
+                        <label class="form-label" for="movement-quantity">Quantité</label>
+                        <input type="number" step="0.001" min="0.001" name="quantity" id="movement-quantity" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="movement-reason">Motif (optionnel)</label>
+                        <input type="text" name="reason" id="movement-reason" class="form-control" maxlength="255">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-outline-danger" onclick="document.getElementById('movement-type-input').value='SORTIE'"><i class="bi bi-dash-lg"></i> Retirer</button>
+                    <button type="submit" class="btn btn-primary" onclick="document.getElementById('movement-type-input').value='ENTREE'"><i class="bi bi-plus-lg"></i> Compléter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
 {% endblock %}

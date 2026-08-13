@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 
+from apps.catalog.models import Product
 from apps.catalog.services import get_effective_low_stock_threshold
 from apps.core.permissions import boutique_role_required
 from apps.sync import outbox
@@ -10,7 +11,7 @@ from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from . import services
-from .forms import StockMovementForm
+from .forms import ProductQuickMovementForm, StockMovementForm
 from .models import StockLevel, StockMovement
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
@@ -51,6 +52,39 @@ def movement_create(request):
     else:
         form = StockMovementForm(compte=request.compte)
     return render(request, "stock/movement_form.html", {"form": form})
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def product_quick_movement(request, product_id):
+    """Mouvement compléter/retirer depuis la fiche produit — deux boutons
+    soumettent le même formulaire avec un `type` différent (ENTREE/SORTIE),
+    pas de champ produit à sélectionner puisqu'il vient de l'URL."""
+    product = get_object_or_404(Product, id=product_id, compte=request.compte)
+    movement_type = request.POST.get("type")
+    if movement_type not in (StockMovement.ENTREE, StockMovement.SORTIE):
+        messages.error(request, "Type de mouvement invalide.")
+        return redirect("catalog:product_detail", product_id=product.id)
+
+    form = ProductQuickMovementForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, "Quantité invalide.")
+        return redirect("catalog:product_detail", product_id=product.id)
+
+    quantity = form.cleaned_data["quantity"]
+    signed_quantity = -quantity if movement_type == StockMovement.SORTIE else quantity
+    movement = services.apply_movement(
+        boutique=request.boutique,
+        product=product,
+        type=movement_type,
+        quantity=signed_quantity,
+        reason=form.cleaned_data["reason"],
+        created_by=request.user,
+    )
+    if settings.IS_OFFLINE:
+        outbox.enqueue(OutboxEntry.STOCK_MOVEMENT, movement.id)
+    messages.success(request, "Mouvement de stock enregistré.")
+    return redirect("catalog:product_detail", product_id=product.id)
 
 
 @login_required

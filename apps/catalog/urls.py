@@ -19,6 +19,7 @@ urlpatterns = [
     path("categories/<uuid:category_id>/supprimer/", views.category_delete, name="category_delete"),
     path("unites/", views.unit_list, name="unit_list"),
     path("unites/nouvelle/", views.unit_create, name="unit_create"),
+    path("unites/creation-rapide/", views.unit_quick_create, name="unit_quick_create"),
     path("unites/<uuid:unit_id>/modifier/", views.unit_update, name="unit_update"),
     path("unites/<uuid:unit_id>/supprimer/", views.unit_delete, name="unit_delete"),
 ]
