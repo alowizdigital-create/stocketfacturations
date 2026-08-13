@@ -5,7 +5,7 @@ $ErrorActionPreference = "Stop"
 $RootDir = Split-Path -Parent $PSScriptRoot
 Set-Location $RootDir
 
-Write-Host "== Stock & Facturation : build .exe ==" -ForegroundColor Cyan
+Write-Host "== Zweey : build .exe ==" -ForegroundColor Cyan
 
 Write-Host "-- Installation des dependances offline --" -ForegroundColor Cyan
 & ".\venv\Scripts\python.exe" -m pip install -r requirements\offline.txt

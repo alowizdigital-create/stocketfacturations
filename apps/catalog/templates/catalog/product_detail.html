@@ -9,6 +9,9 @@
             {% else %}
             <span class="badge-status badge-gray">Inactif</span>
             {% endif %}
+            {% if is_low_stock %}
+            <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Rupture de stock</span>
+            {% endif %}
         </h1>
         <div class="text-muted">{{ product.category|default:"Sans catégorie" }}</div>
     </div>

@@ -50,7 +50,7 @@ def _show_fatal_error(message):
     try:
         import ctypes
 
-        ctypes.windll.user32.MessageBoxW(0, message, "Stock & Facturation — Erreur", 0x10)
+        ctypes.windll.user32.MessageBoxW(0, message, "Zweey — Erreur", 0x10)
     except Exception:  # noqa: BLE001 — dernier recours, ne doit jamais lever
         pass
 
@@ -150,7 +150,7 @@ def main():
         if candidate.exists():
             icon_path = str(candidate)
 
-    window = webview.create_window("Stock & Facturation", url, width=1280, height=800)
+    window = webview.create_window("Zweey", url, width=1280, height=800)
 
     def _on_closing():
         log.info("Fenêtre fermée — arrêt propre du worker et du serveur.")

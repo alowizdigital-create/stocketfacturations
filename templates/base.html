@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% block title %}Stock & Facturation{% endblock %}</title>
+    <title>{% block title %}Zweey{% endblock %}</title>
     <!-- Assets hébergés localement (pas de CDN) : indispensable pour que
          l'app reste utilisable sans connexion internet (poste offline). -->
     <link href="{% static 'vendor/fonts/inter/inter.css' %}" rel="stylesheet">
@@ -18,7 +18,7 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
-    <meta name="apple-mobile-web-app-title" content="Stock &amp; Facturation">
+    <meta name="apple-mobile-web-app-title" content="Zweey">
     <link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
 </head>
 <body>
@@ -27,7 +27,7 @@
     <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
     <aside class="sidebar" id="sidebar">
         <div class="sidebar-brand">
-            <i class="bi bi-boxes"></i> Stock &amp; Facturation
+            <i class="bi bi-boxes"></i> Zweey
         </div>
         <nav class="sidebar-nav">
             <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'core:home' %}">

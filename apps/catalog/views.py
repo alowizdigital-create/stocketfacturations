@@ -16,7 +16,7 @@ from apps.tenants.models import Membership
 
 from .forms import CategoryForm, ProductForm, UnitForm
 from .models import Category, Product, ProductImage, Unit
-from .services import get_effective_price
+from .services import get_effective_low_stock_threshold, get_effective_price
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
@@ -114,11 +114,20 @@ def product_search(request):
 
 @login_required
 def product_list(request):
-    products = (
+    from apps.stock.models import StockLevel
+
+    products = list(
         Product.objects.filter(compte=request.compte)
         .select_related("category", "unit")
         .order_by("name")
     )
+    stock_by_product = {
+        level.product_id: level.quantity
+        for level in StockLevel.objects.filter(boutique=request.boutique, product__in=products)
+    }
+    for product in products:
+        stock_qty = stock_by_product.get(product.id, 0)
+        product.is_low_stock = stock_qty <= get_effective_low_stock_threshold(product, request.boutique)
     return render(request, "catalog/product_list.html", {"products": products})
 
 
@@ -135,12 +144,14 @@ def product_detail(request, product_id):
         compte=request.compte,
     )
     stock_level = StockLevel.objects.filter(boutique=request.boutique, product=product).first()
+    stock_qty = stock_level.quantity if stock_level else 0
     return render(
         request,
         "catalog/product_detail.html",
         {
             "product": product,
-            "stock_qty": stock_level.quantity if stock_level else 0,
+            "stock_qty": stock_qty,
+            "is_low_stock": stock_qty <= get_effective_low_stock_threshold(product, request.boutique),
             "effective_price": get_effective_price(product, request.boutique),
         },
     )
