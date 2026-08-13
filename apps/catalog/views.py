@@ -63,17 +63,21 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 def product_search(request):
     """Recherche produit en direct pour la vente/le devis : ne renvoie que
     les produits en stock dans la boutique courante — un produit en rupture
-    ne peut pas être vendu, donc ne doit pas apparaître dans la liste."""
+    ne peut pas être vendu, donc ne doit pas apparaître dans la liste.
+    ?include_out_of_stock=1 lève ce filtre — utilisé par le formulaire de
+    mouvement de stock, où un produit à 0 est justement le cas d'usage
+    principal d'une entrée (réapprovisionnement)."""
     from apps.stock.models import StockLevel
 
     query = request.GET.get("q", "").strip()
+    include_out_of_stock = request.GET.get("include_out_of_stock") == "1"
 
-    products = Product.objects.filter(
-        compte=request.compte,
-        is_active=True,
-        stock_levels__boutique=request.boutique,
-        stock_levels__quantity__gt=0,
-    ).select_related("unit")
+    products = Product.objects.filter(compte=request.compte, is_active=True).select_related("unit")
+    if not include_out_of_stock:
+        products = products.filter(
+            stock_levels__boutique=request.boutique,
+            stock_levels__quantity__gt=0,
+        )
 
     if query:
         products = products.filter(

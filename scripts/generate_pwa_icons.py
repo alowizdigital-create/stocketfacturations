@@ -38,10 +38,10 @@ def make_icon(size, *, padding_ratio=0.0, filename, maskable=False):
         radius = int(size * 0.22)
         draw.rounded_rectangle([0, 0, size - 1, size - 1], radius=radius, fill=BRAND)
 
-    # Monogramme "SF" centré, dans la zone sûre (utile pour les icônes
+    # Monogramme "Zy" centré, dans la zone sûre (utile pour les icônes
     # "maskable" recadrées en cercle par Android).
     safe = size * (1 - padding_ratio * 2)
-    text = "SF"
+    text = "Zy"
     font_size = int(safe * 0.46)
     font = _font(font_size)
     bbox = draw.textbbox((0, 0), text, font=font)
@@ -61,7 +61,7 @@ def make_apple_touch_icon(size=180, filename="apple-touch-icon.png"):
     img = Image.new("RGB", (size, size), BRAND)
     draw = ImageDraw.Draw(img)
     font = _font(int(size * 0.44))
-    text = "SF"
+    text = "Zy"
     bbox = draw.textbbox((0, 0), text, font=font)
     tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
     x = (size - tw) / 2 - bbox[0]

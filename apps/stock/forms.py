@@ -15,8 +15,17 @@ class StockMovementForm(BootstrapFormMixin, forms.Form):
         (StockMovement.AJUSTEMENT, "Ajustement"),
     ]
 
-    product = forms.ModelChoiceField(queryset=Product.objects.none(), label="Produit")
-    type = forms.ChoiceField(choices=TYPE_CHOICES, label="Type de mouvement")
+    # La sélection du produit se fait via la recherche en direct en JS (même
+    # principe que l'écran de vente/devis) et le type via des boutons d'action
+    # directs (voir movement_form.html) : ces deux champs ne portent que la
+    # valeur choisie, pas de rendu natif <select>.
+    product = forms.ModelChoiceField(
+        queryset=Product.objects.none(), label="Produit", widget=forms.HiddenInput()
+    )
+    type = forms.ChoiceField(
+        choices=TYPE_CHOICES, label="Type de mouvement",
+        initial=StockMovement.ENTREE, widget=forms.HiddenInput(),
+    )
     quantity = forms.DecimalField(
         label="Quantité",
         min_value=1,

@@ -4,21 +4,171 @@
 <div class="page-header"><div><h1>Nouveau mouvement de stock</h1></div></div>
 <div class="card-app" style="max-width: 520px;">
     <div class="card-app-body">
-        <form method="post">
+        <form method="post" id="movement-form">
             {% csrf_token %}
-            {% for field in form %}
             <div class="mb-3">
-                <label class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
-                {{ field.errors }}
+                <label class="form-label">Produit</label>
+                <div class="product-picker">
+                    {{ form.product }}
+                    <div class="product-search-box">
+                        <input type="text" id="movement-product-search" class="form-control" placeholder="Rechercher un produit (nom, référence, code-barres)..." autocomplete="off">
+                    </div>
+                    <div class="product-selected d-none border rounded px-2 py-2">
+                        <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
+                        <div class="product-selected-info">
+                            <div class="product-selected-name"></div>
+                            <div class="product-selected-meta text-muted small"></div>
+                        </div>
+                        <button type="button" class="btn btn-link text-danger p-0 product-clear"><i class="bi bi-x-lg"></i></button>
+                    </div>
+                </div>
+                {{ form.product.errors }}
             </div>
-            {% endfor %}
-            <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
-                <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary">Annuler</a>
+            <div class="mb-3">
+                <label class="form-label">{{ form.quantity.label }}</label>
+                {{ form.quantity }}
+                {{ form.quantity.errors }}
+            </div>
+            <div class="mb-3">
+                <label class="form-label">{{ form.reason.label }}</label>
+                {{ form.reason }}
+                {{ form.reason.errors }}
+            </div>
+            {{ form.type }}
+            {{ form.type.errors }}
+            <div class="d-flex flex-wrap gap-2 mt-4">
+                <button type="submit" id="movement-submit-sortie" class="btn btn-outline-danger"><i class="bi bi-dash-lg"></i> Sortie</button>
+                <button type="submit" id="movement-submit-entree" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Entrée</button>
+                <button type="submit" id="movement-submit-ajustement" class="btn btn-outline-secondary"><i class="bi bi-sliders"></i> Ajustement</button>
+                <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary ms-auto">Annuler</a>
             </div>
         </form>
     </div>
 </div>
+
+<div id="product-search-results" class="pos-results product-search-floating"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const searchUrl = "{% url 'catalog:product_search' %}";
+    const resultsEl = document.getElementById("product-search-results");
+    const picker = document.querySelector(".product-picker");
+    const productInput = picker.querySelector('input[name="product"]');
+    const searchBox = picker.querySelector(".product-search-box");
+    const searchInput = document.getElementById("movement-product-search");
+    const selectedBox = picker.querySelector(".product-selected");
+    let searchTimer = null;
+
+    function placeholderThumb() {
+        return '<i class="bi bi-image"></i>';
+    }
+
+    function selectProduct(data) {
+        productInput.value = data.id;
+        selectedBox.querySelector(".product-thumb-wrap").innerHTML = data.image_url
+            ? `<img src="${data.image_url}" alt="">` : placeholderThumb();
+        selectedBox.querySelector(".product-selected-name").textContent = data.name;
+        selectedBox.querySelector(".product-selected-meta").textContent =
+            [data.unit, data.sku ? "Réf " + data.sku : "", data.stock_qty + " en stock actuellement"].filter(Boolean).join(" · ");
+        searchInput.value = "";
+        searchBox.classList.add("d-none");
+        selectedBox.classList.remove("d-none");
+        selectedBox.classList.add("d-flex");
+        hideResults();
+    }
+
+    function clearSelectedProduct() {
+        productInput.value = "";
+        searchBox.classList.remove("d-none");
+        selectedBox.classList.add("d-none");
+        selectedBox.classList.remove("d-flex");
+        searchInput.focus();
+    }
+
+    function hideResults() {
+        resultsEl.style.display = "none";
+    }
+
+    function positionResults() {
+        const rect = searchInput.getBoundingClientRect();
+        resultsEl.style.top = (rect.bottom + 4) + "px";
+        resultsEl.style.left = rect.left + "px";
+        resultsEl.style.width = Math.max(rect.width, 280) + "px";
+    }
+
+    function renderResults(items) {
+        if (!items.length) {
+            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun produit trouvé</div>';
+        } else {
+            resultsEl.innerHTML = items.map((p) => {
+                const img = p.image_url ? `<img src="${p.image_url}" class="pos-thumb" alt="">` : `<span class="pos-thumb pos-thumb-placeholder">${(p.name || "?").trim().charAt(0).toUpperCase()}</span>`;
+                return `
+                <div class="pos-item" data-product='${JSON.stringify(p).replace(/'/g, "&apos;")}'>
+                    ${img}
+                    <div class="pos-item-info">
+                        <div class="pos-item-name">${p.name}</div>
+                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
+                    </div>
+                </div>`;
+            }).join("");
+        }
+        resultsEl.style.display = "block";
+    }
+
+    async function runSearch(query) {
+        const url = searchUrl + "?include_out_of_stock=1&q=" + encodeURIComponent(query);
+        const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        const data = await resp.json();
+        renderResults(data.results);
+    }
+
+    searchInput.addEventListener("input", () => {
+        positionResults();
+        clearTimeout(searchTimer);
+        const query = searchInput.value;
+        searchTimer = setTimeout(() => runSearch(query), 200);
+    });
+
+    searchInput.addEventListener("focus", () => {
+        positionResults();
+        runSearch(searchInput.value);
+    });
+
+    resultsEl.addEventListener("click", (e) => {
+        const item = e.target.closest(".pos-item");
+        if (!item) return;
+        selectProduct(JSON.parse(item.dataset.product.replace(/&apos;/g, "'")));
+    });
+
+    selectedBox.querySelector(".product-clear").addEventListener("click", clearSelectedProduct);
+
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest(".product-search-box") && !e.target.closest("#product-search-results")) {
+            hideResults();
+        }
+    });
+    window.addEventListener("scroll", hideResults, true);
+
+    // --- Boutons d'action directs : chacun règle le type puis soumet ------
+    const typeInput = document.getElementById("id_type");
+    const form = document.getElementById("movement-form");
+
+    function submitWithType(type) {
+        return function (e) {
+            e.preventDefault();
+            typeInput.value = type;
+            // Passer le bouton cliqué comme submitter : le script anti
+            // double-soumission de base.html s'appuie sur e.submitter pour
+            // savoir quel bouton désactiver/faire tourner pendant l'envoi.
+            form.requestSubmit(e.currentTarget);
+        };
+    }
+
+    document.getElementById("movement-submit-sortie").addEventListener("click", submitWithType("SORTIE"));
+    document.getElementById("movement-submit-entree").addEventListener("click", submitWithType("ENTREE"));
+    document.getElementById("movement-submit-ajustement").addEventListener("click", submitWithType("AJUSTEMENT"));
+})();
+</script>
 {% endblock %}
