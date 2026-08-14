@@ -185,7 +185,10 @@ def product_create(request):
         return redirect("catalog:unit_create")
 
     if request.method == "POST":
-        form = ProductForm(request.POST, request.FILES, compte=request.compte, include_quantity=True)
+        form = ProductForm(
+            request.POST, request.FILES, compte=request.compte,
+            include_quantity=True, require_image=True,
+        )
         if form.is_valid():
             product = form.save()
             _save_extra_images(product, form.cleaned_data["extra_images"])
@@ -208,7 +211,7 @@ def product_create(request):
             messages.success(request, "Produit créé.")
             return redirect("catalog:product_list")
     else:
-        form = ProductForm(compte=request.compte, include_quantity=True)
+        form = ProductForm(compte=request.compte, include_quantity=True, require_image=True)
     return render(request, "catalog/product_form.html", {"form": form, "title": "Nouveau produit"})
 
 
