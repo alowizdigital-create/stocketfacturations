@@ -118,7 +118,7 @@
             {% endif %}
         </nav>
         <div class="sidebar-footer">
-            <div class="sidebar-user-email text-muted small">{{ user.email }}</div>
+            <div class="sidebar-user-email text-muted small">{{ user.first_name}}</div>
             {% if user.memberships.count > 1 %}
             <a href="{% url 'tenants:choose_boutique' %}" class="nav-link">
                 <i class="bi bi-shop"></i> Changer de boutique
@@ -142,7 +142,7 @@
             <button type="button" id="pwa-install-btn" class="btn btn-brand btn-sm d-lg-none pwa-install-btn" style="display:none;">
                 <i class="bi bi-download"></i> Installer
             </button>
-            <span class="text-muted small topbar-email">{{ user.email }}</span>
+            <span class="text-muted small topbar-email">{{ user.first_name }}</span>
         </header>
 
         <div class="modal fade" id="pwa-ios-modal" tabindex="-1" aria-hidden="true">
