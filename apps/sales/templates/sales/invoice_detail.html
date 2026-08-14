@@ -18,8 +18,11 @@
         </div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF (80 mm)</a>
+        <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF ({% if invoice.pdf_format == "A4" %}A4{% else %}80 mm{% endif %})</a>
         <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> Imprimer</button>
+        {% if invoice.type == "DEVIS" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
+        <a href="{% url 'sales:devis_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Modifier</a>
+        {% endif %}
         <!-- <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a> -->
         <!-- <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a> -->
         {% if has_client_phone and whatsapp_api_configured %}
@@ -112,6 +115,18 @@
             </table>
         </div>
 
+        {% if invoice.type == "DEVIS" %}
+        <!-- Un devis n'a pas de paiement dans ce périmètre (voir
+             convert_devis_to_invoice) — la carte "Paiements" y serait
+             toujours vide. Aperçu du PDF réel à la place, plus utile pour
+             relire le document avant de l'envoyer/l'imprimer. -->
+        <div class="card-app">
+            <div class="card-app-header">Aperçu du devis</div>
+            <div class="card-app-body p-0">
+                <iframe src="{% url 'sales:invoice_pdf' invoice.id %}" title="Aperçu du devis" style="width:100%; height:70vh; border:0; border-radius:0 0 8px 8px;"></iframe>
+            </div>
+        </div>
+        {% else %}
         <div class="card-app">
             <div class="card-app-header">Paiements</div>
             <div class="table-app" style="border:none; box-shadow:none;">
@@ -154,6 +169,7 @@
             </div> -->
             {% endif %}
         </div>
+        {% endif %}
 
         
     </div>
@@ -221,7 +237,16 @@
 document.getElementById("print-invoice-btn").addEventListener("click", function () {
     var url = this.dataset.pdfUrl;
     var iframe = document.createElement("iframe");
-    iframe.style.display = "none";
+    // display:none empêche certains navigateurs de vraiment rendre le
+    // visualiseur PDF intégré (donc rien à imprimer) — hors-écran mais
+    // avec de vraies dimensions à la place.
+    iframe.style.position = "fixed";
+    iframe.style.right = "0";
+    iframe.style.bottom = "0";
+    iframe.style.width = "1px";
+    iframe.style.height = "1px";
+    iframe.style.opacity = "0";
+    iframe.style.border = "0";
     iframe.src = url;
     document.body.appendChild(iframe);
     iframe.onload = function () {

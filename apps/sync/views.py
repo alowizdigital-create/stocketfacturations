@@ -333,6 +333,7 @@ class PushInvoicesView(BasePushView):
             discount_amount=data.get("discount_amount", 0),
             currency=data.get("currency") or None,
             note=data.get("note", ""),
+            pdf_format=data.get("pdf_format"),
             id=item_id,
             created_at=data.get("created_at"),
         )

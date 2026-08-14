@@ -64,6 +64,13 @@ class InvoiceForm(BootstrapFormMixin, forms.Form):
     discount_amount = forms.IntegerField(
         label="Remise globale (FCFA)", min_value=0, required=False, initial=0,
     )
+    # N'est affiché dans le template que pour un devis (voir
+    # document_kind dans invoice_form.html) — une commande/facture garde
+    # le format ticket 80mm par défaut, non demandé ici.
+    pdf_format = forms.ChoiceField(
+        choices=Invoice.PDF_FORMAT_CHOICES, initial=Invoice.PDF_FORMAT_80MM,
+        required=False, label="Format du PDF",
+    )
     # Ces deux champs ne concernent qu'une commande (voir invoice_form.html)
     # — un devis n'a ni acompte ni note interne dans le périmètre actuel.
     # Renseignés via le pop-up affiché au clic sur "Créer la commande"
@@ -90,6 +97,9 @@ class InvoiceForm(BootstrapFormMixin, forms.Form):
 
     def clean_deposit_amount(self):
         return self.cleaned_data.get("deposit_amount") or Decimal("0")
+
+    def clean_pdf_format(self):
+        return self.cleaned_data.get("pdf_format") or Invoice.PDF_FORMAT_80MM
 
 
 class SaleForm(BootstrapFormMixin, forms.Form):

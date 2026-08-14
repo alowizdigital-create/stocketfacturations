@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.views.decorators.clickjacking import xframe_options_exempt
 
 from apps.catalog.models import Product
 from apps.core.permissions import boutique_role_required
@@ -293,10 +294,18 @@ def client_import(request):
     return render(request, "sales/client_import.html", {"form": form})
 
 
-def _extract_lines_data(formset):
+def _extract_lines_data(formset, require_changed=True):
+    """`require_changed=True` (comportement historique, création) : ignore
+    les lignes jamais touchées par l'utilisateur — filtre les lignes vides
+    du formset. Sur un formulaire d'édition pré-rempli (voir devis_update),
+    ce filtre supprimerait à tort une ligne existante resoumise sans
+    modification : `form.has_changed()` la considère alors "inchangée"
+    puisqu'elle correspond exactement à son `initial` — d'où ce paramètre."""
     lines_data = []
     for form in formset:
-        if not form.has_changed() or form.cleaned_data.get("DELETE"):
+        if form.cleaned_data.get("DELETE"):
+            continue
+        if require_changed and not form.has_changed():
             continue
         description = form.cleaned_data.get("description")
         if not description:
@@ -331,6 +340,8 @@ def _parse_cart(request):
     confiance au JSON pour ces valeurs — seule la quantité et le prix
     unitaire (modifiable par le caissier) viennent du client."""
 
+    from apps.stock.models import StockLevel
+
     raw = request.POST.get("cart_json", "")
     try:
         items = json.loads(raw) if raw else []
@@ -343,8 +354,13 @@ def _parse_cart(request):
     product_ids = [item.get("product_id") for item in items]
     products = Product.objects.filter(id__in=product_ids, compte=request.compte, is_active=True)
     products_by_id = {str(p.id): p for p in products}
+    stock_by_product = {
+        level.product_id: level.quantity
+        for level in StockLevel.objects.filter(boutique=request.boutique, product__in=products)
+    }
 
     lines_data = []
+    requested_by_product = {}
     for item in items:
         product = products_by_id.get(str(item.get("product_id")))
         if product is None:
@@ -356,6 +372,17 @@ def _parse_cart(request):
             return None, "Quantité ou prix invalide dans le panier."
         if quantity <= 0 or unit_price_ht < 0 or quantity != quantity.to_integral_value():
             return None, "Quantité ou prix invalide dans le panier."
+
+        # Cumulé au cas où le même produit apparaîtrait sur plusieurs lignes
+        # du panier — la quantité totale demandée ne doit jamais dépasser le
+        # stock réellement disponible dans cette boutique.
+        requested_by_product[product.id] = requested_by_product.get(product.id, Decimal("0")) + quantity
+        available = stock_by_product.get(product.id, Decimal("0"))
+        if requested_by_product[product.id] > available:
+            return None, (
+                f"Stock insuffisant pour « {product.name} » : {available} disponible(s), "
+                f"{requested_by_product[product.id]} demandé(s)."
+            )
 
         lines_data.append(
             {
@@ -535,6 +562,7 @@ def invoice_create(request):
                     lines_data=lines_data,
                     discount_amount=Decimal(form.cleaned_data["discount_amount"]),
                     currency=form.cleaned_data["currency"] or request.boutique.devise,
+                    pdf_format=form.cleaned_data["pdf_format"],
                 )
                 if settings.IS_OFFLINE:
                     outbox.enqueue(OutboxEntry.INVOICE, invoice.id)
@@ -553,6 +581,88 @@ def invoice_create(request):
             "formset": formset,
             "preselected_products": preselected_products,
             "rate_map": request.boutique.exchange_rate_map,
+            "document_kind": "devis",
+        },
+    )
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def devis_update(request, invoice_id):
+    """Modification d'un devis tant qu'il n'est pas encore converti en
+    facture (voir services.update_invoice) — même formulaire que
+    invoice_create, pré-rempli avec les lignes existantes."""
+    devis = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.DEVIS)
+
+    if devis.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
+        messages.error(request, "Ce devis n'est plus modifiable.")
+        return redirect("sales:invoice_detail", invoice_id=devis.id)
+
+    if settings.IS_OFFLINE:
+        # update_invoice() n'est pas rejouable côté push (PushInvoicesView
+        # appelle build_invoice(..., id=...), qui ne modifie jamais un
+        # Invoice déjà existant) — modifier un devis hors-ligne ne
+        # remonterait donc jamais en ligne. Même limitation, même message
+        # que devis_generate_invoice.
+        messages.error(
+            request,
+            "La modification d'un devis n'est pas encore disponible hors-ligne — "
+            "utilisez le poste en ligne.",
+        )
+        return redirect("sales:invoice_detail", invoice_id=devis.id)
+
+    if request.method == "POST":
+        form = InvoiceForm(request.POST, boutique=request.boutique)
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        if form.is_valid() and formset.is_valid():
+            lines_data = _extract_lines_data(formset, require_changed=False)
+            if not lines_data:
+                messages.error(request, "Ajoutez au moins une ligne au devis.")
+            else:
+                services.update_invoice(
+                    devis,
+                    client=form.cleaned_data["client"],
+                    lines_data=lines_data,
+                    discount_amount=Decimal(form.cleaned_data["discount_amount"]),
+                    currency=form.cleaned_data["currency"] or request.boutique.devise,
+                    pdf_format=form.cleaned_data["pdf_format"],
+                )
+                messages.success(request, f"{devis.number} modifié.")
+                return redirect("sales:invoice_detail", invoice_id=devis.id)
+    else:
+        form = InvoiceForm(
+            boutique=request.boutique,
+            initial={
+                "client": devis.client_id,
+                "currency": devis.currency,
+                "discount_amount": devis.discount_amount,
+                "pdf_format": devis.pdf_format,
+            },
+        )
+        line_initial = [
+            {
+                "product": line.product_id,
+                "description": line.description,
+                "quantity": line.quantity,
+                "unit_price_ht": line.unit_price_ht,
+                "tva_rate": line.tva_rate,
+                "discount_amount": line.discount_amount,
+            }
+            for line in devis.lines.all()
+        ]
+        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte})
+
+    preselected_products = _preselected_products_for_formset(formset, request.compte)
+    return render(
+        request,
+        "sales/invoice_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "preselected_products": preselected_products,
+            "rate_map": request.boutique.exchange_rate_map,
+            "document_kind": "devis",
+            "editing_invoice": devis,
         },
     )
 
@@ -816,7 +926,14 @@ def payment_create(request, invoice_id):
 
 
 @login_required
+@xframe_options_exempt
 def invoice_pdf(request, invoice_id):
+    # Sans cette exemption, Django ajoute X-Frame-Options: DENY par défaut
+    # sur toute réponse — bloquant silencieusement l'affichage du PDF dans
+    # l'<iframe> de prévisualisation ci-dessous et dans le bouton
+    # "Imprimer" (qui charge ce même PDF dans un <iframe> caché avant
+    # d'appeler print()) : le navigateur refuse la frame, l'iframe reste
+    # sur about:blank, et contentWindow.print() lève une SecurityError.
     invoice = get_object_or_404(
         Invoice.objects.select_related("client", "boutique").prefetch_related("lines"),
         id=invoice_id,

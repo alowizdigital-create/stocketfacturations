@@ -41,6 +41,7 @@
                         <i class="bi bi-search pos-search-icon"></i>
                         <input type="text" id="pos-search" class="form-control ps-5" placeholder="Nom, référence ou code-barres..." autocomplete="off">
                     </div>
+                    <div id="pos-stock-warning" class="text-danger small mb-2 d-none"></div>
                     <div id="pos-results" class="pos-results"></div>
                 </div>
             </div>
@@ -165,7 +166,7 @@
                     <div class="pos-item-name">${p.name}</div>
                     <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
                 </div>
-                <input type="number" min="1" step="1" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
+                <input type="number" min="1" step="1" max="${p.stock_qty}" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
                 <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
             </div>`;
         }).join("");
@@ -194,9 +195,34 @@
         addToCart(product, qty);
     });
 
+    let stockWarningTimer = null;
+    function showStockWarning(message) {
+        const el = document.getElementById("pos-stock-warning");
+        if (!el) return;
+        el.textContent = message;
+        el.classList.remove("d-none");
+        clearTimeout(stockWarningTimer);
+        stockWarningTimer = setTimeout(() => el.classList.add("d-none"), 4000);
+    }
+
+    // La quantité vendue ne doit jamais dépasser le stock réellement
+    // disponible dans cette boutique — le serveur revalide de toute façon
+    // au moment d'enregistrer (voir _parse_cart), ceci n'est qu'un filet
+    // côté UI pour éviter l'aller-retour d'une erreur après coup.
     function addToCart(product, qty) {
         qty = qty && qty > 0 ? qty : 1;
+        const stockQty = product.stock_qty || 0;
         const existing = cart.find((line) => line.product_id === product.id);
+        const alreadyInCart = existing ? existing.quantity : 0;
+        const maxAddable = Math.max(0, stockQty - alreadyInCart);
+        if (maxAddable <= 0) {
+            showStockWarning(`Stock épuisé pour « ${product.name} » (${stockQty} disponible(s), déjà ${alreadyInCart} dans le panier).`);
+            return;
+        }
+        if (qty > maxAddable) {
+            showStockWarning(`Quantité limitée à ${stockQty} pour « ${product.name} » (stock disponible).`);
+            qty = maxAddable;
+        }
         if (existing) {
             existing.quantity += qty;
         } else {
@@ -208,6 +234,7 @@
                 image_url: product.image_url,
                 unit_price_ht: convert(product.price, boutiqueDevise, currency),
                 tva_rate: product.tva_rate,
+                stock_qty: stockQty,
                 quantity: qty,
             });
         }
@@ -232,7 +259,7 @@
                     <div class="pos-item-name">${line.name}</div>
                     <div class="text-muted small">${fmt(line.unit_price_ht)} / ${line.unit}</div>
                 </div>
-                <input type="number" min="1" step="1" class="form-control pos-qty" value="${line.quantity}">
+                <input type="number" min="1" step="1" max="${line.stock_qty}" class="form-control pos-qty" value="${line.quantity}">
                 <div class="pos-line-total">${fmt(line.quantity * line.unit_price_ht)}</div>
                 <button type="button" class="btn btn-link text-danger pos-remove"><i class="bi bi-trash"></i></button>
             </div>`;
@@ -263,7 +290,12 @@
         const productId = line.dataset.id;
         const cartLine = cart.find((l) => l.product_id === productId);
         const value = parseInt(e.target.value, 10);
-        cartLine.quantity = isNaN(value) || value <= 0 ? 1 : value;
+        let quantity = isNaN(value) || value <= 0 ? 1 : value;
+        if (cartLine.stock_qty !== undefined && quantity > cartLine.stock_qty) {
+            showStockWarning(`Quantité limitée à ${cartLine.stock_qty} pour « ${cartLine.name} » (stock disponible).`);
+            quantity = cartLine.stock_qty;
+        }
+        cartLine.quantity = quantity;
         renderCart();
     });
 

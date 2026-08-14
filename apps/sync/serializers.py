@@ -67,6 +67,9 @@ class InvoicePushSerializer(serializers.Serializer):
     currency = serializers.CharField(max_length=3, required=False, allow_blank=True, default="")
     issue_date = serializers.DateField(required=False)
     note = serializers.CharField(required=False, allow_blank=True, default="")
+    pdf_format = serializers.ChoiceField(
+        choices=[Invoice.PDF_FORMAT_80MM, Invoice.PDF_FORMAT_A4], required=False, default=Invoice.PDF_FORMAT_80MM
+    )
     created_by_user_id = serializers.UUIDField(required=False, allow_null=True)
 
 
@@ -297,7 +300,7 @@ class InvoicePullSerializer(serializers.ModelSerializer):
         fields = [
             "id", "client_id", "number", "type", "status", "issue_date", "due_date",
             "currency", "subtotal_ht", "total_tva", "total_ttc", "discount_amount", "note",
-            "created_by_id", "lines", "payments", "updated_at",
+            "pdf_format", "created_by_id", "lines", "payments", "updated_at",
         ]
 
 

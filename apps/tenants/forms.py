@@ -55,9 +55,9 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
     nouvel employé : crée le compte utilisateur et l'affecte directement à
     une boutique avec un rôle."""
 
+    first_name = forms.CharField(label="Prénom", max_length=150)
+    last_name = forms.CharField(label="Nom", max_length=150, required=False)
     email = forms.EmailField(label="Email de l'employé")
-    # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
-    # last_name = forms.CharField(label="Nom", max_length=150, required=False)
     boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label="Boutique")
     role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label="Rôle")
     password = forms.CharField(label="Mot de passe initial", widget=forms.PasswordInput)

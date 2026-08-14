@@ -53,20 +53,12 @@
             <div class="card-app-header">Dernières ventes</div>
             <div class="table-app" style="border:none; box-shadow:none;">
                 <table class="table mb-0">
-                    <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th class="d-none d-md-table-cell">Facture</th><th>Total TTC</th></tr></thead>
+                    <thead><tr><th>CLIENT</th><th>FACTURE</th><th>Statut</th><th class="d-none d-md-table-cell">TOTAL TTC</th><th>DATE</th></tr></thead>
                     <tbody>
                         {% for sale in dernieres_ventes %}
                         <tr>
-                            <td><a href="{% url 'sales:sale_detail' sale.id %}">{{ sale.number }}</a></td>
                             <td>{{ sale.client|default:"—" }}</td>
-                            <td>
-                                <span class="badge-status
-                                    {% if sale.status == 'CONFIRMEE' %}badge-green
-                                    {% elif sale.status == 'ANNULEE' %}badge-red
-                                    {% else %}badge-gray{% endif %}">
-                                    {{ sale.get_status_display }}
-                                </span>
-                            </td>
+                           
                             <td class="d-none d-md-table-cell">
                                 {% if sale.invoice_id %}
                                 <a href="{% url 'sales:invoice_detail' sale.invoice_id %}">{{ sale.invoice.number }}</a>
@@ -74,7 +66,16 @@
                                 <span class="text-muted">—</span>
                                 {% endif %}
                             </td>
+                             <td>
+                                <span class="badge-status   
+                                    {% if sale.status == 'CONFIRMEE' %}badge-green
+                                    {% elif sale.status == 'ANNULEE' %}badge-red
+                                    {% else %}badge-gray{% endif %}">
+                                    {{ sale.get_status_display }}
+                                </span>
+                            </td>
                             <td>{{ sale.total_ttc }} {{ sale.currency }}</td>
+                            <td><a href="{% url 'sales:sale_detail' sale.id %}">{{ sale.sale_date }}</a></td>
                         </tr>
                         {% empty %}
                         <tr><td colspan="5" class="text-muted">Aucune vente pour le moment.</td></tr>

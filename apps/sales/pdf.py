@@ -1,14 +1,27 @@
-"""Génération du ticket de facture/devis au format 80 mm, dimensionné pour
-une imprimante thermique de caisse (pas de mise en page A4 : la hauteur de
-la page PDF est calculée pour correspondre exactement au contenu, comme un
-ticket de caisse)."""
+"""Génération du PDF de facture/devis/commande, en deux formats au choix
+(voir Invoice.pdf_format) : un ticket 80 mm dimensionné pour une imprimante
+thermique de caisse (hauteur de page calculée pour correspondre exactement
+au contenu), ou une page A4 classique (mise en page tabulaire via reportlab
+Platypus, avec saut de page automatique pour les documents à beaucoup de
+lignes)."""
 
 import io
 import logging
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas as pdfcanvas
+from reportlab.platypus import (
+    Image,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+    Table,
+    TableStyle,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -130,7 +143,25 @@ def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, 
     return height
 
 
+def _document_title(invoice):
+    if invoice.type == invoice.FACTURE:
+        return "FACTURE"
+    elif invoice.type == invoice.COMMANDE:
+        return "COMMANDE"
+    return "DEVIS"
+
+
 def render_invoice_pdf(invoice):
+    """Point d'entrée unique pour générer le PDF d'une facture/devis/
+    commande — choisit le rendu (ticket 80mm ou page A4) selon
+    `invoice.pdf_format`, transparent pour les deux vues appelantes
+    (invoice_pdf, invoice_public_pdf)."""
+    if invoice.pdf_format == invoice.PDF_FORMAT_A4:
+        return _render_invoice_pdf_a4(invoice)
+    return _render_invoice_pdf_80mm(invoice)
+
+
+def _render_invoice_pdf_80mm(invoice):
     """Rendu du ticket 80 mm — utilisé aussi bien pour l'impression directe
     (imprimante thermique) que pour le lien de partage WhatsApp."""
 
@@ -150,12 +181,7 @@ def render_invoice_pdf(invoice):
     c = pdfcanvas.Canvas(buffer, pagesize=(PAGE_WIDTH, height))
     w = _ReceiptWriter(c, height)
 
-    if invoice.type == invoice.FACTURE:
-        title = "FACTURE"
-    elif invoice.type == invoice.COMMANDE:
-        title = "COMMANDE"
-    else:
-        title = "DEVIS"
+    title = _document_title(invoice)
 
     if logo_sized is not None:
         w.logo(logo_sized)
@@ -210,4 +236,167 @@ def render_invoice_pdf(invoice):
 
     c.showPage()
     c.save()
+    return buffer.getvalue()
+
+
+A4_MARGIN = 18 * mm
+
+_styles = getSampleStyleSheet()
+_STYLE_NORMAL = ParagraphStyle("InvoiceNormal", parent=_styles["Normal"], fontSize=9, leading=12)
+_STYLE_SMALL = ParagraphStyle(
+    "InvoiceSmall", parent=_styles["Normal"], fontSize=8, leading=10, textColor=colors.grey
+)
+_STYLE_TITLE = ParagraphStyle(
+    "InvoiceTitle", parent=_styles["Normal"], fontSize=18, leading=22, fontName="Helvetica-Bold"
+)
+_STYLE_HEADER_CELL = ParagraphStyle(
+    "InvoiceHeaderCell", parent=_styles["Normal"], fontSize=9, leading=11,
+    fontName="Helvetica-Bold", textColor=colors.white,
+)
+_STYLE_BOLD = ParagraphStyle("InvoiceBold", parent=_styles["Normal"], fontSize=9, leading=12, fontName="Helvetica-Bold")
+
+
+def _render_invoice_pdf_a4(invoice):
+    """Rendu A4 classique (reportlab Platypus) — même contenu que le ticket
+    80mm mais en page complète, avec un vrai tableau de lignes (saut de
+    page automatique pour les documents à beaucoup de lignes, impossible à
+    obtenir avec le canvas bas niveau du rendu 80mm)."""
+
+    lines = list(invoice.lines.all())
+    payments = list(invoice.payments.all())
+    logo_field = invoice.boutique.compte.logo
+    has_global_discount = bool(invoice.discount_amount)
+    client_phone = invoice.client.phone if invoice.client else ""
+    payment_methods = invoice.boutique.payment_methods
+    title = _document_title(invoice)
+
+    buffer = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buffer, pagesize=A4,
+        topMargin=A4_MARGIN, bottomMargin=A4_MARGIN, leftMargin=A4_MARGIN, rightMargin=A4_MARGIN,
+        title=f"{title} {invoice.number}",
+    )
+    story = []
+
+    # --- En-tête : logo/coordonnées boutique à gauche, titre/numéro/date à droite
+    left_cell = []
+    logo_sized = _logo_size(logo_field)
+    if logo_sized is not None:
+        image, draw_w, draw_h = logo_sized
+        left_cell.append(Image(logo_field.path, width=draw_w, height=draw_h))
+        left_cell.append(Spacer(1, 3 * mm))
+    left_cell.append(Paragraph(f"<b>{invoice.boutique.name}</b>", _STYLE_NORMAL))
+    if invoice.boutique.address:
+        left_cell.append(Paragraph(invoice.boutique.address, _STYLE_SMALL))
+    if invoice.boutique.phone:
+        left_cell.append(Paragraph(f"Tél: {invoice.boutique.phone}", _STYLE_SMALL))
+
+    right_cell = [
+        Paragraph(title, _STYLE_TITLE),
+        Paragraph(invoice.number, _STYLE_NORMAL),
+        Paragraph(f"Date: {invoice.issue_date:%d/%m/%Y}", _STYLE_SMALL),
+    ]
+
+    header_table = Table([[left_cell, right_cell]], colWidths=[100 * mm, None])
+    header_table.setStyle(TableStyle([
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+    ]))
+    story.append(header_table)
+    story.append(Spacer(1, 6 * mm))
+
+    # --- Client
+    client_name = invoice.client.name if invoice.client else "Client de passage"
+    client_text = f"<b>Client :</b> {client_name}"
+    if client_phone:
+        client_text += f" — Tél: {client_phone}"
+    story.append(Paragraph(client_text, _STYLE_NORMAL))
+    story.append(Spacer(1, 6 * mm))
+
+    # --- Tableau des lignes
+    header_row = [
+        Paragraph("Description", _STYLE_HEADER_CELL),
+        Paragraph("Qté", _STYLE_HEADER_CELL),
+        Paragraph("PU HT", _STYLE_HEADER_CELL),
+        Paragraph("Remise", _STYLE_HEADER_CELL),
+        Paragraph("Total TTC", _STYLE_HEADER_CELL),
+    ]
+    rows = [header_row]
+    for line in lines:
+        rows.append([
+            Paragraph(line.description, _STYLE_NORMAL),
+            Paragraph(f"{float(line.quantity):g}", _STYLE_NORMAL),
+            Paragraph(_fmt(line.unit_price_ht), _STYLE_NORMAL),
+            Paragraph(_fmt(line.discount_amount) if line.discount_amount else "—", _STYLE_NORMAL),
+            Paragraph(_fmt(line.line_total_ttc), _STYLE_NORMAL),
+        ])
+
+    lines_table = Table(rows, colWidths=[None, 18 * mm, 28 * mm, 25 * mm, 30 * mm], repeatRows=1)
+    lines_table.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#6f4a8e")),
+        ("ALIGN", (1, 0), (-1, -1), "RIGHT"),
+        ("ALIGN", (0, 0), (0, -1), "LEFT"),
+        ("GRID", (0, 0), (-1, -1), 0.4, colors.HexColor("#dddddd")),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#f8f7fa")]),
+        ("TOPPADDING", (0, 0), (-1, -1), 4),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+    ]))
+    story.append(lines_table)
+    story.append(Spacer(1, 6 * mm))
+
+    # --- Totaux (mini tableau aligné à droite)
+    totals_rows = [
+        ("Sous-total HT", f"{_fmt(invoice.subtotal_ht)} {invoice.currency}"),
+        ("TVA", f"{_fmt(invoice.total_tva)} {invoice.currency}"),
+    ]
+    if has_global_discount:
+        totals_rows.append(("Remise globale", f"-{_fmt(invoice.discount_amount)} {invoice.currency}"))
+    totals_rows.append(("TOTAL TTC", f"{_fmt(invoice.total_ttc)} {invoice.currency}"))
+
+    totals_table = Table(
+        [
+            [Paragraph(label, _STYLE_NORMAL), Paragraph(value, _STYLE_BOLD if label == "TOTAL TTC" else _STYLE_NORMAL)]
+            for label, value in totals_rows
+        ],
+        colWidths=[40 * mm, 40 * mm], hAlign="RIGHT",
+    )
+    totals_table.setStyle(TableStyle([
+        ("ALIGN", (1, 0), (1, -1), "RIGHT"),
+        ("LINEABOVE", (0, -1), (-1, -1), 0.6, colors.black),
+        ("TOPPADDING", (0, 0), (-1, -1), 2),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+    ]))
+    story.append(totals_table)
+
+    # --- Paiements
+    if payments:
+        story.append(Spacer(1, 6 * mm))
+        story.append(Paragraph("<b>Paiements</b>", _STYLE_NORMAL))
+        payment_rows = [
+            (payment.get_method_display(), f"{_fmt(payment.amount)} {invoice.currency}")
+            for payment in payments
+        ]
+        payment_rows.append(("Payé", f"{_fmt(invoice.amount_paid)} {invoice.currency}"))
+        payment_rows.append(("Reste à payer", f"{_fmt(invoice.balance_due)} {invoice.currency}"))
+        payments_table = Table(
+            [[Paragraph(label, _STYLE_NORMAL), Paragraph(value, _STYLE_NORMAL)] for label, value in payment_rows],
+            colWidths=[40 * mm, 40 * mm], hAlign="RIGHT",
+        )
+        payments_table.setStyle(TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT")]))
+        story.append(payments_table)
+
+    # --- Moyens de paiement mobile money
+    if payment_methods:
+        story.append(Spacer(1, 6 * mm))
+        story.append(Paragraph("<b>Paiement Mobile Money</b>", _STYLE_NORMAL))
+        for method in payment_methods:
+            label = method["label"]
+            if method["account_name"]:
+                label += f" ({method['account_name']})"
+            story.append(Paragraph(f"{label} : {method['number']}", _STYLE_NORMAL))
+
+    story.append(Spacer(1, 10 * mm))
+    story.append(Paragraph("Merci pour la confiance !", _STYLE_SMALL))
+
+    doc.build(story)
     return buffer.getvalue()

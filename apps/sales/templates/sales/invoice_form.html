@@ -1,7 +1,7 @@
 {% extends "base.html" %}
-{% block title %}{% if document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}{% endblock %}
+{% block title %}{% if editing_invoice %}Modifier le devis{% elif document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>{% if document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}</h1></div></div>
+<div class="page-header"><div><h1>{% if editing_invoice %}Modifier le devis {{ editing_invoice.number }}{% elif document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}</h1></div></div>
 <form method="post" id="devis-form">
     {% csrf_token %}
     <div class="card-app mb-3">
@@ -23,6 +23,13 @@
                     {{ form.discount_amount }}
                 </div>
             </div>
+            {% if document_kind == "devis" %}
+            <div class="col-md-4">
+                <label class="form-label">{{ form.pdf_format.label }}</label>
+                {{ form.pdf_format }}
+                <div class="form-text">Format du reçu PDF imprimé/partagé pour ce devis.</div>
+            </div>
+            {% endif %}
         </div>
     </div>
 
@@ -103,8 +110,8 @@
     {{ form.note }}
     {{ form.deposit_amount }}
     <div class="d-flex gap-2 mt-4">
-        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if document_kind == "commande" %}Créer la commande{% else %}Créer le devis{% endif %}</button>
-        <a href="{% if document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if editing_invoice %}Enregistrer les modifications{% elif document_kind == "commande" %}Créer la commande{% else %}Créer le devis{% endif %}</button>
+        <a href="{% if editing_invoice %}{% url 'sales:invoice_detail' editing_invoice.id %}{% elif document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
     </div>
 </form>
 

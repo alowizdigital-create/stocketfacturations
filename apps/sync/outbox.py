@@ -74,6 +74,7 @@ def _serialize_invoice(object_id):
         "currency": invoice.currency,
         "issue_date": invoice.issue_date.isoformat(),
         "note": invoice.note,
+        "pdf_format": invoice.pdf_format,
         "created_by_user_id": str(invoice.created_by_id) if invoice.created_by_id else None,
     }
     if invoice.client_id:

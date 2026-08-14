@@ -223,6 +223,7 @@ def _upsert_invoice(items, boutique_id):
                         "total_ttc": item["total_ttc"],
                         "discount_amount": item.get("discount_amount", 0),
                         "note": item.get("note", ""),
+                        "pdf_format": item.get("pdf_format", Invoice.PDF_FORMAT_80MM),
                         "created_by_id": item.get("created_by_id"),
                     },
                 )

@@ -131,6 +131,10 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
         (CONVERTIE, "Convertie en facture"),
     ]
 
+    PDF_FORMAT_80MM = "80MM"
+    PDF_FORMAT_A4 = "A4"
+    PDF_FORMAT_CHOICES = [(PDF_FORMAT_80MM, "Ticket 80mm"), (PDF_FORMAT_A4, "A4")]
+
     client = models.ForeignKey(
         Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices"
     )
@@ -149,6 +153,9 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     note = models.TextField(
         "note interne", blank=True,
         help_text="Usage interne uniquement — n'apparaît jamais sur le reçu/PDF.",
+    )
+    pdf_format = models.CharField(
+        "format du PDF", max_length=10, choices=PDF_FORMAT_CHOICES, default=PDF_FORMAT_80MM,
     )
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"

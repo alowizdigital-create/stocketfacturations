@@ -59,7 +59,8 @@ def get_or_create_client(*, boutique, id=None, name, phone="", email="", address
 
 @transaction.atomic
 def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=None,
-                   discount_amount=Decimal("0"), currency=None, note="", id=None, created_at=None):
+                   discount_amount=Decimal("0"), currency=None, note="", pdf_format=None,
+                   id=None, created_at=None):
     """Crée une facture/devis en BROUILLON avec ses lignes. `lines_data` :
     liste de dicts {product, description, quantity, unit_price_ht, tva_rate,
     discount_amount}. `discount_amount` est la remise globale de la
@@ -93,6 +94,8 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
         note=note,
         created_by=created_by,
     )
+    if pdf_format:
+        invoice_kwargs["pdf_format"] = pdf_format
     if id is not None:
         invoice_kwargs["id"] = id
     if created_at is not None:
@@ -118,6 +121,50 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
         subtotal_ht=subtotal_ht, total_tva=total_tva, total_ttc=total_ttc
     )
     invoice.refresh_from_db()
+    return invoice
+
+
+@transaction.atomic
+def update_invoice(invoice, *, client, lines_data, discount_amount=Decimal("0"), currency=None,
+                    note=None, pdf_format=None):
+    """Modifie un devis encore éditable (voir devis_update — pas encore
+    converti en facture) : les lignes existantes sont supprimées puis
+    recréées à partir de lines_data, plus simple et plus sûr qu'un diff
+    ligne à ligne pour ce cas d'usage (le formulaire est resoumis en
+    entier à chaque édition, pas d'édition partielle en direct)."""
+
+    invoice.lines.all().delete()
+
+    computed, subtotal_ht, total_tva, total_ttc = _compute_totals(lines_data, discount_amount)
+    for position, (line, line_total_ht, line_total_ttc) in enumerate(computed):
+        InvoiceLine.objects.create(
+            invoice=invoice,
+            product=line.get("product"),
+            description=line["description"],
+            quantity=line["quantity"],
+            unit_price_ht=line["unit_price_ht"],
+            tva_rate=line["tva_rate"],
+            discount_amount=line.get("discount_amount", Decimal("0")),
+            line_total_ht=line_total_ht,
+            line_total_ttc=line_total_ttc,
+            position=position,
+        )
+
+    invoice.client = client
+    invoice.discount_amount = discount_amount
+    invoice.subtotal_ht = subtotal_ht
+    invoice.total_tva = total_tva
+    invoice.total_ttc = total_ttc
+    if currency:
+        invoice.currency = currency
+    if note is not None:
+        invoice.note = note
+    if pdf_format:
+        invoice.pdf_format = pdf_format
+    invoice.save(update_fields=[
+        "client", "discount_amount", "subtotal_ht", "total_tva", "total_ttc",
+        "currency", "note", "pdf_format", "updated_at",
+    ])
     return invoice
 
 
