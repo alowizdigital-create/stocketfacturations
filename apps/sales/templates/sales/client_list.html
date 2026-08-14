@@ -7,6 +7,20 @@
         <a href="{% url 'sales:client_import' %}" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> Importer</a>
     </div>
 </div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un client (nom, téléphone, email)...">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        {% if query %}
+        <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
 <div class="table-app">
     <table class="table mb-0">
         <thead><tr><th>Nom</th><th>Téléphone</th><th class="d-none d-md-table-cell">Email</th></tr></thead>

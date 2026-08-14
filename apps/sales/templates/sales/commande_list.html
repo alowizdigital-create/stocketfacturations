@@ -4,6 +4,20 @@
 <div class="page-header">
     <a href="{% url 'sales:commande_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle commande</a>
 </div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher une commande (numéro, client)...">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        {% if query %}
+        <a href="{% url 'sales:commande_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
 <div class="table-app">
     <table class="table mb-0">
         <thead><tr><th>N°</th><th>Client</th><th>Statut</th><th class="d-none d-sm-table-cell">Date</th><th>Total TTC</th></tr></thead>

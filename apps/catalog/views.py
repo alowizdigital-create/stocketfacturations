@@ -127,7 +127,13 @@ def product_list(request):
         products = products.filter(
             Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
         )
-    products = list(products.order_by("-created_at"))
+    products = products.order_by("-created_at")
+    # Sans recherche : seulement les 10 plus récents — au-delà, la barre de
+    # recherche est le moyen de retrouver un produit plus ancien (voir aussi
+    # category_list/unit_list/client_list/... même patron).
+    if not query:
+        products = products[:10]
+    products = list(products)
 
     stock_by_product = {
         level.product_id: level.quantity
@@ -266,8 +272,14 @@ def product_delete(request, product_id):
 
 @login_required
 def category_list(request):
-    categories = Category.objects.filter(compte=request.compte).select_related("parent").order_by("-created_at")
-    return render(request, "catalog/category_list.html", {"categories": categories})
+    query = request.GET.get("q", "").strip()
+    categories = Category.objects.filter(compte=request.compte).select_related("parent")
+    if query:
+        categories = categories.filter(Q(name__icontains=query))
+    categories = categories.order_by("-created_at")
+    if not query:
+        categories = categories[:10]
+    return render(request, "catalog/category_list.html", {"categories": categories, "query": query})
 
 
 @login_required
@@ -354,8 +366,14 @@ def category_delete(request, category_id):
 
 @login_required
 def unit_list(request):
-    units = Unit.objects.filter(compte=request.compte).order_by("-created_at")
-    return render(request, "catalog/unit_list.html", {"units": units})
+    query = request.GET.get("q", "").strip()
+    units = Unit.objects.filter(compte=request.compte)
+    if query:
+        units = units.filter(Q(name__icontains=query) | Q(symbol__icontains=query))
+    units = units.order_by("-created_at")
+    if not query:
+        units = units[:10]
+    return render(request, "catalog/unit_list.html", {"units": units, "query": query})
 
 
 @login_required

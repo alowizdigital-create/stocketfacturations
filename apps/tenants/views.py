@@ -2,6 +2,7 @@ from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
@@ -102,12 +103,18 @@ def set_boutique(request, boutique_id):
 @login_required
 @compte_admin_required
 def staff_list(request):
-    memberships = (
-        Membership.objects.filter(boutique__compte=request.compte)
-        .select_related("user", "boutique")
-        .order_by("-created_at")
-    )
-    return render(request, "tenants/staff_list.html", {"memberships": memberships})
+    query = request.GET.get("q", "").strip()
+    memberships = Membership.objects.filter(boutique__compte=request.compte).select_related("user", "boutique")
+    if query:
+        memberships = memberships.filter(
+            Q(user__first_name__icontains=query)
+            | Q(user__last_name__icontains=query)
+            | Q(user__email__icontains=query)
+        )
+    memberships = memberships.order_by("-created_at")
+    if not query:
+        memberships = memberships[:10]
+    return render(request, "tenants/staff_list.html", {"memberships": memberships, "query": query})
 
 
 @login_required

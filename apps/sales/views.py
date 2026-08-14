@@ -32,8 +32,16 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE, Membership.
 
 @login_required
 def client_list(request):
-    clients = Client.objects.filter(boutique=request.boutique).order_by("-created_at")
-    return render(request, "sales/client_list.html", {"clients": clients})
+    query = request.GET.get("q", "").strip()
+    clients = Client.objects.filter(boutique=request.boutique)
+    if query:
+        clients = clients.filter(
+            Q(name__icontains=query) | Q(phone__icontains=query) | Q(email__icontains=query)
+        )
+    clients = clients.order_by("-created_at")
+    if not query:
+        clients = clients[:10]
+    return render(request, "sales/client_list.html", {"clients": clients, "query": query})
 
 
 @login_required
@@ -330,8 +338,13 @@ def _extract_lines_data(formset, require_changed=True):
 
 @login_required
 def sale_list(request):
+    query = request.GET.get("q", "").strip()
     sales = Sale.objects.filter(boutique=request.boutique).select_related("client", "invoice")
-    return render(request, "sales/sale_list.html", {"sales": sales})
+    if query:
+        sales = sales.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+    if not query:
+        sales = sales[:10]
+    return render(request, "sales/sale_list.html", {"sales": sales, "query": query})
 
 
 def _parse_cart(request):
@@ -492,29 +505,44 @@ def invoice_list(request):
     """Liste des factures uniquement — les devis ont leur propre liste
     (voir devis_list), ce sont deux documents distincts pour l'utilisateur
     même s'ils partagent le même modèle Invoice en base."""
+    query = request.GET.get("q", "").strip()
     invoices = (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.FACTURE)
         .select_related("client")
     )
-    return render(request, "sales/invoice_list.html", {"invoices": invoices})
+    if query:
+        invoices = invoices.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+    if not query:
+        invoices = invoices[:10]
+    return render(request, "sales/invoice_list.html", {"invoices": invoices, "query": query})
 
 
 @login_required
 def devis_list(request):
+    query = request.GET.get("q", "").strip()
     devis = (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.DEVIS)
         .select_related("client")
     )
-    return render(request, "sales/devis_list.html", {"devis": devis})
+    if query:
+        devis = devis.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+    if not query:
+        devis = devis[:10]
+    return render(request, "sales/devis_list.html", {"devis": devis, "query": query})
 
 
 @login_required
 def commande_list(request):
+    query = request.GET.get("q", "").strip()
     commandes = (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.COMMANDE)
         .select_related("client")
     )
-    return render(request, "sales/commande_list.html", {"commandes": commandes})
+    if query:
+        commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+    if not query:
+        commandes = commandes[:10]
+    return render(request, "sales/commande_list.html", {"commandes": commandes, "query": query})
 
 
 def _preselected_products_for_formset(formset, compte):

@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from apps.catalog.models import Product
@@ -19,16 +20,18 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
 @login_required
 def stock_level_list(request):
-    levels = (
-        StockLevel.objects.filter(boutique=request.boutique)
-        .select_related("product")
-        .order_by("product__name")
-    )
+    query = request.GET.get("q", "").strip()
+    levels = StockLevel.objects.filter(boutique=request.boutique).select_related("product")
+    if query:
+        levels = levels.filter(Q(product__name__icontains=query) | Q(product__sku__icontains=query))
+    levels = levels.order_by("product__name")
+    if not query:
+        levels = levels[:10]
     rows = []
     for level in levels:
         threshold = get_effective_low_stock_threshold(level.product, request.boutique)
         rows.append({"level": level, "threshold": threshold, "is_low": level.quantity <= threshold})
-    return render(request, "stock/stock_level_list.html", {"rows": rows})
+    return render(request, "stock/stock_level_list.html", {"rows": rows, "query": query})
 
 
 @login_required
@@ -89,9 +92,10 @@ def product_quick_movement(request, product_id):
 
 @login_required
 def movement_history(request):
-    movements = (
-        StockMovement.objects.filter(boutique=request.boutique)
-        .select_related("product")
-        .order_by("-created_at")[:200]
-    )
-    return render(request, "stock/movement_history.html", {"movements": movements})
+    query = request.GET.get("q", "").strip()
+    movements = StockMovement.objects.filter(boutique=request.boutique).select_related("product")
+    if query:
+        movements = movements.filter(Q(product__name__icontains=query) | Q(reason__icontains=query))
+    movements = movements.order_by("-created_at")
+    movements = movements[:10] if not query else movements[:200]
+    return render(request, "stock/movement_history.html", {"movements": movements, "query": query})
