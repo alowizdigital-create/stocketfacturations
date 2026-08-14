@@ -32,7 +32,7 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE, Membership.
 
 @login_required
 def client_list(request):
-    clients = Client.objects.filter(boutique=request.boutique).order_by("name")
+    clients = Client.objects.filter(boutique=request.boutique).order_by("-created_at")
     return render(request, "sales/client_list.html", {"clients": clients})
 
 

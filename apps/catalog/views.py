@@ -127,7 +127,7 @@ def product_list(request):
         products = products.filter(
             Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
         )
-    products = list(products.order_by("name"))
+    products = list(products.order_by("-created_at"))
 
     stock_by_product = {
         level.product_id: level.quantity
@@ -266,7 +266,7 @@ def product_delete(request, product_id):
 
 @login_required
 def category_list(request):
-    categories = Category.objects.filter(compte=request.compte).select_related("parent").order_by("name")
+    categories = Category.objects.filter(compte=request.compte).select_related("parent").order_by("-created_at")
     return render(request, "catalog/category_list.html", {"categories": categories})
 
 
@@ -354,7 +354,7 @@ def category_delete(request, category_id):
 
 @login_required
 def unit_list(request):
-    units = Unit.objects.filter(compte=request.compte).order_by("name")
+    units = Unit.objects.filter(compte=request.compte).order_by("-created_at")
     return render(request, "catalog/unit_list.html", {"units": units})
 
 

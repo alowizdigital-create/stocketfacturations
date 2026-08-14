@@ -105,7 +105,7 @@ def staff_list(request):
     memberships = (
         Membership.objects.filter(boutique__compte=request.compte)
         .select_related("user", "boutique")
-        .order_by("boutique__name", "user__email")
+        .order_by("-created_at")
     )
     return render(request, "tenants/staff_list.html", {"memberships": memberships})
 
