@@ -5,8 +5,8 @@ from .base import *  # noqa: F401,F403
 from .base import env
 import os
 
-# DEBUG = True
-DEBUG = env.bool("DJANGO_DEBUG", default=False)
+DEBUG = True
+# DEBUG = env.bool("DJANGO_DEBUG", default=False)
 
 ALLOWED_HOSTS = env.list(
     "DJANGO_ALLOWED_HOSTS",
