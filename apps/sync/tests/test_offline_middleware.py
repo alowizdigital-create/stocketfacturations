@@ -41,6 +41,24 @@ def test_activated_boutique_is_pinned_regardless_of_session(settings):
     assert boutique.name.encode() in resp.content
 
 
+def test_token_invalid_redirects_to_activate(settings):
+    settings.IS_OFFLINE = True
+    boutique = BoutiqueFactory()
+    membership = MembershipFactory(boutique=boutique)
+    DeviceActivation.objects.create(
+        boutique_id=boutique.id, boutique_name=boutique.name,
+        compte_id=boutique.compte_id, compte_name=boutique.compte.name,
+        token="jeton-perime", token_invalid=True,
+    )
+
+    client = DjangoClient()
+    client.force_login(membership.user)
+    resp = client.get("/")
+
+    assert resp.status_code == 302
+    assert resp.url == "/api/v1/sync/activate/"
+
+
 def test_online_mode_untouched_by_offline_branch():
     # settings.IS_OFFLINE reste False (valeur par défaut de pytest.ini,
     # config.settings.dev) — la redirection d'activation ne doit jamais

@@ -62,7 +62,13 @@ class CurrentTenantMiddleware:
         from apps.sync.models import DeviceActivation
 
         activation = DeviceActivation.get_active()
-        if activation is None:
+        if activation is None or activation.token_invalid:
+            # token_invalid : un cycle pull/push s'est vu opposer un
+            # 401/403 (jeton régénéré depuis les paramètres en ligne) —
+            # voir apps.sync.activation.mark_token_invalid(). Même
+            # traitement qu'une absence totale d'activation : ce poste ne
+            # peut plus rien synchroniser tant qu'un jeton valide n'a pas
+            # été recollé sur l'écran d'activation.
             if self._offline_activation_exempt(request):
                 return self.get_response(request)
             return redirect("sync:activate")

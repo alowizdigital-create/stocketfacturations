@@ -54,6 +54,13 @@ class DeviceActivation(models.Model):
     # métier déjà en clair dans ce SQLite local (clients, factures...).
     token = models.CharField(max_length=255)
     activated_at = models.DateTimeField(auto_now_add=True)
+    # Mis à True dès qu'un cycle pull/push se voit opposer un 401/403 par le
+    # serveur (jeton régénéré depuis les paramètres en ligne) — voir
+    # apps.sync.activation.mark_token_invalid(). Tant que ce drapeau est
+    # actif, CurrentTenantMiddleware renvoie ce poste vers l'écran
+    # d'activation pour qu'il colle le nouveau jeton, plutôt que de
+    # continuer à tenter des cycles voués à l'échec en silence.
+    token_invalid = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = "activation du poste"

@@ -1,6 +1,7 @@
 from unittest.mock import MagicMock
 
 import pytest
+import requests
 from django.test import Client as DjangoClient
 from django.utils import timezone
 
@@ -9,6 +10,13 @@ from apps.sync.models import DeviceActivation, OutboxEntry, SyncCursor
 from apps.sync import outbox as outbox_module
 
 from .factories import BoutiqueFactory, MembershipFactory
+
+
+def _http_error(status_code):
+    resp = MagicMock()
+    resp.status_code = status_code
+    exc = requests.exceptions.HTTPError(response=resp)
+    return exc
 
 pytestmark = pytest.mark.django_db
 
@@ -128,6 +136,22 @@ def test_run_push_cycle_leaves_pending_on_network_failure(settings):
     assert entry.status == OutboxEntry.PENDING
 
 
+def test_run_push_cycle_marks_token_invalid_on_401(settings):
+    settings.IS_OFFLINE = True
+    boutique = BoutiqueFactory()
+    _activate(boutique)
+    client_obj = ClientModel.objects.create(boutique=boutique, name="Jeton régénéré")
+    outbox_module.enqueue(OutboxEntry.CLIENT, client_obj.id)
+
+    mock_client = MagicMock()
+    mock_client.post.side_effect = _http_error(401)
+
+    outbox_module.run_push_cycle(client=mock_client)
+
+    activation = DeviceActivation.get_active()
+    assert activation.token_invalid is True
+
+
 def test_run_pull_cycle_upserts_and_advances_cursor(settings):
     from apps.sync import pull as pull_module
 
@@ -155,3 +179,20 @@ def test_run_pull_cycle_upserts_and_advances_cursor(settings):
     assert SyncCursor.objects.filter(resource="tax_rates").exists()
     cursor = SyncCursor.objects.get(resource="tax_rates")
     assert cursor.last_synced_at is not None
+
+
+def test_run_pull_cycle_marks_token_invalid_on_401(settings):
+    from apps.sync import pull as pull_module
+
+    settings.IS_OFFLINE = True
+    boutique = BoutiqueFactory()
+    _activate(boutique)
+
+    mock_client = MagicMock()
+    mock_client.get.side_effect = _http_error(401)
+
+    summary = pull_module.run_pull_cycle(client=mock_client)
+
+    assert summary["boutique"] == "jeton_invalide"
+    activation = DeviceActivation.get_active()
+    assert activation.token_invalid is True

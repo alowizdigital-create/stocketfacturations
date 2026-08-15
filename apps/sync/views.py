@@ -607,11 +607,16 @@ def _require_offline(view_func):
 
 @_require_offline
 def activate_device(request):
-    if DeviceActivation.get_active() is not None:
-        # Pas de réécrasement : mélanger les données de deux boutiques
-        # dans le même SQLite n'est pas géré. Récupération = supprimer le
-        # dossier de données du poste et remigrer.
+    existing = DeviceActivation.get_active()
+    # Réactivation autorisée uniquement quand le jeton actuel a été
+    # invalidé (régénéré côté serveur, voir apps.sync.activation.
+    # mark_token_invalid()) — sinon pas de réécrasement : mélanger les
+    # données de deux boutiques dans le même SQLite n'est pas géré.
+    # Récupération dans ce cas = supprimer le dossier de données du poste
+    # et remigrer.
+    if existing is not None and not existing.token_invalid:
         return redirect("accounts:login")
+    reactivating = existing is not None
 
     form = ActivationForm(request.POST or None)
     if request.method == "POST" and form.is_valid():
@@ -622,15 +627,32 @@ def activate_device(request):
         except requests.RequestException as exc:
             form.add_error(None, f"Connexion au serveur impossible : {exc}")
         else:
-            DeviceActivation.objects.create(
-                boutique_id=data["boutique"]["id"],
-                boutique_name=data["boutique"]["name"],
-                compte_id=data["compte"]["id"],
-                compte_name=data["compte"]["name"],
-                token=raw_token,
-            )
-            run_pull_cycle(client)
-            messages.success(request, "Poste activé et données synchronisées.")
-            return redirect("accounts:login")
+            if reactivating and str(existing.boutique_id) != str(data["boutique"]["id"]):
+                form.add_error(
+                    None,
+                    "Ce jeton appartient à une autre boutique que celle déjà activée sur ce poste.",
+                )
+            else:
+                if reactivating:
+                    existing.boutique_name = data["boutique"]["name"]
+                    existing.compte_name = data["compte"]["name"]
+                    existing.token = raw_token
+                    existing.token_invalid = False
+                    existing.save(update_fields=["boutique_name", "compte_name", "token", "token_invalid"])
+                else:
+                    DeviceActivation.objects.create(
+                        boutique_id=data["boutique"]["id"],
+                        boutique_name=data["boutique"]["name"],
+                        compte_id=data["compte"]["id"],
+                        compte_name=data["compte"]["name"],
+                        token=raw_token,
+                    )
+                run_pull_cycle(client)
+                messages.success(
+                    request,
+                    "Poste réactivé et synchronisation reprise." if reactivating
+                    else "Poste activé et données synchronisées.",
+                )
+                return redirect("accounts:login")
 
-    return render(request, "sync/activate.html", {"form": form})
+    return render(request, "sync/activate.html", {"form": form, "reactivating": reactivating})

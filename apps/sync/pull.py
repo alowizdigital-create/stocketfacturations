@@ -2,7 +2,7 @@ import logging
 
 import requests
 
-from .activation import get_active_client
+from .activation import get_active_client, is_auth_error, mark_token_invalid
 from .models import DeviceActivation, SyncCursor
 
 log = logging.getLogger("apps.sync.pull")
@@ -363,7 +363,13 @@ def run_pull_cycle(client=None):
     try:
         _pull_boutique(client)
         boutique_result = 1
-    except Exception:  # noqa: BLE001 — voir commentaire ci-dessus
+    except Exception as exc:  # noqa: BLE001 — voir commentaire ci-dessus
+        if is_auth_error(exc):
+            # Jeton régénéré/désactivé côté serveur : inutile de continuer,
+            # chaque appel suivant échouerait à l'identique — on bascule
+            # directement ce poste en attente de réactivation.
+            mark_token_invalid()
+            return {"boutique": "jeton_invalide"}
         log.exception("Échec du pull de la boutique.")
         boutique_result = "error"
 
@@ -386,7 +392,11 @@ def run_pull_cycle(client=None):
             if server_time:
                 SyncCursor.objects.update_or_create(resource=resource, defaults={"last_synced_at": server_time})
             summary[resource] = len(items)
-        except Exception:  # noqa: BLE001 — voir commentaire ci-dessus
+        except Exception as exc:  # noqa: BLE001 — voir commentaire ci-dessus
+            if is_auth_error(exc):
+                mark_token_invalid()
+                summary[resource] = "jeton_invalide"
+                return summary
             log.exception("Échec du pull de la ressource « %s ».", resource)
             summary[resource] = "error"
     return summary

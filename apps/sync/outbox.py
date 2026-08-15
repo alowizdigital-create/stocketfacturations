@@ -5,7 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
-from .activation import get_active_client
+from .activation import get_active_client, is_auth_error, mark_token_invalid
 from .models import OutboxEntry
 
 log = logging.getLogger("apps.sync.outbox")
@@ -265,6 +265,13 @@ def run_push_cycle(client=None):
         try:
             response = client.post(path, {"items": items}, headers={"Idempotency-Key": idempotency_key})
         except Exception as exc:  # noqa: BLE001 — réseau/serveur en panne : rien n'est marqué, réessai au prochain cycle
+            if is_auth_error(exc):
+                # Jeton régénéré/désactivé côté serveur : inutile de tenter
+                # les autres kinds, ils échoueraient à l'identique — bascule
+                # directement ce poste en attente de réactivation.
+                mark_token_invalid()
+                summary[kind] = {"sent": 0, "error": 0, "detail": "jeton invalide"}
+                return summary
             summary[kind] = {"sent": 0, "error": 0, "detail": str(exc)}
             continue
 
