@@ -355,12 +355,22 @@ PULL_RESOURCES = [
 
 def run_pull_cycle(client=None):
     client = client or get_active_client()
-    _pull_boutique(client)
+
+    # Comme pour chaque ressource de PULL_RESOURCES ci-dessous : un échec
+    # ici (réseau, réponse invalide...) ne doit jamais empêcher le reste du
+    # cycle — sans cet isolement, un simple incident sur la boutique
+    # bloquerait aussi la synchro des clients/produits/stock/factures.
+    try:
+        _pull_boutique(client)
+        boutique_result = 1
+    except Exception:  # noqa: BLE001 — voir commentaire ci-dessus
+        log.exception("Échec du pull de la boutique.")
+        boutique_result = "error"
 
     activation = DeviceActivation.get_active()
     scope_ids = {"compte": activation.compte_id, "boutique": activation.boutique_id}
 
-    summary = {"boutique": 1}
+    summary = {"boutique": boutique_result}
     for resource, path, upsert_fn, scope in PULL_RESOURCES:
         # Une ressource en échec (page illisible, upsert qui lève malgré la
         # résilience par item — ex: erreur avant même la boucle) ne doit

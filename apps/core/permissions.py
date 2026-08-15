@@ -2,26 +2,36 @@ from functools import wraps
 
 from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import PermissionDenied
 from django.shortcuts import redirect
+
+
+def _redirect_back(request):
+    """Renvoie l'utilisateur d'où il vient (la page depuis laquelle il a
+    tenté l'action refusée) plutôt qu'une page d'erreur brute — le message
+    rouge affiché juste avant l'explique déjà, pas besoin d'écran à part."""
+    return redirect(request.META.get("HTTP_REFERER") or "core:home")
 
 
 def boutique_role_required(*roles):
     """Vérifie que l'utilisateur a un Membership actif avec l'un des rôles
     donnés sur la boutique courante (request.boutique, posée par
-    CurrentTenantMiddleware)."""
+    CurrentTenantMiddleware). Refus = message rouge + retour à la page
+    précédente, sur le même principe que les messages de succès — pas une
+    page d'erreur brute (403) qui ne dit pas à l'utilisateur pourquoi."""
 
     def decorator(view_func):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
             if request.boutique is None:
-                raise PermissionDenied("Aucune boutique sélectionnée.")
+                messages.error(request, "Aucune boutique sélectionnée.")
+                return _redirect_back(request)
 
             has_role = request.boutique.memberships.filter(
                 user=request.user, is_active=True, role__in=roles
             ).exists()
             if not has_role:
-                raise PermissionDenied("Rôle insuffisant pour cette boutique.")
+                messages.error(request, "Vous n'avez pas les droits nécessaires pour effectuer cette action.")
+                return _redirect_back(request)
 
             return view_func(request, *args, **kwargs)
 
@@ -65,7 +75,8 @@ def compte_admin_required(view_func):
     @wraps(view_func)
     def wrapped(request, *args, **kwargs):
         if not request.is_compte_admin:
-            raise PermissionDenied("Réservé aux administrateurs de l'entreprise.")
+            messages.error(request, "Cette action est réservée aux administrateurs de l'entreprise.")
+            return _redirect_back(request)
         return view_func(request, *args, **kwargs)
 
     return wrapped

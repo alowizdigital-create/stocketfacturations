@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model, login
 from django.contrib.auth.decorators import login_required
@@ -7,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from apps.catalog.models import Unit
-from apps.core.permissions import compte_admin_required
+from apps.core.permissions import block_when_offline, compte_admin_required
 
 from .forms import (
     BoutiqueRegionalForm,
@@ -174,6 +175,21 @@ def company_settings(request):
     compte = request.compte
     boutique = request.boutique
 
+    # L'entreprise/la boutique sont des ressources "pull-only" (aucun
+    # endpoint de push, voir apps.sync.outbox.PUSH_ENDPOINTS) : un
+    # changement fait ici hors-ligne serait accepté en apparence puis
+    # silencieusement écrasé par le prochain pull (qui republie toujours
+    # la version du serveur) — jamais synchronisé, jamais perdu proprement.
+    # Consultation en lecture seule laissée possible, seule la sauvegarde
+    # est bloquée.
+    if request.method == "POST" and settings.IS_OFFLINE:
+        messages.error(
+            request,
+            "Les paramètres de l'entreprise/boutique se gèrent uniquement depuis le poste "
+            "en ligne — un changement fait ici ne serait jamais synchronisé.",
+        )
+        return redirect("tenants:company_settings")
+
     if request.method == "POST" and request.POST.get("form_name") == "boutique" and boutique is not None:
         form = CompteSettingsForm(instance=compte)
         boutique_form = BoutiqueRegionalForm(request.POST, instance=boutique)
@@ -207,6 +223,17 @@ def exchange_rate_list(request):
         messages.error(request, "Aucune boutique sélectionnée.")
         return redirect("tenants:company_settings")
 
+    # Les taux de change sont "pull-only" (aucun endpoint de push) — même
+    # raison que company_settings : un ajout fait ici hors-ligne serait
+    # écrasé sans avertissement au prochain pull.
+    if request.method == "POST" and settings.IS_OFFLINE:
+        messages.error(
+            request,
+            "Les taux de change se gèrent uniquement depuis le poste en ligne — "
+            "un ajout fait ici ne serait jamais synchronisé.",
+        )
+        return redirect("tenants:exchange_rate_list")
+
     if request.method == "POST":
         form = ExchangeRateForm(request.POST, boutique=boutique)
         if form.is_valid():
@@ -226,6 +253,7 @@ def exchange_rate_list(request):
 
 @login_required
 @compte_admin_required
+@block_when_offline("tenants:exchange_rate_list")
 def exchange_rate_delete(request, rate_id):
     rate = get_object_or_404(ExchangeRate, id=rate_id, boutique__compte=request.compte)
     if request.method == "POST":
