@@ -176,7 +176,12 @@ class BoutiqueAPIToken(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     boutique = models.OneToOneField(Boutique, on_delete=models.CASCADE, related_name="api_token")
     token_hash = models.CharField(max_length=64, unique=True, editable=False)
-    created_at = models.DateTimeField(auto_now_add=True)
+    # auto_now (pas auto_now_add) : la régénération d'un jeton passe par
+    # update_or_create() sur la même ligne (un seul jeton par boutique,
+    # voir issue()) — auto_now_add ne se déclenche qu'à la toute première
+    # création et resterait figé sur la date du tout premier jeton généré,
+    # jamais mis à jour lors d'une régénération ultérieure.
+    created_at = models.DateTimeField(auto_now=True)
     last_used_at = models.DateTimeField(null=True, blank=True)
     last_push_at = models.DateTimeField(null=True, blank=True)
     last_pull_at = models.DateTimeField(null=True, blank=True)
