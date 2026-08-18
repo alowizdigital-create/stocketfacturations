@@ -1,0 +1,1740 @@
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: Zweey\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+# --- templates/base.html --------------------------------------------------
+msgid "Tableau de bord"
+msgstr "Dashboard"
+
+msgid "Catalogue"
+msgstr "Catalog"
+
+msgid "Produits"
+msgstr "Products"
+
+msgid "Catégories"
+msgstr "Categories"
+
+msgid "Unités"
+msgstr "Units"
+
+msgid "Stock"
+msgstr "Stock"
+
+msgid "Niveaux de stock"
+msgstr "Stock levels"
+
+msgid "Mouvements"
+msgstr "Movements"
+
+msgid "Ventes"
+msgstr "Sales"
+
+msgid "Clients"
+msgstr "Clients"
+
+msgid "Devis"
+msgstr "Quotes"
+
+msgid "Commandes"
+msgstr "Orders"
+
+msgid "Factures"
+msgstr "Invoices"
+
+msgid "Administration"
+msgstr "Administration"
+
+msgid "Équipe"
+msgstr "Team"
+
+msgid "Paramètres"
+msgstr "Settings"
+
+msgid "Changer de boutique"
+msgstr "Switch shop"
+
+msgid "Déconnexion"
+msgstr "Log out"
+
+msgid "Menu"
+msgstr "Menu"
+
+msgid "Installer"
+msgstr "Install"
+
+msgid "Installer l'application"
+msgstr "Install the app"
+
+msgid "Fermer"
+msgstr "Close"
+
+msgid "Sur iPhone/iPad, l'installation se fait depuis Safari :"
+msgstr "On iPhone/iPad, install from Safari:"
+
+msgid "Appuyez sur le bouton <strong>Partager</strong> en bas de l'écran."
+msgstr "Tap the <strong>Share</strong> button at the bottom of the screen."
+
+msgid "Choisissez <strong>« Sur l'écran d'accueil »</strong>."
+msgstr "Choose <strong>\"Add to Home Screen\"</strong>."
+
+msgid "Appuyez sur <strong>Ajouter</strong>."
+msgstr "Tap <strong>Add</strong>."
+
+msgid ""
+"L'application s'ouvrira alors comme une application normale, avec son icône "
+"sur votre écran d'accueil."
+msgstr ""
+"The app will then open like a normal app, with its icon on your home screen."
+
+msgid "Patientez…"
+msgstr "Please wait…"
+
+msgid "Langue"
+msgstr "Language"
+
+# --- apps/accounts/templates/accounts/login.html --------------------------
+msgid "Connexion"
+msgstr "Log in"
+
+msgid "Mot de passe"
+msgstr "Password"
+
+msgid "Mot de passe oublié ?"
+msgstr "Forgot your password?"
+
+msgid "Se connecter"
+msgstr "Log in"
+
+msgid "Pas encore de compte ?"
+msgstr "Don't have an account yet?"
+
+msgid "Créer une entreprise"
+msgstr "Create a company"
+
+# --- apps/core/templates/core/home.html ------------------------------------
+msgid "Chiffre d'affaires du mois"
+msgstr "Revenue this month"
+
+msgid "Produits actifs"
+msgstr "Active products"
+
+msgid "Factures non soldées"
+msgstr "Unpaid invoices"
+
+msgid "Produits en stock bas"
+msgstr "Products low on stock"
+
+msgid "Dernières ventes"
+msgstr "Recent sales"
+
+msgid "CLIENT"
+msgstr "CLIENT"
+
+msgid "FACTURE"
+msgstr "INVOICE"
+
+msgid "Statut"
+msgstr "Status"
+
+msgid "TOTAL TTC"
+msgstr "TOTAL"
+
+msgid "DATE"
+msgstr "DATE"
+
+msgid "Aucune vente pour le moment."
+msgstr "No sales yet."
+
+msgid "Actions rapides"
+msgstr "Quick actions"
+
+msgid "Nouvelle vente"
+msgstr "New sale"
+
+msgid "Nouveau client"
+msgstr "New client"
+
+msgid "Nouveau produit"
+msgstr "New product"
+
+msgid "Mouvement de stock"
+msgstr "Stock movement"
+
+# --- apps/core/permissions.py ----------------------------------------------
+msgid "Aucune boutique sélectionnée."
+msgstr "No shop selected."
+
+msgid "Vous n'avez pas les droits nécessaires pour effectuer cette action."
+msgstr "You do not have the necessary permissions to perform this action."
+
+msgid ""
+"Le catalogue (produits, catégories, unités) se gère uniquement depuis le "
+"poste en ligne — les changements faits ici ne seraient jamais synchronisés."
+msgstr ""
+"The catalog (products, categories, units) can only be managed from the "
+"online workstation — changes made here would never be synchronized."
+
+msgid "Cette action est réservée aux administrateurs de l'entreprise."
+msgstr "This action is reserved for company administrators."
+
+# --- apps/catalog -----------------------------------------------------------
+msgid "Rechercher un produit (nom, référence, code-barres)..."
+msgstr "Search for a product (name, SKU, barcode)..."
+
+msgid "Rechercher"
+msgstr "Search"
+
+msgid "Effacer"
+msgstr "Clear"
+
+msgid "Nom"
+msgstr "Name"
+
+msgid "Catégorie"
+msgstr "Category"
+
+msgid "Prix"
+msgstr "Price"
+
+msgid "Actif"
+msgstr "Active"
+
+msgid "Inactif"
+msgstr "Inactive"
+
+msgid "Rupture de stock"
+msgstr "Out of stock"
+
+msgid "Modifier"
+msgstr "Edit"
+
+msgid "Supprimer ce produit ?"
+msgstr "Delete this product?"
+
+msgid "Aucun produit pour le moment."
+msgstr "No products yet."
+
+msgid "Sans catégorie"
+msgstr "No category"
+
+msgid "Retour"
+msgstr "Back"
+
+msgid "Informations"
+msgstr "Information"
+
+msgid "Prix de vente"
+msgstr "Sale price"
+
+msgid "Taux de TVA"
+msgstr "VAT rate"
+
+msgid "Référence (SKU)"
+msgstr "SKU"
+
+msgid "Code-barres"
+msgstr "Barcode"
+
+msgid "Seuil de stock bas"
+msgstr "Low stock threshold"
+
+msgid "Stock — %(name)s"
+msgstr "Stock — %(name)s"
+
+msgid "Quantité actuellement en stock dans cette boutique"
+msgstr "Quantity currently in stock at this shop"
+
+msgid "Mouvement de stock — %(name)s"
+msgstr "Stock movement — %(name)s"
+
+msgid "Stock actuel : %(qty)s %(unit)s"
+msgstr "Current stock: %(qty)s %(unit)s"
+
+msgid "Quantité"
+msgstr "Quantity"
+
+msgid "Motif (optionnel)"
+msgstr "Reason (optional)"
+
+msgid "Retirer"
+msgstr "Remove"
+
+msgid "Compléter"
+msgstr "Add"
+
+msgid "Photos actuelles"
+msgstr "Current photos"
+
+msgid "Principale"
+msgstr "Main"
+
+msgid "Supprimer cette photo ?"
+msgstr "Delete this photo?"
+
+msgid "Nouvelle catégorie"
+msgstr "New category"
+
+msgid "Nouvelle unité"
+msgstr "New unit"
+
+msgid "Enregistrer"
+msgstr "Save"
+
+msgid "Annuler"
+msgstr "Cancel"
+
+msgid "Créer"
+msgstr "Create"
+
+msgid "Le nom est obligatoire."
+msgstr "The name is required."
+
+msgid "Impossible de créer la catégorie."
+msgstr "Could not create the category."
+
+msgid "Erreur réseau — réessayez."
+msgstr "Network error — please try again."
+
+msgid "Impossible de créer l'unité."
+msgstr "Could not create the unit."
+
+msgid "Symbole (optionnel)"
+msgstr "Symbol (optional)"
+
+msgid "Rechercher une catégorie..."
+msgstr "Search for a category..."
+
+msgid "Catégorie parente"
+msgstr "Parent category"
+
+msgid "Supprimer cette catégorie ?"
+msgstr "Delete this category?"
+
+msgid "Aucune catégorie pour le moment."
+msgstr "No categories yet."
+
+msgid "Pièce, Kg, Litre, Carton... — définies par vous"
+msgstr "Piece, Kg, Liter, Carton... — defined by you"
+
+msgid "Rechercher une unité (nom, symbole)..."
+msgstr "Search for a unit (name, symbol)..."
+
+msgid "Symbole"
+msgstr "Symbol"
+
+msgid "Supprimer cette unité ?"
+msgstr "Delete this unit?"
+
+msgid "Aucune unité pour le moment."
+msgstr "No units yet."
+
+msgid "Créez d'abord au moins une unité de mesure avant d'ajouter un produit."
+msgstr "First create at least one unit of measure before adding a product."
+
+msgid "Produit créé."
+msgstr "Product created."
+
+msgid "Modifier le produit"
+msgstr "Edit product"
+
+msgid "Produit modifié."
+msgstr "Product updated."
+
+msgid "Photo supprimée."
+msgstr "Photo deleted."
+
+msgid "Produit supprimé."
+msgstr "Product deleted."
+
+msgid ""
+"Impossible de supprimer : ce produit a des mouvements de stock (ventes, "
+"entrées...) liés — désactivez-le plutôt."
+msgstr ""
+"Cannot delete: this product has related stock movements (sales, stock-"
+"ins...) — deactivate it instead."
+
+msgid "Catégorie créée."
+msgstr "Category created."
+
+msgid "Méthode non autorisée."
+msgstr "Method not allowed."
+
+msgid "Modifier la catégorie"
+msgstr "Edit category"
+
+msgid "Catégorie modifiée."
+msgstr "Category updated."
+
+msgid "Catégorie supprimée."
+msgstr "Category deleted."
+
+msgid ""
+"Impossible de supprimer : des produits utilisent encore cette catégorie."
+msgstr "Cannot delete: some products still use this category."
+
+msgid "Unité créée."
+msgstr "Unit created."
+
+msgid "Modifier l'unité"
+msgstr "Edit unit"
+
+msgid "Unité modifiée."
+msgstr "Unit updated."
+
+msgid "Unité supprimée."
+msgstr "Unit deleted."
+
+msgid "Impossible de supprimer : des produits utilisent encore cette unité."
+msgstr "Cannot delete: some products still use this unit."
+
+msgid "Photos supplémentaires"
+msgstr "Additional photos"
+
+msgid ""
+"Jusqu'à %(max)s photos au total par produit (photo principale incluse)."
+msgstr "Up to %(max)s photos total per product (main photo included)."
+
+msgid "Quantité en stock"
+msgstr "Stock quantity"
+
+msgid ""
+"Quantité disponible dès la création du produit (laisser à 0 si aucun stock "
+"pour l'instant)."
+msgstr ""
+"Quantity available as soon as the product is created (leave at 0 if no stock"
+" yet)."
+
+msgid "Photo principale"
+msgstr "Main photo"
+
+# --- apps/stock ---------------------------------------------------------
+msgid "Entrée"
+msgstr "Stock-in"
+
+msgid "Sortie"
+msgstr "Stock-out"
+
+msgid "Ajustement"
+msgstr "Adjustment"
+
+msgid "Produit"
+msgstr "Product"
+
+msgid "Type de mouvement"
+msgstr "Movement type"
+
+msgid "Motif"
+msgstr "Reason"
+
+msgid "Mouvement de stock enregistré."
+msgstr "Stock movement recorded."
+
+msgid "Type de mouvement invalide."
+msgstr "Invalid movement type."
+
+msgid "Quantité invalide."
+msgstr "Invalid quantity."
+
+msgid "Nouveau mouvement"
+msgstr "New movement"
+
+msgid "Historique"
+msgstr "History"
+
+msgid "Rechercher un produit (nom, référence)..."
+msgstr "Search for a product (name, SKU)..."
+
+msgid "Seuil bas"
+msgstr "Low threshold"
+
+msgid "Stock bas"
+msgstr "Low stock"
+
+msgid "Aucun mouvement de stock enregistré."
+msgstr "No stock movement recorded."
+
+msgid "Historique des mouvements"
+msgstr "Movement history"
+
+msgid "Historique des mouvements de stock"
+msgstr "Stock movement history"
+
+msgid "Rechercher un mouvement (produit, motif)..."
+msgstr "Search a movement (product, reason)..."
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Type"
+msgstr "Type"
+
+msgid "Aucun mouvement."
+msgstr "No movements."
+
+msgid "Nouveau mouvement de stock"
+msgstr "New stock movement"
+
+msgid "Réf"
+msgstr "Ref"
+
+msgid "en stock actuellement"
+msgstr "currently in stock"
+
+msgid "Aucun produit trouvé"
+msgstr "No product found"
+
+msgid "en stock"
+msgstr "in stock"
+
+# --- apps/sales ---------------------------------------------------------
+msgid "Importer"
+msgstr "Import"
+
+msgid "Rechercher un client (nom, téléphone, email)..."
+msgstr "Search for a client (name, phone, email)..."
+
+msgid "Téléphone"
+msgstr "Phone"
+
+msgid "Aucun client."
+msgstr "No clients."
+
+msgid "Importer des clients"
+msgstr "Import clients"
+
+msgid ""
+"Importez vos contacts en une fois depuis un fichier <strong>CSV</strong> ou "
+"une <strong>vCard (.vcf)</strong> (export de votre téléphone, de Google "
+"Contacts, d'Outlook ou d'un tableur Excel/LibreOffice)."
+msgstr ""
+"Import all your contacts at once from a <strong>CSV</strong> file or a "
+"<strong>vCard (.vcf)</strong> (exported from your phone, Google Contacts, "
+"Outlook, or an Excel/LibreOffice spreadsheet)."
+
+msgid ""
+"Seul le <strong>nom</strong> est obligatoire — téléphone, email et adresse "
+"sont facultatifs. Pour un CSV, colonnes reconnues : <code>nom</code>, "
+"<code>téléphone</code>, <code>email</code>, <code>adresse</code> (les en-"
+"têtes en anglais "
+"<code>name</code>/<code>phone</code>/<code>email</code>/<code>address</code>"
+" sont aussi acceptés). Les clients déjà présents (même nom + même téléphone)"
+" sont ignorés automatiquement."
+msgstr ""
+"Only <strong>name</strong> is required — phone, email and address are "
+"optional. For a CSV, recognized columns: <code>nom</code>, "
+"<code>téléphone</code>, <code>email</code>, <code>adresse</code> (English "
+"headers "
+"<code>name</code>/<code>phone</code>/<code>email</code>/<code>address</code>"
+" are also accepted). Clients already present (same name + same phone) are "
+"automatically skipped."
+
+msgid "Rechercher une vente (numéro, client)..."
+msgstr "Search for a sale (number, client)..."
+
+msgid "Numéro"
+msgstr "Number"
+
+msgid "Client"
+msgstr "Client"
+
+msgid "Facture"
+msgstr "Invoice"
+
+msgid "Total TTC"
+msgstr "Total"
+
+msgid "Client de passage"
+msgstr "Walk-in client"
+
+msgid "Confirmer la vente (déduit le stock)"
+msgstr "Confirm the sale (deducts stock)"
+
+msgid "Voir la facture {{ number }}"
+msgstr "View invoice {{ number }}"
+
+msgid "Générer la facture"
+msgstr "Generate the invoice"
+
+msgid "Description"
+msgstr "Description"
+
+msgid "Qté"
+msgstr "Qty"
+
+msgid "PU HT"
+msgstr "Unit price (excl. tax)"
+
+msgid "TVA %"
+msgstr "VAT %"
+
+msgid "Récapitulatif"
+msgstr "Summary"
+
+msgid "Sous-total HT"
+msgstr "Subtotal (excl. tax)"
+
+msgid "TVA"
+msgstr "VAT"
+
+msgid ""
+"En enregistrant, le stock est déduit et la facture générée directement — "
+"vous choisirez le paiement (total ou acompte) à ce moment-là."
+msgstr ""
+"When you save, stock is deducted and the invoice generated right away — "
+"you'll choose the payment (full or deposit) at that point."
+
+msgid "Rechercher un client par nom... (laisser vide = client de passage)"
+msgstr "Search for a client by name... (leave empty = walk-in client)"
+
+msgid "Rechercher un produit"
+msgstr "Search for a product"
+
+msgid "Nom, référence ou code-barres..."
+msgstr "Name, SKU or barcode..."
+
+msgid "Panier"
+msgstr "Cart"
+
+msgid "Aucun produit dans le panier"
+msgstr "No products in the cart"
+
+msgid "Enregistrer la vente"
+msgstr "Save the sale"
+
+msgid "Paiement de la vente"
+msgstr "Sale payment"
+
+msgid "Total à payer"
+msgstr "Total to pay"
+
+msgid "Le client paie la totalité"
+msgstr "The client pays in full"
+
+msgid "Le client fait un acompte"
+msgstr "The client makes a deposit"
+
+msgid "Montant de l'acompte"
+msgstr "Deposit amount"
+
+msgid "Le reste à payer sera enregistré sur la facture."
+msgstr "The remaining balance will be recorded on the invoice."
+
+msgid "Saisissez un montant valide, inférieur ou égal au total."
+msgstr "Enter a valid amount, less than or equal to the total."
+
+msgid ""
+"Stock épuisé pour « {name} » ({stock} disponible(s), déjà {cart} dans le "
+"panier)."
+msgstr ""
+"Out of stock for “{name}” ({stock} available, already {cart} in the cart)."
+
+msgid "Quantité limitée à {stock} pour « {name} » (stock disponible)."
+msgstr "Quantity limited to {stock} for “{name}” (available stock)."
+
+msgid "Quantité à ajouter"
+msgstr "Quantity to add"
+
+msgid "Aucun client trouvé"
+msgstr "No client found"
+
+msgid "Modifier le devis"
+msgstr "Edit the quote"
+
+msgid "Nouvelle commande"
+msgstr "New order"
+
+msgid "Nouveau devis"
+msgstr "New quote"
+
+msgid "Modifier le devis {{ number }}"
+msgstr "Edit quote {{ number }}"
+
+msgid "Remise sur la facture"
+msgstr "Discount on the invoice"
+
+msgid "Format du reçu PDF imprimé/partagé pour ce devis."
+msgstr "Format of the PDF receipt printed/shared for this quote."
+
+msgid "Lignes"
+msgstr "Lines"
+
+msgid "Rechercher un produit..."
+msgstr "Search for a product..."
+
+msgid "Ajouter un produit"
+msgstr "Add a product"
+
+msgid "Ajouter un frais (ex: expédition)"
+msgstr "Add a fee (e.g. shipping)"
+
+msgid "Remise globale"
+msgstr "Overall discount"
+
+msgid "Enregistrer les modifications"
+msgstr "Save changes"
+
+msgid "Créer la commande"
+msgstr "Create the order"
+
+msgid "Créer le devis"
+msgstr "Create the quote"
+
+msgid "Finaliser la commande"
+msgstr "Finalize the order"
+
+msgid "Total de la commande"
+msgstr "Order total"
+
+msgid "Acompte encaissé (FCFA)"
+msgstr "Deposit received (FCFA)"
+
+msgid "Laissez 0 si le client n'a encore rien versé."
+msgstr "Leave at 0 if the client hasn't paid anything yet."
+
+msgid "Entrez un montant valide, entre 0 et le total."
+msgstr "Enter a valid amount, between 0 and the total."
+
+msgid "Note (usage interne)"
+msgstr "Note (internal use)"
+
+msgid "N'apparaît jamais sur le reçu/PDF envoyé au client."
+msgstr "Never appears on the receipt/PDF sent to the client."
+
+msgid "Prix unitaire HT"
+msgstr "Unit price (excl. tax)"
+
+msgid "Frais supplémentaire"
+msgstr "Additional fee"
+
+msgid "générée depuis la vente {{ number }}"
+msgstr "generated from sale {{ number }}"
+
+msgid "Imprimer"
+msgstr "Print"
+
+msgid "Envoyer par WhatsApp"
+msgstr "Send via WhatsApp"
+
+msgid ""
+"API WhatsApp non configurée : ceci ouvre WhatsApp avec un lien vers le PDF, "
+"sans pièce jointe automatique"
+msgstr ""
+"WhatsApp API not configured: this opens WhatsApp with a link to the PDF, "
+"without an automatic attachment"
+
+msgid "Envoyer"
+msgstr "Send"
+
+msgid "Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp"
+msgstr "Add a phone number to the client to enable WhatsApp sending"
+
+msgid "WhatsApp (pas de téléphone)"
+msgstr "WhatsApp (no phone number)"
+
+msgid "Valider la commande"
+msgstr "Validate the order"
+
+msgid "Valider le devis"
+msgstr "Validate the quote"
+
+msgid "Informations de la commande"
+msgstr "Order information"
+
+msgid "Devise"
+msgstr "Currency"
+
+msgid "Remise"
+msgstr "Discount"
+
+msgid "Aperçu du devis"
+msgstr "Quote preview"
+
+msgid "Paiements"
+msgstr "Payments"
+
+msgid "Montant"
+msgstr "Amount"
+
+msgid "Méthode"
+msgstr "Method"
+
+msgid "Référence"
+msgstr "Reference"
+
+msgid "Aucun paiement enregistré."
+msgstr "No payment recorded."
+
+msgid "Payé"
+msgstr "Paid"
+
+msgid "Reste à payer"
+msgstr "Balance due"
+
+msgid "Total du devis : <strong>{{ total }} {{ currency }}</strong>"
+msgstr "Quote total: <strong>{{ total }} {{ currency }}</strong>"
+
+msgid "Montant de l'acompte ({{ currency }})"
+msgstr "Deposit amount ({{ currency }})"
+
+msgid "Confirmer et générer la facture"
+msgstr "Confirm and generate the invoice"
+
+msgid "Entrez un montant d'acompte valide (entre 1 et"
+msgstr "Enter a valid deposit amount (between 1 and"
+
+msgid "Rechercher un devis (numéro, client)..."
+msgstr "Search for a quote (number, client)..."
+
+msgid "N°"
+msgstr "No."
+
+msgid "Aucun devis pour le moment."
+msgstr "No quotes yet."
+
+msgid "Rechercher une commande (numéro, client)..."
+msgstr "Search for an order (number, client)..."
+
+msgid "Aucune commande pour le moment."
+msgstr "No orders yet."
+
+msgid "Générées depuis une vente confirmée (voir Ventes)."
+msgstr "Generated from a confirmed sale (see Sales)."
+
+msgid "Rechercher une facture (numéro, client)..."
+msgstr "Search for an invoice (number, client)..."
+
+msgid "Aucune facture pour le moment."
+msgstr "No invoices yet."
+
+# --- apps/sales/forms.py + views.py -----------------------------------
+msgid "Fichier CSV ou vCard (.vcf)"
+msgstr "CSV file or vCard (.vcf)"
+
+msgid ""
+"CSV : colonnes nom, téléphone, email, adresse (name/phone/email/address "
+"acceptés aussi). vCard : export standard d'un carnet de contacts "
+"téléphone/Google/Outlook. Seul le nom est obligatoire."
+msgstr ""
+"CSV: columns nom, téléphone, email, adresse (name/phone/email/address also "
+"accepted). vCard: standard export from a phone/Google/Outlook address book. "
+"Only the name is required."
+
+msgid "Format non reconnu : utilisez un fichier .csv ou .vcf."
+msgstr "Unrecognized format: use a .csv or .vcf file."
+
+msgid "devise de la boutique"
+msgstr "shop's currency"
+
+msgid ""
+"Devise de ce document — par défaut celle de la boutique, modifiable au cas "
+"par cas."
+msgstr ""
+"Currency of this document — defaults to the shop's, editable case by case."
+
+msgid "Remise globale (FCFA)"
+msgstr "Overall discount (FCFA)"
+
+msgid "Format du PDF"
+msgstr "PDF format"
+
+msgid ""
+"Devise de cette vente — par défaut celle de la boutique, modifiable au cas "
+"par cas."
+msgstr ""
+"Currency of this sale — defaults to the shop's, editable case by case."
+
+msgid "Payé en totalité"
+msgstr "Paid in full"
+
+msgid "Acompte"
+msgstr "Deposit"
+
+msgid "Prix HT"
+msgstr "Price (excl. tax)"
+
+msgid "Remise (FCFA)"
+msgstr "Discount (FCFA)"
+
+msgid "Fichier CSV vide ou illisible."
+msgstr "Empty or unreadable CSV file."
+
+msgid ""
+"Aucune colonne « nom » reconnue dans le fichier CSV. Colonnes attendues : "
+"nom, téléphone, email, adresse."
+msgstr ""
+"No “name” column recognized in the CSV file. Expected columns: nom, "
+"téléphone, email, adresse."
+
+msgid "Aucun contact trouvé dans le fichier vCard."
+msgstr "No contact found in the vCard file."
+
+msgid "Le fichier doit être encodé en UTF-8."
+msgstr "The file must be UTF-8 encoded."
+
+msgid "%(count)s client(s) importé(s)."
+msgstr "%(count)s client(s) imported."
+
+msgid "%(count)s ligne(s) ignorée(s) (doublon ou nom manquant)."
+msgstr "%(count)s row(s) skipped (duplicate or missing name)."
+
+msgid "Aucun nouveau client importé (doublons ou fichier vide)."
+msgstr "No new clients imported (duplicates or empty file)."
+
+msgid "Panier invalide."
+msgstr "Invalid cart."
+
+msgid "Ajoutez au moins un produit au panier."
+msgstr "Add at least one product to the cart."
+
+msgid "Un produit du panier n'existe plus."
+msgstr "A product in the cart no longer exists."
+
+msgid "Quantité ou prix invalide dans le panier."
+msgstr "Invalid quantity or price in the cart."
+
+msgid ""
+"Stock insuffisant pour « %(name)s » : %(available)s disponible(s), "
+"%(requested)s demandé(s)."
+msgstr ""
+"Insufficient stock for “%(name)s”: %(available)s available, %(requested)s "
+"requested."
+
+msgid "%(sale)s enregistrée et %(invoice)s générée."
+msgstr "%(sale)s recorded and %(invoice)s generated."
+
+msgid "%(sale)s confirmée, stock mis à jour."
+msgstr "%(sale)s confirmed, stock updated."
+
+msgid "Facture %(invoice)s générée."
+msgstr "Invoice %(invoice)s generated."
+
+msgid "Ajoutez au moins une ligne au devis."
+msgstr "Add at least one line to the quote."
+
+msgid "%(invoice)s créé en brouillon."
+msgstr "%(invoice)s created as draft."
+
+msgid "Ce devis n'est plus modifiable."
+msgstr "This quote can no longer be edited."
+
+msgid ""
+"La modification d'un devis n'est pas encore disponible hors-ligne — utilisez"
+" le poste en ligne."
+msgstr ""
+"Editing a quote isn't available offline yet — use the online workstation."
+
+msgid "%(invoice)s modifié."
+msgstr "%(invoice)s updated."
+
+msgid "Ajoutez au moins une ligne à la commande."
+msgstr "Add at least one line to the order."
+
+msgid "%(invoice)s créée en brouillon."
+msgstr "%(invoice)s created as draft."
+
+msgid "Ce client n'a pas de numéro de téléphone."
+msgstr "This client has no phone number."
+
+msgid "Échec de l'envoi WhatsApp : %(error)s"
+msgstr "Failed to send via WhatsApp: %(error)s"
+
+msgid "Facture envoyée par WhatsApp à %(client)s."
+msgstr "Invoice sent via WhatsApp to %(client)s."
+
+msgid "%(invoice)s validé."
+msgstr "%(invoice)s validated."
+
+msgid "Validez d'abord le devis avant de générer la facture."
+msgstr "Validate the quote first before generating the invoice."
+
+msgid ""
+"La conversion de devis en facture n'est pas encore disponible hors-ligne — "
+"utilisez le poste en ligne."
+msgstr ""
+"Converting a quote to an invoice isn't available offline yet — use the "
+"online workstation."
+
+msgid "%(invoice)s générée depuis %(devis)s."
+msgstr "%(invoice)s generated from %(devis)s."
+
+msgid "Cette commande ne peut plus être validée."
+msgstr "This order can no longer be validated."
+
+msgid ""
+"La validation de commande en facture n'est pas encore disponible hors-ligne "
+"— utilisez le poste en ligne."
+msgstr ""
+"Validating an order into an invoice isn't available offline yet — use the "
+"online workstation."
+
+msgid "%(invoice)s générée depuis %(commande)s."
+msgstr "%(invoice)s generated from %(commande)s."
+
+msgid "Paiement enregistré."
+msgstr "Payment recorded."
+
+# --- apps/tenants --------------------------------------------------------
+msgid "Créer votre entreprise"
+msgstr "Create your company"
+
+msgid "Une boutique par défaut sera créée automatiquement."
+msgstr "A default shop will be created automatically."
+
+msgid "Créer mon compte"
+msgstr "Create my account"
+
+msgid "Déjà inscrit ?"
+msgstr "Already registered?"
+
+msgid "Choisir une boutique"
+msgstr "Choose a shop"
+
+msgid "Vous n'êtes affecté à aucune boutique active."
+msgstr "You are not assigned to any active shop."
+
+msgid "Employés de {{ name }}, toutes boutiques confondues"
+msgstr "Employees of {{ name }}, across all shops"
+
+msgid "Nouvel employé"
+msgstr "New employee"
+
+msgid "Rechercher un employé (nom, email)..."
+msgstr "Search for an employee (name, email)..."
+
+msgid "Employé"
+msgstr "Employee"
+
+msgid "Boutique"
+msgstr "Shop"
+
+msgid "Rôle"
+msgstr "Role"
+
+msgid "Désactivé"
+msgstr "Deactivated"
+
+msgid "Vous"
+msgstr "You"
+
+msgid "Aucun employé pour le moment."
+msgstr "No employees yet."
+
+msgid "Paramètres de l'entreprise"
+msgstr "Company settings"
+
+msgid "Le logo est repris en haut des factures/devis (ticket 80 mm)."
+msgstr "The logo appears at the top of invoices/quotes (80mm receipt)."
+
+msgid "Paramètres régionaux — {{ name }}"
+msgstr "Regional settings — {{ name }}"
+
+msgid ""
+"Pour que l'application fonctionne correctement quel que soit le pays : la "
+"devise s'affiche partout (factures, devis, POS), et l'indicatif téléphonique"
+" complète automatiquement les numéros WhatsApp saisis sans code pays (ex: "
+"<code>07 12 34 56 78</code> → <code>+225 07 12 34 56 78</code>)."
+msgstr ""
+"So the app works correctly regardless of country: the currency is shown "
+"everywhere (invoices, quotes, POS), and the calling code automatically "
+"completes WhatsApp numbers entered without a country code (e.g. <code>07 12 "
+"34 56 78</code> → <code>+225 07 12 34 56 78</code>)."
+
+msgid "Moyens de paiement (Mobile Money)"
+msgstr "Payment methods (Mobile Money)"
+
+msgid ""
+"Affichés sur les factures et devis pour indiquer au client où payer. Laisser"
+" vide pour ne pas afficher un moyen de paiement."
+msgstr ""
+"Shown on invoices and quotes to tell the client where to pay. Leave empty to"
+" not display a payment method."
+
+msgid "Taux de change"
+msgstr "Exchange rate"
+
+msgid ""
+"Pour proposer une vente/un devis dans une autre devise, convertie "
+"automatiquement."
+msgstr "To offer a sale/quote in another currency, automatically converted."
+
+msgid "Gérer"
+msgstr "Manage"
+
+msgid "Synchronisation hors-ligne"
+msgstr "Offline synchronization"
+
+msgid "Générez le jeton d'activation du poste offline de cette boutique."
+msgstr "Generate the activation token for this shop's offline workstation."
+
+msgid "Taux de change — {{ name }}"
+msgstr "Exchange rate — {{ name }}"
+
+msgid ""
+"Permet de proposer une vente ou un devis dans une autre devise que celle de "
+"la boutique ({{ devise }}), avec conversion automatique des montants."
+msgstr ""
+"Lets you offer a sale or quote in a currency other than the shop's ({{ "
+"devise }}), with automatic amount conversion."
+
+msgid "Retour aux paramètres"
+msgstr "Back to settings"
+
+msgid "Taux"
+msgstr "Rate"
+
+msgid "Ajouter"
+msgstr "Add"
+
+msgid "Supprimer ce taux de change ?"
+msgstr "Delete this exchange rate?"
+
+msgid ""
+"Aucun taux de change configuré — seule la devise de la boutique ({{ devise "
+"}}) est proposée sur les ventes/devis."
+msgstr ""
+"No exchange rate configured — only the shop's currency ({{ devise }}) is "
+"offered on sales/quotes."
+
+msgid "Abonnement"
+msgstr "Subscription"
+
+msgid ""
+"Aucun paiement en ligne pour l'instant — payez hors application (Mobile "
+"Money, virement...) puis mettez à jour la date ci-dessous."
+msgstr ""
+"No online payment for now — pay outside the app (Mobile Money, transfer...) "
+"then update the date below."
+
+msgid "Offre actuelle — {{ price }} FCFA/mois"
+msgstr "Current plan — {{ price }} FCFA/month"
+
+msgid "Expiré"
+msgstr "Expired"
+
+msgid "Jusqu'au {{ date }}"
+msgstr "Until {{ date }}"
+
+msgid "Sans date d'expiration"
+msgstr "No expiration date"
+
+msgid "Illimité"
+msgstr "Unlimited"
+
+msgid "Boutiques"
+msgstr "Shops"
+
+msgid "Employés"
+msgstr "Employees"
+
+msgid "Offre actuelle"
+msgstr "Current plan"
+
+msgid "Mettre à jour mon abonnement"
+msgstr "Update my subscription"
+
+msgid "Synchronisation hors-ligne — {{ name }}"
+msgstr "Offline synchronization — {{ name }}"
+
+msgid ""
+"Le jeton ci-dessous permet au poste offline de cette boutique de se "
+"synchroniser avec le serveur. Générez-le puis collez-le dans l'écran "
+"d'activation de l'application de bureau, au premier lancement."
+msgstr ""
+"The token below lets this shop's offline workstation sync with the server. "
+"Generate it, then paste it into the desktop app's activation screen on first"
+" launch."
+
+msgid "Nouveau jeton généré"
+msgstr "New token generated"
+
+msgid ""
+"Copiez-le maintenant : il ne sera plus jamais affiché en clair. Régénérer un"
+" jeton invalide immédiatement l'ancien — le poste déjà activé avec l'ancien "
+"jeton perdra la synchronisation tant qu'il n'aura pas été réactivé avec le "
+"nouveau."
+msgstr ""
+"Copy it now: it will never be shown in clear text again. Regenerating a "
+"token immediately invalidates the old one — the workstation already "
+"activated with the old token will lose sync until reactivated with the new "
+"one."
+
+msgid "Copier"
+msgstr "Copy"
+
+msgid "Généré le"
+msgstr "Generated on"
+
+msgid "jamais"
+msgstr "never"
+
+msgid "Dernière utilisation"
+msgstr "Last used"
+
+msgid "Dernier envoi (push)"
+msgstr "Last push"
+
+msgid "Dernière réception (pull)"
+msgstr "Last pull"
+
+msgid "Aucun jeton n'a encore été généré pour cette boutique."
+msgstr "No token has been generated for this shop yet."
+
+msgid "Régénérer le jeton invalide immédiatement l'ancien. Continuer ?"
+msgstr "Regenerating the token immediately invalidates the old one. Continue?"
+
+msgid "Générer un jeton pour cette boutique ?"
+msgstr "Generate a token for this shop?"
+
+msgid "Régénérer le jeton"
+msgstr "Regenerate the token"
+
+msgid "Générer un jeton"
+msgstr "Generate a token"
+
+msgid "Copié !"
+msgstr "Copied!"
+
+msgid "Nom de l'entreprise"
+msgstr "Company name"
+
+msgid "Nom de la première boutique"
+msgstr "Name of the first shop"
+
+msgid "Devise de la boutique"
+msgstr "Shop currency"
+
+msgid ""
+"Toutes les ventes et devis de cette boutique utiliseront cette devise par "
+"défaut."
+msgstr "All sales and quotes for this shop will use this currency by default."
+
+msgid "Votre email"
+msgstr "Your email"
+
+msgid "Confirmer le mot de passe"
+msgstr "Confirm password"
+
+msgid "Un compte existe déjà avec cet email."
+msgstr "An account already exists with this email."
+
+msgid "Les mots de passe ne correspondent pas."
+msgstr "Passwords do not match."
+
+msgid "Prénom"
+msgstr "First name"
+
+msgid "Email de l'employé"
+msgstr "Employee's email"
+
+msgid "Mot de passe initial"
+msgstr "Initial password"
+
+msgid "Logo"
+msgstr "Logo"
+
+msgid "Pays (indicatif téléphonique)"
+msgstr "Country (calling code)"
+
+msgid "Non défini — numéros saisis tels quels"
+msgstr "Not set — numbers entered as-is"
+
+msgid "Orange Money — nom du compte"
+msgstr "Orange Money — account name"
+
+msgid "Orange Money — numéro"
+msgstr "Orange Money — number"
+
+msgid "MTN MoMo — nom du compte"
+msgstr "MTN MoMo — account name"
+
+msgid "MTN MoMo — numéro"
+msgstr "MTN MoMo — number"
+
+msgid "1 unité de cette devise = ? dans la devise de la boutique"
+msgstr "1 unit of this currency = ? in the shop's currency"
+
+msgid "Offre"
+msgstr "Plan"
+
+msgid "Abonnement payé jusqu'au"
+msgstr "Subscription paid until"
+
+msgid "Référence de paiement"
+msgstr "Payment reference"
+
+msgid "Notes"
+msgstr "Notes"
+
+msgid ""
+"Laisser vide pour l'offre Gratuite. À mettre à jour vous-même après chaque "
+"paiement (Mobile Money, virement...)."
+msgstr ""
+"Leave empty for the Free plan. Update it yourself after each payment (Mobile"
+" Money, transfer...)."
+
+msgid "Compte créé pour %(email)s."
+msgstr "Account created for %(email)s."
+
+msgid "Vous ne pouvez pas modifier votre propre accès depuis cet écran."
+msgstr "You cannot edit your own access from this screen."
+
+msgid "Accès de %(email)s mis à jour."
+msgstr "%(email)s's access updated."
+
+msgid "Modifier l'accès de %(email)s"
+msgstr "Edit %(email)s's access"
+
+msgid ""
+"Les paramètres de l'entreprise/boutique se gèrent uniquement depuis le poste"
+" en ligne — un changement fait ici ne serait jamais synchronisé."
+msgstr ""
+"Company/shop settings can only be managed from the online workstation — a "
+"change made here would never be synchronized."
+
+msgid "Paramètres régionaux de la boutique mis à jour."
+msgstr "Shop regional settings updated."
+
+msgid "Paramètres de l'entreprise mis à jour."
+msgstr "Company settings updated."
+
+msgid ""
+"Les taux de change se gèrent uniquement depuis le poste en ligne — un ajout "
+"fait ici ne serait jamais synchronisé."
+msgstr ""
+"Exchange rates can only be managed from the online workstation — an addition"
+" made here would never be synchronized."
+
+msgid "Taux de change ajouté."
+msgstr "Exchange rate added."
+
+msgid "Taux de change supprimé."
+msgstr "Exchange rate deleted."
+
+msgid "Notez ce jeton maintenant : il ne sera plus jamais affiché en clair."
+msgstr ""
+"Write down this token now: it will never be shown in clear text again."
+
+msgid "Abonnement mis à jour."
+msgstr "Subscription updated."
+
+# --- apps/accounts (password reset) + apps/sync (activation) -------------
+msgid "Mot de passe oublié"
+msgstr "Forgot password"
+
+msgid ""
+"Indiquez votre email — si un compte existe, un lien de réinitialisation vous"
+" sera envoyé."
+msgstr ""
+"Enter your email — if an account exists, a reset link will be sent to you."
+
+msgid "Envoyer le lien"
+msgstr "Send the link"
+
+msgid "Retour à la connexion"
+msgstr "Back to login"
+
+msgid "Email envoyé"
+msgstr "Email sent"
+
+msgid ""
+"Si un compte existe avec cette adresse, un email contenant un lien de "
+"réinitialisation vient d'être envoyé. Vérifiez votre boîte de réception (et "
+"vos spams)."
+msgstr ""
+"If an account exists with this address, an email containing a reset link has"
+" just been sent. Check your inbox (and spam folder)."
+
+msgid "Nouveau mot de passe"
+msgstr "New password"
+
+msgid "Changer le mot de passe"
+msgstr "Change password"
+
+msgid "Lien invalide"
+msgstr "Invalid link"
+
+msgid ""
+"Ce lien de réinitialisation est invalide ou a déjà été utilisé — les liens "
+"ne sont valables que 24h."
+msgstr ""
+"This reset link is invalid or has already been used — links are only valid "
+"for 24h."
+
+msgid "Redemander un lien"
+msgstr "Request a new link"
+
+msgid "Mot de passe changé"
+msgstr "Password changed"
+
+msgid "Votre mot de passe a été modifié avec succès."
+msgstr "Your password has been successfully changed."
+
+msgid ""
+"La réinitialisation de mot de passe n'est disponible qu'en ligne — utilisez "
+"un poste connecté à internet."
+msgstr ""
+"Password reset is only available online — use a workstation connected to the"
+" internet."
+
+msgid "Activation du poste"
+msgstr "Workstation activation"
+
+msgid "Réactivation du poste"
+msgstr "Workstation reactivation"
+
+msgid ""
+"Le jeton de synchronisation de ce poste n'est plus valide (régénéré depuis "
+"les paramètres de la boutique, sur le poste en ligne). Collez le nouveau "
+"jeton ci-dessous pour reprendre la synchronisation — vos données locales "
+"sont conservées."
+msgstr ""
+"This workstation's sync token is no longer valid (regenerated from the shop "
+"settings, on the online workstation). Paste the new token below to resume "
+"synchronization — your local data is preserved."
+
+msgid ""
+"Collez ci-dessous le jeton généré depuis les paramètres de la boutique (page"
+" \"Synchronisation hors-ligne\") sur le poste en ligne. Une première "
+"synchronisation complète sera lancée automatiquement."
+msgstr ""
+"Paste below the token generated from the shop settings (\"Offline "
+"synchronization\" page) on the online workstation. A first full "
+"synchronization will start automatically."
+
+msgid "Réactiver ce poste"
+msgstr "Reactivate this workstation"
+
+msgid "Activer ce poste"
+msgstr "Activate this workstation"
+
+msgid "Jeton d'activation"
+msgstr "Activation token"
+
+msgid ""
+"Généré depuis les paramètres de la boutique (Synchronisation hors-ligne) sur"
+" le poste en ligne."
+msgstr ""
+"Generated from the shop settings (Offline synchronization) on the online "
+"workstation."
+
+msgid "Connexion au serveur impossible : %(error)s"
+msgstr "Could not connect to the server: %(error)s"
+
+msgid ""
+"Ce jeton appartient à une autre boutique que celle déjà activée sur ce "
+"poste."
+msgstr ""
+"This token belongs to a different shop than the one already activated on "
+"this workstation."
+
+msgid "Poste réactivé et synchronisation reprise."
+msgstr "Workstation reactivated and synchronization resumed."
+
+msgid "Poste activé et données synchronisées."
+msgstr "Workstation activated and data synchronized."
+
+msgid "nom"
+msgstr "Name"
+
+msgid "symbole"
+msgstr "Symbol"
+
+msgid "référence (SKU)"
+msgstr "reference (SKU)"
+
+msgid "code-barres"
+msgstr "barcode"
+
+msgid "photo"
+msgstr "photo"
+
+msgid "prix de vente (FCFA)"
+msgstr "sale price (FCFA)"
+
+msgid "taux de TVA (%)"
+msgstr "VAT rate (%)"
+
+msgid "seuil de stock bas"
+msgstr "low stock threshold"
+
+msgid "catégorie"
+msgstr "category"
+
+msgid "catégories"
+msgstr "categories"
+
+msgid "unité"
+msgstr "unit"
+
+msgid "unités"
+msgstr "units"
+
+msgid "produit"
+msgstr "product"
+
+msgid "produits"
+msgstr "products"
+
+msgid "image produit"
+msgstr "product image"
+
+msgid "images produit"
+msgstr "product images"
+
+msgid "prix boutique"
+msgstr "shop price"
+
+msgid "NIF / identifiant fiscal"
+msgstr "Tax ID"
+
+msgid "client"
+msgstr "client"
+
+msgid "clients"
+msgstr "clients"
+
+msgid "taux (%)"
+msgstr "rate (%)"
+
+msgid "Brouillon"
+msgstr "Draft"
+
+msgid "Confirmée"
+msgstr "Confirmed"
+
+msgid "Annulée"
+msgstr "Cancelled"
+
+msgid "vente"
+msgstr "sale"
+
+msgid "ventes"
+msgstr "sales"
+
+msgid "ligne de vente"
+msgstr "sale line"
+
+msgid "lignes de vente"
+msgstr "sale lines"
+
+msgid "Commande"
+msgstr "Order"
+
+msgid "Validée"
+msgstr "Validated"
+
+msgid "Payée"
+msgstr "Paid"
+
+msgid "Partiellement payée"
+msgstr "Partially paid"
+
+msgid "Convertie en facture"
+msgstr "Converted to invoice"
+
+msgid "Ticket 80mm"
+msgstr "80mm receipt"
+
+msgid "remise globale (FCFA)"
+msgstr "overall discount (FCFA)"
+
+msgid "note interne"
+msgstr "internal note"
+
+msgid "Usage interne uniquement — n'apparaît jamais sur le reçu/PDF."
+msgstr "Internal use only — never appears on the receipt/PDF."
+
+msgid "format du PDF"
+msgstr "PDF format"
+
+msgid "facture / devis"
+msgstr "invoice / quote"
+
+msgid "factures / devis"
+msgstr "invoices / quotes"
+
+msgid "remise (FCFA)"
+msgstr "discount (FCFA)"
+
+msgid "ligne de facture"
+msgstr "invoice line"
+
+msgid "lignes de facture"
+msgstr "invoice lines"
+
+msgid "Espèces"
+msgstr "Cash"
+
+msgid "Virement"
+msgstr "Bank transfer"
+
+msgid "Carte"
+msgstr "Card"
+
+msgid "Chèque"
+msgstr "Cheque"
+
+msgid "paiement"
+msgstr "payment"
+
+msgid "paiements"
+msgstr "payments"
+
+msgid "En ligne"
+msgstr "Online"
+
+msgid "Hors-ligne"
+msgstr "Offline"
+
+msgid "mouvement de stock"
+msgstr "stock movement"
+
+msgid "mouvements de stock"
+msgstr "stock movements"
+
+msgid "niveau de stock"
+msgstr "stock level"
+
+msgid "niveaux de stock"
+msgstr "stock levels"
+
+msgid "nom de l'entreprise"
+msgstr "company name"
+
+msgid "logo de l'entreprise"
+msgstr "company logo"
+
+msgid "Affiché en haut des factures/devis (ticket 80 mm)."
+msgstr "Displayed at the top of invoices/quotes (80mm receipt)."
+
+msgid "entreprise"
+msgstr "company"
+
+msgid "entreprises"
+msgstr "companies"
+
+msgid "nom de la boutique"
+msgstr "shop name"
+
+msgid "code court"
+msgstr "short code"
+
+msgid "Préfixe utilisé pour numéroter les factures hors-ligne (ex: BTQ-001)."
+msgstr "Prefix used to number invoices offline (e.g. BTQ-001)."
+
+msgid "indicatif téléphonique du pays"
+msgstr "country calling code"
+
+msgid ""
+"Complète automatiquement les numéros WhatsApp saisis sans indicatif (ex: "
+"07... devient +225 07...)."
+msgstr ""
+"Automatically completes WhatsApp numbers entered without a calling code "
+"(e.g. 07... becomes +225 07...)."
+
+msgid "boutique par défaut"
+msgstr "default shop"
+
+msgid ""
+"Boutique sélectionnée automatiquement à la connexion pour cette entreprise."
+msgstr "Shop automatically selected at login for this company."
+
+msgid "boutique"
+msgstr "shop"
+
+msgid "boutiques"
+msgstr "shops"
+
+msgid "devise"
+msgstr "currency"
+
+msgid "taux"
+msgstr "rate"
+
+msgid ""
+"Valeur de 1 unité de cette devise, exprimée dans la devise de la boutique. "
+"Ex: 1 EUR = 655.9570 XOF."
+msgstr ""
+"Value of 1 unit of this currency, expressed in the shop's currency. E.g. 1 "
+"EUR = 655.9570 XOF."
+
+msgid "taux de change"
+msgstr "exchange rate"
+
+msgid "Administrateur de l'entreprise"
+msgstr "Company administrator"
+
+msgid "Gérant de boutique"
+msgstr "Shop manager"
+
+msgid "Caissier"
+msgstr "Cashier"
+
+msgid "affectation"
+msgstr "assignment"
+
+msgid "affectations"
+msgstr "assignments"
+
+msgid "jeton API boutique"
+msgstr "shop API token"
+
+msgid "prix mensuel (FCFA)"
+msgstr "monthly price (FCFA)"
+
+msgid "nombre de boutiques max"
+msgstr "max number of shops"
+
+msgid "Laisser vide = illimité"
+msgstr "Leave empty = unlimited"
+
+msgid "nombre d'employés max"
+msgstr "max number of employees"
+
+msgid "proposé aux entreprises"
+msgstr "offered to companies"
+
+msgid "offre d'abonnement"
+msgstr "subscription plan"
+
+msgid "offres d'abonnement"
+msgstr "subscription plans"
+
+msgid "débuté le"
+msgstr "started on"
+
+msgid "expire le"
+msgstr "expires on"
+
+msgid "Laisser vide pour une offre sans limite de durée (ex: plan gratuit)."
+msgstr "Leave empty for a plan with no time limit (e.g. free plan)."
+
+msgid "référence de paiement"
+msgstr "payment reference"
+
+msgid "Ex: référence Mobile Money, numéro de virement..."
+msgstr "E.g. Mobile Money reference, transfer number..."
+
+msgid "abonnement"
+msgstr "subscription"
+
+msgid "abonnements"
+msgstr "subscriptions"
+
+msgid "utilisateur"
+msgstr "user"
+
+msgid "utilisateurs"
+msgstr "users"
+
+msgid "Unité"
+msgstr "Unit"
+
+msgid "Vente"
+msgstr "Sale"

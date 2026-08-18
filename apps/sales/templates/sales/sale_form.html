@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Nouvelle vente{% endblock %}
-{% block content %} 
+{% load i18n %}
+{% block title %}{% trans "Nouvelle vente" %}{% endblock %}
+{% block content %}
 <div class="page-header">
     <div>
-        <h1>Nouvelle vente</h1>
-        <div class="text-muted">En enregistrant, le stock est déduit et la facture générée directement — vous choisirez le paiement (total ou acompte) à ce moment-là.</div>
+        <h1>{% trans "Nouvelle vente" %}</h1>
+        <div class="text-muted">{% trans "En enregistrant, le stock est déduit et la facture générée directement — vous choisirez le paiement (total ou acompte) à ce moment-là." %}</div>
     </div>
 </div>
 
@@ -13,13 +14,13 @@
     <div class="card-app mb-3">
         <div class="card-app-body row g-3">
             <div class="col-md-8">
-                <label class="form-label">Client</label>
+                <label class="form-label">{% trans "Client" %}</label>
                 <div class="position-relative" style="max-width: 420px;">
                     <div id="client-selected" class="d-none align-items-center justify-content-between border rounded px-3 py-2" style="border-color: var(--border);">
                         <span><i class="bi bi-person-check me-2"></i><span id="client-selected-name" class="fw-semibold"></span></span>
                         <button type="button" id="client-clear" class="btn btn-link text-danger p-0"><i class="bi bi-x-lg"></i></button>
                     </div>
-                    <input type="text" id="client-search" class="form-control" placeholder="Rechercher un client par nom... (laisser vide = client de passage)" autocomplete="off">
+                    <input type="text" id="client-search" class="form-control" placeholder="{% trans 'Rechercher un client par nom... (laisser vide = client de passage)' %}" autocomplete="off">
                     <div id="client-results" class="client-suggestions"></div>
                 </div>
                 {{ form.client }}
@@ -35,11 +36,11 @@
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="card-app pos-pane">
-                <div class="card-app-header">Rechercher un produit</div>
+                <div class="card-app-header">{% trans "Rechercher un produit" %}</div>
                 <div class="card-app-body">
                     <div class="position-relative mb-3">
                         <i class="bi bi-search pos-search-icon"></i>
-                        <input type="text" id="pos-search" class="form-control ps-5" placeholder="Nom, référence ou code-barres..." autocomplete="off">
+                        <input type="text" id="pos-search" class="form-control ps-5" placeholder="{% trans 'Nom, référence ou code-barres...' %}" autocomplete="off">
                     </div>
                     <div id="pos-stock-warning" class="text-danger small mb-2 d-none"></div>
                     <div id="pos-results" class="pos-results"></div>
@@ -49,18 +50,18 @@
 
         <div class="col-lg-6">
             <div class="card-app pos-pane">
-                <div class="card-app-header">Panier</div>
+                <div class="card-app-header">{% trans "Panier" %}</div>
                 <div class="card-app-body p-0">
                     <div id="pos-cart" class="pos-cart"></div>
                     <div id="pos-cart-empty" class="text-muted text-center py-5">
                         <i class="bi bi-cart3 fs-2 d-block mb-2"></i>
-                        Aucun produit dans le panier
+                        {% trans "Aucun produit dans le panier" %}
                     </div>
                 </div>
                 <div class="card-app-body border-top">
-                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span id="pos-subtotal">0</span></div>
-                    <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span id="pos-tva">0</span></div>
-                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span id="pos-total">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Sous-total HT" %}</span><span id="pos-subtotal">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "TVA" %}</span><span id="pos-tva">0</span></div>
+                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>{% trans "Total TTC" %}</span><span id="pos-total">0</span></div>
                 </div>
             </div>
         </div>
@@ -71,8 +72,8 @@
     {{ form.deposit_amount }}
     {{ rate_map|json_script:"rate-map-data" }}
     <div class="d-flex gap-2 mt-4">
-        <button type="button" id="pos-submit" class="btn btn-primary" disabled>Enregistrer la vente</button>
-        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="button" id="pos-submit" class="btn btn-primary" disabled>{% trans "Enregistrer la vente" %}</button>
+        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
     </div>
 </form>
 
@@ -83,32 +84,32 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Paiement de la vente</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <h5 class="modal-title">{% trans "Paiement de la vente" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             <div class="modal-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                    <span class="text-muted">Total à payer</span>
+                    <span class="text-muted">{% trans "Total à payer" %}</span>
                     <span class="fw-bold fs-5" id="payment-modal-total">0</span>
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio" name="payment-choice" id="payment-choice-full" value="full" checked>
-                    <label class="form-check-label" for="payment-choice-full">Le client paie la totalité</label>
+                    <label class="form-check-label" for="payment-choice-full">{% trans "Le client paie la totalité" %}</label>
                 </div>
                 <div class="form-check mb-3">
                     <input class="form-check-input" type="radio" name="payment-choice" id="payment-choice-partial" value="partial">
-                    <label class="form-check-label" for="payment-choice-partial">Le client fait un acompte</label>
+                    <label class="form-check-label" for="payment-choice-partial">{% trans "Le client fait un acompte" %}</label>
                 </div>
                 <div id="payment-deposit-field" class="d-none">
-                    <label class="form-label">Montant de l'acompte</label>
+                    <label class="form-label">{% trans "Montant de l'acompte" %}</label>
                     <input type="number" min="1" step="1" class="form-control form-control-lg" id="payment-deposit-input">
-                    <div class="form-text">Le reste à payer sera enregistré sur la facture.</div>
-                    <div class="text-danger small mt-1 d-none" id="payment-deposit-error">Saisissez un montant valide, inférieur ou égal au total.</div>
+                    <div class="form-text">{% trans "Le reste à payer sera enregistré sur la facture." %}</div>
+                    <div class="text-danger small mt-1 d-none" id="payment-deposit-error">{% trans "Saisissez un montant valide, inférieur ou égal au total." %}</div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="payment-choice-confirm">Enregistrer la vente</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="payment-choice-confirm">{% trans "Enregistrer la vente" %}</button>
             </div>
         </div>
     </div>
@@ -133,6 +134,15 @@
     let cart = [];
     let searchTimer = null;
 
+    // Messages avec valeurs dynamiques : gabarits traduits avec jetons
+    // {name}/{stock}/{cart} remplacés côté JS (pas de variable de contexte
+    // Django disponible pour ces valeurs, connues seulement à l'exécution).
+    const T_STOCK_EXHAUSTED = "{% trans 'Stock épuisé pour « {name} » ({stock} disponible(s), déjà {cart} dans le panier).' %}";
+    const T_QTY_LIMITED = "{% trans 'Quantité limitée à {stock} pour « {name} » (stock disponible).' %}";
+    function fmtTemplate(template, values) {
+        return template.replace(/\{(\w+)\}/g, (_, key) => values[key]);
+    }
+
     function fmt(n) {
         return Math.round(n).toLocaleString("fr-FR") + " " + currency;
     }
@@ -152,7 +162,7 @@
 
     function renderResults(items) {
         if (!items.length) {
-            resultsEl.innerHTML = '<div class="text-muted text-center py-4">Aucun produit trouvé</div>';
+            resultsEl.innerHTML = '<div class="text-muted text-center py-4">{% trans "Aucun produit trouvé" %}</div>';
             return;
         }
         resultsEl.innerHTML = items.map((p) => {
@@ -164,9 +174,9 @@
                 ${img}
                 <div class="pos-item-info">
                     <div class="pos-item-name">${p.name}</div>
-                    <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
+                    <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} {% trans "en stock" %}</span></div>
                 </div>
-                <input type="number" min="1" step="1" max="${p.stock_qty}" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
+                <input type="number" min="1" step="1" max="${p.stock_qty}" value="1" class="form-control form-control-sm pos-item-qty" title="{% trans 'Quantité à ajouter' %}">
                 <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
             </div>`;
         }).join("");
@@ -216,11 +226,11 @@
         const alreadyInCart = existing ? existing.quantity : 0;
         const maxAddable = Math.max(0, stockQty - alreadyInCart);
         if (maxAddable <= 0) {
-            showStockWarning(`Stock épuisé pour « ${product.name} » (${stockQty} disponible(s), déjà ${alreadyInCart} dans le panier).`);
+            showStockWarning(fmtTemplate(T_STOCK_EXHAUSTED, {name: product.name, stock: stockQty, cart: alreadyInCart}));
             return;
         }
         if (qty > maxAddable) {
-            showStockWarning(`Quantité limitée à ${stockQty} pour « ${product.name} » (stock disponible).`);
+            showStockWarning(fmtTemplate(T_QTY_LIMITED, {stock: stockQty, name: product.name}));
             qty = maxAddable;
         }
         if (existing) {
@@ -292,7 +302,7 @@
         const value = parseInt(e.target.value, 10);
         let quantity = isNaN(value) || value <= 0 ? 1 : value;
         if (cartLine.stock_qty !== undefined && quantity > cartLine.stock_qty) {
-            showStockWarning(`Quantité limitée à ${cartLine.stock_qty} pour « ${cartLine.name} » (stock disponible).`);
+            showStockWarning(fmtTemplate(T_QTY_LIMITED, {stock: cartLine.stock_qty, name: cartLine.name}));
             quantity = cartLine.stock_qty;
         }
         cartLine.quantity = quantity;
@@ -413,7 +423,7 @@
 
     function renderClientResults(items) {
         if (!items.length) {
-            clientResultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun client trouvé</div>';
+            clientResultsEl.innerHTML = '<div class="text-muted text-center py-3 small">{% trans "Aucun client trouvé" %}</div>';
         } else {
             clientResultsEl.innerHTML = items.map((c) => `
                 <div class="pos-item" data-client='${JSON.stringify(c).replace(/'/g, "&apos;")}'>

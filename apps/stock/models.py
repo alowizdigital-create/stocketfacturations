@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.catalog.models import Product
 from apps.core.models import BoutiqueScopedModel, TimeStampedModel, UUIDModel
@@ -16,18 +17,18 @@ class StockMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     VENTE = "VENTE"
     RETOUR = "RETOUR"
     TYPE_CHOICES = [
-        (ENTREE, "Entrée"),
-        (SORTIE, "Sortie"),
-        (AJUSTEMENT, "Ajustement"),
-        (VENTE, "Vente"),
-        (RETOUR, "Retour"),
+        (ENTREE, _("Entrée")),
+        (SORTIE, _("Sortie")),
+        (AJUSTEMENT, _("Ajustement")),
+        (VENTE, _("Vente")),
+        (RETOUR, _("Retour")),
     ]
 
     SOURCE_ONLINE = "ONLINE"
     SOURCE_OFFLINE = "OFFLINE"
     SOURCE_CHOICES = [
-        (SOURCE_ONLINE, "En ligne"),
-        (SOURCE_OFFLINE, "Hors-ligne"),
+        (SOURCE_ONLINE, _("En ligne")),
+        (SOURCE_OFFLINE, _("Hors-ligne")),
     ]
 
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="movements")
@@ -55,8 +56,8 @@ class StockMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     source = models.CharField(max_length=10, choices=SOURCE_CHOICES, default=SOURCE_ONLINE)
 
     class Meta:
-        verbose_name = "mouvement de stock"
-        verbose_name_plural = "mouvements de stock"
+        verbose_name = _("mouvement de stock")
+        verbose_name_plural = _("mouvements de stock")
         ordering = ["-created_at"]
 
     def __str__(self):
@@ -74,8 +75,8 @@ class StockLevel(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        verbose_name = "niveau de stock"
-        verbose_name_plural = "niveaux de stock"
+        verbose_name = _("niveau de stock")
+        verbose_name_plural = _("niveaux de stock")
         constraints = [
             models.UniqueConstraint(fields=["boutique", "product"], name="unique_stock_level_boutique_product"),
         ]

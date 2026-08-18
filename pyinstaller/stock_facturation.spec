@@ -67,6 +67,7 @@ module_collection_mode = {"apps": "py", "config": "py"}
 datas = [
     (str(ROOT / "static"), "static"),
     (str(ROOT / "templates"), "templates"),
+    (str(ROOT / "locale"), "locale"),
     (str(ROOT / "pyinstaller" / "app.ico"), "."),
 ]
 for _app in LOCAL_APPS:

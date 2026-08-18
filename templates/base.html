@@ -1,6 +1,6 @@
-{% load static %}
+{% load static i18n %}
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="{{ LANGUAGE_CODE }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -65,52 +65,52 @@
         </div>
         <nav class="sidebar-nav">
             <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'core:home' %}">
-                <i class="bi bi-speedometer2"></i> Tableau de bord
+                <i class="bi bi-speedometer2"></i> {% trans "Tableau de bord" %}
             </a>
 
-            <div class="sidebar-section">Catalogue</div>
+            <div class="sidebar-section">{% trans "Catalogue" %}</div>
             <a class="nav-link {% if '/catalogue/produits' in request.path %}active{% endif %}" href="{% url 'catalog:product_list' %}">
-                <i class="bi bi-box-seam"></i> Produits
+                <i class="bi bi-box-seam"></i> {% trans "Produits" %}
             </a>
             <a class="nav-link {% if '/catalogue/categories' in request.path %}active{% endif %}" href="{% url 'catalog:category_list' %}">
-                <i class="bi bi-tags"></i> Catégories
+                <i class="bi bi-tags"></i> {% trans "Catégories" %}
             </a>
             <a class="nav-link {% if '/catalogue/unites' in request.path %}active{% endif %}" href="{% url 'catalog:unit_list' %}">
-                <i class="bi bi-rulers"></i> Unités
+                <i class="bi bi-rulers"></i> {% trans "Unités" %}
             </a>
 
-            <div class="sidebar-section">Stock</div>
+            <div class="sidebar-section">{% trans "Stock" %}</div>
             <a class="nav-link {% if request.path == '/stock/' %}active{% endif %}" href="{% url 'stock:stock_level_list' %}">
-                <i class="bi bi-clipboard-data"></i> Niveaux de stock
+                <i class="bi bi-clipboard-data"></i> {% trans "Niveaux de stock" %}
             </a>
             <a class="nav-link {% if '/stock/mouvements' in request.path %}active{% endif %}" href="{% url 'stock:movement_history' %}">
-                <i class="bi bi-arrow-left-right"></i> Mouvements
+                <i class="bi bi-arrow-left-right"></i> {% trans "Mouvements" %}
             </a>
 
-            <div class="sidebar-section">Ventes</div>
+            <div class="sidebar-section">{% trans "Ventes" %}</div>
             <a class="nav-link {% if '/ventes' in request.path %}active{% endif %}" href="{% url 'sales:sale_list' %}">
-                <i class="bi bi-cart-check"></i> Ventes
+                <i class="bi bi-cart-check"></i> {% trans "Ventes" %}
             </a>
             <a class="nav-link {% if '/clients' in request.path %}active{% endif %}" href="{% url 'sales:client_list' %}">
-                <i class="bi bi-people"></i> Clients
+                <i class="bi bi-people"></i> {% trans "Clients" %}
             </a>
             <a class="nav-link {% if '/devis' in request.path %}active{% endif %}" href="{% url 'sales:devis_list' %}">
-                <i class="bi bi-file-earmark-text"></i> Devis
+                <i class="bi bi-file-earmark-text"></i> {% trans "Devis" %}
             </a>
             <a class="nav-link {% if '/commandes' in request.path %}active{% endif %}" href="{% url 'sales:commande_list' %}">
-                <i class="bi bi-bag-check"></i> Commandes
+                <i class="bi bi-bag-check"></i> {% trans "Commandes" %}
             </a>
             <a class="nav-link {% if request.path == '/factures/' %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
-                <i class="bi bi-receipt"></i> Factures
+                <i class="bi bi-receipt"></i> {% trans "Factures" %}
             </a>
 
             {% if request.is_compte_admin %}
-            <div class="sidebar-section">Administration</div>
+            <div class="sidebar-section">{% trans "Administration" %}</div>
             <a class="nav-link {% if '/entreprises/equipe' in request.path %}active{% endif %}" href="{% url 'tenants:staff_list' %}">
-                <i class="bi bi-person-badge"></i> Équipe
+                <i class="bi bi-person-badge"></i> {% trans "Équipe" %}
             </a>
             <a class="nav-link {% if '/entreprises/parametres' in request.path %}active{% endif %}" href="{% url 'tenants:company_settings' %}">
-                <i class="bi bi-gear"></i> Paramètres
+                <i class="bi bi-gear"></i> {% trans "Paramètres" %}
             </a>
             <!-- <a class="nav-link {% if '/entreprises/abonnement' in request.path %}active{% endif %}" href="{% url 'tenants:subscription' %}">
                 <i class="bi bi-award"></i> Abonnement
@@ -118,16 +118,17 @@
             {% endif %}
         </nav>
         <div class="sidebar-footer">
+            {% include "includes/language_switch.html" %}
             <div class="sidebar-user-email text-muted small">{{ user.first_name}}</div>
             {% if user.memberships.count > 1 %}
             <a href="{% url 'tenants:choose_boutique' %}" class="nav-link">
-                <i class="bi bi-shop"></i> Changer de boutique
+                <i class="bi bi-shop"></i> {% trans "Changer de boutique" %}
             </a>
             {% endif %}
             <form method="post" action="{% url 'accounts:logout' %}">
                 {% csrf_token %}
                 <button type="submit" class="nav-link border-0 bg-transparent w-100 text-start">
-                    <i class="bi bi-box-arrow-right"></i> Déconnexion
+                    <i class="bi bi-box-arrow-right"></i> {% trans "Déconnexion" %}
                 </button>
             </form>
         </div>
@@ -135,12 +136,12 @@
 
     <div class="main-content">
         <header class="topbar">
-            <button class="btn btn-outline-secondary d-lg-none sidebar-toggle" type="button" aria-label="Menu">
+            <button class="btn btn-outline-secondary d-lg-none sidebar-toggle" type="button" aria-label="{% trans 'Menu' %}">
                 <i class="bi bi-list"></i>
             </button>
             <span class="boutique-pill"><i class="bi bi-shop"></i> {{ request.boutique.name }}</span>
             <button type="button" id="pwa-install-btn" class="btn btn-brand btn-sm d-lg-none pwa-install-btn" style="display:none;">
-                <i class="bi bi-download"></i> Installer
+                <i class="bi bi-download"></i> {% trans "Installer" %}
             </button>
             <span class="text-muted small topbar-email">{{ user.first_name }}</span>
         </header>
@@ -149,17 +150,17 @@
             <div class="modal-dialog modal-dialog-centered">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title"><i class="bi bi-download"></i> Installer l'application</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                        <h5 class="modal-title"><i class="bi bi-download"></i> {% trans "Installer l'application" %}</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
                     </div>
                     <div class="modal-body">
-                        <p>Sur iPhone/iPad, l'installation se fait depuis Safari :</p>
+                        <p>{% trans "Sur iPhone/iPad, l'installation se fait depuis Safari :" %}</p>
                         <ol class="ps-3">
-                            <li class="mb-2">Appuyez sur le bouton <strong>Partager</strong> <i class="bi bi-box-arrow-up"></i> en bas de l'écran.</li>
-                            <li class="mb-2">Choisissez <strong>« Sur l'écran d'accueil »</strong>.</li>
-                            <li>Appuyez sur <strong>Ajouter</strong>.</li>
+                            <li class="mb-2"><i class="bi bi-box-arrow-up"></i> {% blocktrans trimmed %}Appuyez sur le bouton <strong>Partager</strong> en bas de l'écran.{% endblocktrans %}</li>
+                            <li class="mb-2">{% blocktrans trimmed %}Choisissez <strong>« Sur l'écran d'accueil »</strong>.{% endblocktrans %}</li>
+                            <li>{% blocktrans trimmed %}Appuyez sur <strong>Ajouter</strong>.{% endblocktrans %}</li>
                         </ol>
-                        <p class="text-muted small mb-0">L'application s'ouvrira alors comme une application normale, avec son icône sur votre écran d'accueil.</p>
+                        <p class="text-muted small mb-0">{% trans "L'application s'ouvrira alors comme une application normale, avec son icône sur votre écran d'accueil." %}</p>
                     </div>
                 </div>
             </div>
@@ -170,7 +171,7 @@
             {% for message in messages %}
             <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show js-flash-message" role="alert">
                 {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             {% endfor %}
             {% endif %}
@@ -180,6 +181,9 @@
 </div>
 {% else %}
 <main>
+    <div class="container mt-3 d-flex justify-content-end">
+        {% include "includes/language_switch.html" %}
+    </div>
     {% if messages %}
     <div class="container mt-3">
         {% for message in messages %}
@@ -253,7 +257,7 @@
         submitter.disabled = true;
         submitter.classList.add("btn-loading");
         submitter.innerHTML =
-            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Patientez…';
+            '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> {% trans "Patientez…" %}';
 
         // Filet de sécurité : si la page ne navigue jamais (erreur réseau,
         // soumission bloquée ailleurs), on redonne la main plutôt que de

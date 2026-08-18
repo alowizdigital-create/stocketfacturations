@@ -1,30 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Devis{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Devis" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <!-- <div>
         <h1>Devis</h1> -->
         <!-- <div class="text-muted">Un devis n'affecte jamais le stock.</div> -->
     <!-- </div> -->
-    <a href="{% url 'sales:invoice_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau devis</a>
+    <a href="{% url 'sales:invoice_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau devis" %}</a>
 </div>
 
 <form method="get" class="mb-3">
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un devis (numéro, client)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un devis (numéro, client)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'sales:devis_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'sales:devis_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>N°</th><th>Client</th><th>Statut</th><th class="d-none d-sm-table-cell">Date</th><th>Total TTC</th></tr></thead>
+        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
         <tbody>
             {% for invoice in devis %}
             <tr>
@@ -43,7 +44,7 @@
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">Aucun devis pour le moment.</td></tr>
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucun devis pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

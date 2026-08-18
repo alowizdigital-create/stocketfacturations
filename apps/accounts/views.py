@@ -2,6 +2,7 @@ from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect
+from django.utils.translation import gettext as _
 
 
 class PasswordResetView(auth_views.PasswordResetView):
@@ -15,8 +16,10 @@ class PasswordResetView(auth_views.PasswordResetView):
         if settings.IS_OFFLINE:
             messages.error(
                 request,
-                "La réinitialisation de mot de passe n'est disponible qu'en ligne — "
-                "utilisez un poste connecté à internet.",
+                _(
+                    "La réinitialisation de mot de passe n'est disponible qu'en ligne — "
+                    "utilisez un poste connecté à internet."
+                ),
             )
             return redirect("accounts:login")
         return super().dispatch(request, *args, **kwargs)

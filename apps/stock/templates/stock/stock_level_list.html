@@ -1,5 +1,6 @@
 {% extends "base.html" %}
-{% block title %}Stock{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Stock" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <!-- <div>
@@ -7,8 +8,8 @@
         <div class="text-muted">{{ request.boutique.name }}</div>
     </div> -->
     <div class="d-flex gap-2">
-        <a href="{% url 'stock:movement_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau mouvement</a>
-        <a href="{% url 'stock:movement_history' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> Historique</a>
+        <a href="{% url 'stock:movement_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau mouvement" %}</a>
+        <a href="{% url 'stock:movement_history' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> {% trans "Historique" %}</a>
     </div>
 </div>
 
@@ -16,28 +17,28 @@
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un produit (nom, référence)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un produit (nom, référence)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Produit</th><th>Quantité</th><th class="d-none d-sm-table-cell">Seuil bas</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Produit" %}</th><th>{% trans "Quantité" %}</th><th class="d-none d-sm-table-cell">{% trans "Seuil bas" %}</th><th></th></tr></thead>
         <tbody>
             {% for row in rows %}
             <tr class="{% if row.is_low %}row-danger{% endif %}">
                 <td class="fw-semibold">{{ row.level.product.name }}</td>
                 <td>{{ row.level.quantity }} {{ row.level.product.unit.symbol|default:row.level.product.unit.name }}</td>
                 <td class="d-none d-sm-table-cell">{{ row.threshold }}</td>
-                <td>{% if row.is_low %}<span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Stock bas</span>{% endif %}</td>
+                <td>{% if row.is_low %}<span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> {% trans "Stock bas" %}</span>{% endif %}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="text-muted text-center py-4">Aucun mouvement de stock enregistré.</td></tr>
+            <tr><td colspan="4" class="text-muted text-center py-4">{% trans "Aucun mouvement de stock enregistré." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

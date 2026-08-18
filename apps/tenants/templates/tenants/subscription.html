@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Abonnement{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Abonnement" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Abonnement</h1>
-        <div class="text-muted">Aucun paiement en ligne pour l'instant — payez hors application (Mobile Money, virement...) puis mettez à jour la date ci-dessous.</div>
+        <h1>{% trans "Abonnement" %}</h1>
+        <div class="text-muted">{% trans "Aucun paiement en ligne pour l'instant — payez hors application (Mobile Money, virement...) puis mettez à jour la date ci-dessous." %}</div>
     </div>
 </div>
 
@@ -14,7 +15,7 @@
             <div class="stat-icon"><i class="bi bi-award"></i></div>
             <div>
                 <div class="stat-value">{{ subscription.plan.name }}</div>
-                <div class="stat-label">Offre actuelle — {{ subscription.plan.price_monthly }} FCFA/mois</div>
+                <div class="stat-label">{% blocktrans trimmed with price=subscription.plan.price_monthly %}Offre actuelle — {{ price }} FCFA/mois{% endblocktrans %}</div>
             </div>
         </div>
     </div>
@@ -24,16 +25,16 @@
             <div>
                 <div class="stat-value">
                     {% if subscription.is_active %}
-                    <span class="badge-status badge-green">Actif</span>
+                    <span class="badge-status badge-green">{% trans "Actif" %}</span>
                     {% else %}
-                    <span class="badge-status badge-red">Expiré</span>
+                    <span class="badge-status badge-red">{% trans "Expiré" %}</span>
                     {% endif %}
                 </div>
                 <div class="stat-label">
                     {% if subscription.expires_at %}
-                    Jusqu'au {{ subscription.expires_at|date:"d/m/Y" }}
+                    {% blocktrans trimmed with date=subscription.expires_at|date:"d/m/Y" %}Jusqu'au {{ date }}{% endblocktrans %}
                     {% else %}
-                    Sans date d'expiration
+                    {% trans "Sans date d'expiration" %}
                     {% endif %}
                 </div>
             </div>
@@ -49,12 +50,13 @@
                 <div class="fw-bold fs-5">{{ plan.name }}</div>
                 <div class="text-muted mb-2">{{ plan.price_monthly }} FCFA/mois</div>
                 <div class="small text-muted">
-                    <div>Boutiques : {{ plan.max_boutiques|default:"Illimité" }}</div>
-                    <div>Employés : {{ plan.max_users|default:"Illimité" }}</div>
+                    {% trans "Illimité" as unlimited %}
+                    <div>{% trans "Boutiques" %} : {{ plan.max_boutiques|default:unlimited }}</div>
+                    <div>{% trans "Employés" %} : {{ plan.max_users|default:unlimited }}</div>
                 </div>
                 {% if plan.description %}<div class="small text-muted mt-2">{{ plan.description }}</div>{% endif %}
                 {% if plan.id == subscription.plan_id %}
-                <span class="badge-status badge-purple mt-2 d-inline-block">Offre actuelle</span>
+                <span class="badge-status badge-purple mt-2 d-inline-block">{% trans "Offre actuelle" %}</span>
                 {% endif %}
             </div>
         </div>
@@ -63,7 +65,7 @@
 </div>
 
 <div class="card-app" style="max-width: 520px;">
-    <div class="card-app-header">Mettre à jour mon abonnement</div>
+    <div class="card-app-header">{% trans "Mettre à jour mon abonnement" %}</div>
     <div class="card-app-body">
         <form method="post">
             {% csrf_token %}
@@ -76,7 +78,7 @@
                 {{ field.errors }}
             </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
         </form>
     </div>
 </div>

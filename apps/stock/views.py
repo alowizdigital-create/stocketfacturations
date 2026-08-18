@@ -3,6 +3,7 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext as _
 
 from apps.catalog.models import Product
 from apps.catalog.services import get_effective_low_stock_threshold
@@ -50,7 +51,7 @@ def movement_create(request):
             )
             if settings.IS_OFFLINE:
                 outbox.enqueue(OutboxEntry.STOCK_MOVEMENT, movement.id)
-            messages.success(request, "Mouvement de stock enregistré.")
+            messages.success(request, _("Mouvement de stock enregistré."))
             return redirect("stock:stock_level_list")
     else:
         form = StockMovementForm(compte=request.compte)
@@ -66,12 +67,12 @@ def product_quick_movement(request, product_id):
     product = get_object_or_404(Product, id=product_id, compte=request.compte)
     movement_type = request.POST.get("type")
     if movement_type not in (StockMovement.ENTREE, StockMovement.SORTIE):
-        messages.error(request, "Type de mouvement invalide.")
+        messages.error(request, _("Type de mouvement invalide."))
         return redirect("catalog:product_detail", product_id=product.id)
 
     form = ProductQuickMovementForm(request.POST)
     if not form.is_valid():
-        messages.error(request, "Quantité invalide.")
+        messages.error(request, _("Quantité invalide."))
         return redirect("catalog:product_detail", product_id=product.id)
 
     quantity = form.cleaned_data["quantity"]

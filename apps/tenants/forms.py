@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
@@ -12,29 +13,29 @@ User = get_user_model()
 
 
 class SignupForm(BootstrapFormMixin, forms.Form):
-    entreprise_name = forms.CharField(label="Nom de l'entreprise", max_length=255)
-    boutique_name = forms.CharField(label="Nom de la première boutique", max_length=255)
+    entreprise_name = forms.CharField(label=_("Nom de l'entreprise"), max_length=255)
+    boutique_name = forms.CharField(label=_("Nom de la première boutique"), max_length=255)
     # boutique_code = forms.CharField(
     #     label="Code de la boutique",
     #     max_length=10,
     #     help_text="Ex: BTQ-001. Sert à numéroter les factures.",
     # )
     devise = forms.ChoiceField(
-        label="Devise de la boutique",
+        label=_("Devise de la boutique"),
         choices=CURRENCY_CHOICES,
         initial="XOF",
-        help_text="Toutes les ventes et devis de cette boutique utiliseront cette devise par défaut.",
+        help_text=_("Toutes les ventes et devis de cette boutique utiliseront cette devise par défaut."),
     )
-    email = forms.EmailField(label="Votre email")
+    email = forms.EmailField(label=_("Votre email"))
     # first_name = forms.CharField(label="Prénom", max_length=150, required=False)
     # last_name = forms.CharField(label="Nom", max_length=150, required=False)
-    password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
-    password_confirm = forms.CharField(label="Confirmer le mot de passe", widget=forms.PasswordInput)
+    password = forms.CharField(label=_("Mot de passe"), widget=forms.PasswordInput)
+    password_confirm = forms.CharField(label=_("Confirmer le mot de passe"), widget=forms.PasswordInput)
 
     def clean_email(self):
         email = self.cleaned_data["email"].lower()
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("Un compte existe déjà avec cet email.")
+            raise forms.ValidationError(_("Un compte existe déjà avec cet email."))
         return email
 
     def clean_password(self):
@@ -46,7 +47,7 @@ class SignupForm(BootstrapFormMixin, forms.Form):
         cleaned = super().clean()
         if cleaned.get("password") and cleaned.get("password_confirm"):
             if cleaned["password"] != cleaned["password_confirm"]:
-                self.add_error("password_confirm", "Les mots de passe ne correspondent pas.")
+                self.add_error("password_confirm", _("Les mots de passe ne correspondent pas."))
         return cleaned
 
 
@@ -55,13 +56,13 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
     nouvel employé : crée le compte utilisateur et l'affecte directement à
     une boutique avec un rôle."""
 
-    first_name = forms.CharField(label="Prénom", max_length=150)
-    last_name = forms.CharField(label="Nom", max_length=150, required=False)
-    email = forms.EmailField(label="Email de l'employé")
-    boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label="Boutique")
-    role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label="Rôle")
-    password = forms.CharField(label="Mot de passe initial", widget=forms.PasswordInput)
-    password_confirm = forms.CharField(label="Confirmer le mot de passe", widget=forms.PasswordInput)
+    first_name = forms.CharField(label=_("Prénom"), max_length=150)
+    last_name = forms.CharField(label=_("Nom"), max_length=150, required=False)
+    email = forms.EmailField(label=_("Email de l'employé"))
+    boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label=_("Boutique"))
+    role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label=_("Rôle"))
+    password = forms.CharField(label=_("Mot de passe initial"), widget=forms.PasswordInput)
+    password_confirm = forms.CharField(label=_("Confirmer le mot de passe"), widget=forms.PasswordInput)
 
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -72,7 +73,7 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
     def clean_email(self):
         email = self.cleaned_data["email"].lower()
         if User.objects.filter(email=email).exists():
-            raise forms.ValidationError("Un compte existe déjà avec cet email.")
+            raise forms.ValidationError(_("Un compte existe déjà avec cet email."))
         return email
 
     def clean_password(self):
@@ -84,7 +85,7 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
         cleaned = super().clean()
         if cleaned.get("password") and cleaned.get("password_confirm"):
             if cleaned["password"] != cleaned["password_confirm"]:
-                self.add_error("password_confirm", "Les mots de passe ne correspondent pas.")
+                self.add_error("password_confirm", _("Les mots de passe ne correspondent pas."))
         return cleaned
 
 
@@ -92,7 +93,7 @@ class StaffUpdateForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Membership
         fields = ["boutique", "role", "is_active"]
-        labels = {"boutique": "Boutique", "role": "Rôle", "is_active": "Actif"}
+        labels = {"boutique": _("Boutique"), "role": _("Rôle"), "is_active": _("Actif")}
 
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -105,10 +106,10 @@ class CompteSettingsForm(BootstrapFormMixin, forms.ModelForm):
         model = Compte
         fields = ["name", "email", "phone", "logo"]
         labels = {
-            "name": "Nom de l'entreprise",
+            "name": _("Nom de l'entreprise"),
             "email": "Email",
-            "phone": "Téléphone",
-            "logo": "Logo",
+            "phone": _("Téléphone"),
+            "logo": _("Logo"),
         }
 
 
@@ -118,10 +119,10 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
     l'entreprise opère (montants affichés dans la bonne devise, numéros
     WhatsApp complétés avec le bon indicatif)."""
 
-    devise = forms.ChoiceField(label="Devise", choices=CURRENCY_CHOICES)
+    devise = forms.ChoiceField(label=_("Devise"), choices=CURRENCY_CHOICES)
     country_calling_code = forms.ChoiceField(
-        label="Pays (indicatif téléphonique)",
-        choices=[("", "Non défini — numéros saisis tels quels")] + AFRICAN_COUNTRIES,
+        label=_("Pays (indicatif téléphonique)"),
+        choices=[("", _("Non défini — numéros saisis tels quels"))] + AFRICAN_COUNTRIES,
         required=False,
     )
 
@@ -136,11 +137,11 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
             "momo_number",
         ]
         labels = {
-            "devise": "Devise",
-            "om_account_name": "Orange Money — nom du compte",
-            "om_number": "Orange Money — numéro",
-            "momo_account_name": "MTN MoMo — nom du compte",
-            "momo_number": "MTN MoMo — numéro",
+            "devise": _("Devise"),
+            "om_account_name": _("Orange Money — nom du compte"),
+            "om_number": _("Orange Money — numéro"),
+            "momo_account_name": _("MTN MoMo — nom du compte"),
+            "momo_number": _("MTN MoMo — numéro"),
         }
 
     def clean_devise(self):
@@ -153,12 +154,12 @@ class ExchangeRateForm(BootstrapFormMixin, forms.ModelForm):
     vente/d'un devis créé dans une devise différente de celle de la
     boutique."""
 
-    currency = forms.ChoiceField(label="Devise")
+    currency = forms.ChoiceField(label=_("Devise"))
 
     class Meta:
         model = ExchangeRate
         fields = ["currency", "rate"]
-        labels = {"rate": "1 unité de cette devise = ? dans la devise de la boutique"}
+        labels = {"rate": _("1 unité de cette devise = ? dans la devise de la boutique")}
 
     def __init__(self, *args, boutique=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -184,13 +185,13 @@ class SubscriptionForm(BootstrapFormMixin, forms.ModelForm):
         fields = ["plan", "expires_at", "payment_reference", "notes"]
         widgets = {"expires_at": forms.DateInput(attrs={"type": "date"})}
         labels = {
-            "plan": "Offre",
-            "expires_at": "Abonnement payé jusqu'au",
-            "payment_reference": "Référence de paiement",
-            "notes": "Notes",
+            "plan": _("Offre"),
+            "expires_at": _("Abonnement payé jusqu'au"),
+            "payment_reference": _("Référence de paiement"),
+            "notes": _("Notes"),
         }
         help_texts = {
-            "expires_at": "Laisser vide pour l'offre Gratuite. À mettre à jour vous-même après chaque paiement (Mobile Money, virement...).",
+            "expires_at": _("Laisser vide pour l'offre Gratuite. À mettre à jour vous-même après chaque paiement (Mobile Money, virement...)."),
         }
 
     def __init__(self, *args, **kwargs):

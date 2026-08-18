@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 from apps.catalog.models import Product
@@ -72,7 +73,7 @@ def client_create(request):
             client.save()
             if settings.IS_OFFLINE:
                 outbox.enqueue(OutboxEntry.CLIENT, client.id)
-            messages.success(request, "Client créé.")
+            messages.success(request, _("Client créé."))
             return redirect("sales:client_list")
     else:
         form = ClientForm()
@@ -100,7 +101,7 @@ def _parse_csv_contacts(text):
     reader = csv.DictReader(io.StringIO(text), dialect=dialect)
 
     if not reader.fieldnames:
-        return None, "Fichier CSV vide ou illisible."
+        return None, _("Fichier CSV vide ou illisible.")
 
     field_map = {}
     for raw_header in reader.fieldnames:
@@ -109,7 +110,7 @@ def _parse_csv_contacts(text):
             field_map[raw_header] = key
 
     if "name" not in field_map.values():
-        return None, (
+        return None, _(
             "Aucune colonne « nom » reconnue dans le fichier CSV. "
             "Colonnes attendues : nom, téléphone, email, adresse."
         )
@@ -220,7 +221,7 @@ def _parse_vcf_contacts(text):
             current["address"] = ", ".join(components)
 
     if not contacts:
-        return None, "Aucun contact trouvé dans le fichier vCard."
+        return None, _("Aucun contact trouvé dans le fichier vCard.")
     return contacts, None
 
 
@@ -244,7 +245,7 @@ def client_import(request):
                 try:
                     text = raw_bytes.decode("latin-1")
                 except UnicodeDecodeError:
-                    messages.error(request, "Le fichier doit être encodé en UTF-8.")
+                    messages.error(request, _("Le fichier doit être encodé en UTF-8."))
                     return render(request, "sales/client_import.html", {"form": form})
 
             filename = (uploaded.name or "").lower()
@@ -289,13 +290,12 @@ def client_import(request):
             Client.objects.bulk_create(to_create)
 
             if to_create:
-                messages.success(
-                    request,
-                    f"{len(to_create)} client(s) importé(s)."
-                    + (f" {skipped} ligne(s) ignorée(s) (doublon ou nom manquant)." if skipped else ""),
-                )
+                text = _("%(count)s client(s) importé(s).") % {"count": len(to_create)}
+                if skipped:
+                    text += " " + _("%(count)s ligne(s) ignorée(s) (doublon ou nom manquant).") % {"count": skipped}
+                messages.success(request, text)
             else:
-                messages.warning(request, "Aucun nouveau client importé (doublons ou fichier vide).")
+                messages.warning(request, _("Aucun nouveau client importé (doublons ou fichier vide)."))
             return redirect("sales:client_list")
     else:
         form = ClientImportForm()
@@ -359,10 +359,10 @@ def _parse_cart(request):
     try:
         items = json.loads(raw) if raw else []
     except json.JSONDecodeError:
-        return None, "Panier invalide."
+        return None, _("Panier invalide.")
 
     if not items:
-        return None, "Ajoutez au moins un produit au panier."
+        return None, _("Ajoutez au moins un produit au panier.")
 
     product_ids = [item.get("product_id") for item in items]
     products = Product.objects.filter(id__in=product_ids, compte=request.compte, is_active=True)
@@ -377,14 +377,14 @@ def _parse_cart(request):
     for item in items:
         product = products_by_id.get(str(item.get("product_id")))
         if product is None:
-            return None, "Un produit du panier n'existe plus."
+            return None, _("Un produit du panier n'existe plus.")
         try:
             quantity = Decimal(str(item.get("quantity", "0")))
             unit_price_ht = Decimal(str(item.get("unit_price_ht", "0")))
         except InvalidOperation:
-            return None, "Quantité ou prix invalide dans le panier."
+            return None, _("Quantité ou prix invalide dans le panier.")
         if quantity <= 0 or unit_price_ht < 0 or quantity != quantity.to_integral_value():
-            return None, "Quantité ou prix invalide dans le panier."
+            return None, _("Quantité ou prix invalide dans le panier.")
 
         # Cumulé au cas où le même produit apparaîtrait sur plusieurs lignes
         # du panier — la quantité totale demandée ne doit jamais dépasser le
@@ -392,10 +392,14 @@ def _parse_cart(request):
         requested_by_product[product.id] = requested_by_product.get(product.id, Decimal("0")) + quantity
         available = stock_by_product.get(product.id, Decimal("0"))
         if requested_by_product[product.id] > available:
-            return None, (
-                f"Stock insuffisant pour « {product.name} » : {available} disponible(s), "
-                f"{requested_by_product[product.id]} demandé(s)."
-            )
+            return None, _(
+                "Stock insuffisant pour « %(name)s » : %(available)s disponible(s), "
+                "%(requested)s demandé(s)."
+            ) % {
+                "name": product.name,
+                "available": available,
+                "requested": requested_by_product[product.id],
+            }
 
         lines_data.append(
             {
@@ -449,7 +453,11 @@ def sale_create(request):
                 # l'atomicité du bundle côté serveur (push/sale-transactions/).
                 outbox.enqueue(OutboxEntry.SALE_TRANSACTION, sale.id)
 
-            messages.success(request, f"{sale.number} enregistrée et {invoice.number} générée.")
+            messages.success(
+                request,
+                _("%(sale)s enregistrée et %(invoice)s générée.")
+                % {"sale": sale.number, "invoice": invoice.number},
+            )
             return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = SaleForm(boutique=request.boutique)
@@ -476,7 +484,7 @@ def sale_detail(request, sale_id):
 def sale_confirm(request, sale_id):
     sale = get_object_or_404(Sale, id=sale_id, boutique=request.boutique)
     services.confirm_sale(sale, created_by=request.user)
-    messages.success(request, f"{sale.number} confirmée, stock mis à jour.")
+    messages.success(request, _("%(sale)s confirmée, stock mis à jour.") % {"sale": sale.number})
     return redirect("sales:sale_detail", sale_id=sale.id)
 
 
@@ -490,7 +498,7 @@ def sale_generate_invoice(request, sale_id):
     except ValueError as exc:
         messages.error(request, str(exc))
         return redirect("sales:sale_detail", sale_id=sale.id)
-    messages.success(request, f"Facture {invoice.number} générée.")
+    messages.success(request, _("Facture %(invoice)s générée.") % {"invoice": invoice.number})
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 
@@ -580,7 +588,7 @@ def invoice_create(request):
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset)
             if not lines_data:
-                messages.error(request, "Ajoutez au moins une ligne au devis.")
+                messages.error(request, _("Ajoutez au moins une ligne au devis."))
             else:
                 invoice = services.build_invoice(
                     boutique=request.boutique,
@@ -594,7 +602,7 @@ def invoice_create(request):
                 )
                 if settings.IS_OFFLINE:
                     outbox.enqueue(OutboxEntry.INVOICE, invoice.id)
-                messages.success(request, f"{invoice.number} créé en brouillon.")
+                messages.success(request, _("%(invoice)s créé en brouillon.") % {"invoice": invoice.number})
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(boutique=request.boutique)
@@ -623,7 +631,7 @@ def devis_update(request, invoice_id):
     devis = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.DEVIS)
 
     if devis.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
-        messages.error(request, "Ce devis n'est plus modifiable.")
+        messages.error(request, _("Ce devis n'est plus modifiable."))
         return redirect("sales:invoice_detail", invoice_id=devis.id)
 
     if settings.IS_OFFLINE:
@@ -634,8 +642,10 @@ def devis_update(request, invoice_id):
         # que devis_generate_invoice.
         messages.error(
             request,
-            "La modification d'un devis n'est pas encore disponible hors-ligne — "
-            "utilisez le poste en ligne.",
+            _(
+                "La modification d'un devis n'est pas encore disponible hors-ligne — "
+                "utilisez le poste en ligne."
+            ),
         )
         return redirect("sales:invoice_detail", invoice_id=devis.id)
 
@@ -645,7 +655,7 @@ def devis_update(request, invoice_id):
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset, require_changed=False)
             if not lines_data:
-                messages.error(request, "Ajoutez au moins une ligne au devis.")
+                messages.error(request, _("Ajoutez au moins une ligne au devis."))
             else:
                 services.update_invoice(
                     devis,
@@ -655,7 +665,7 @@ def devis_update(request, invoice_id):
                     currency=form.cleaned_data["currency"] or request.boutique.devise,
                     pdf_format=form.cleaned_data["pdf_format"],
                 )
-                messages.success(request, f"{devis.number} modifié.")
+                messages.success(request, _("%(invoice)s modifié.") % {"invoice": devis.number})
                 return redirect("sales:invoice_detail", invoice_id=devis.id)
     else:
         form = InvoiceForm(
@@ -708,7 +718,7 @@ def commande_create(request):
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset)
             if not lines_data:
-                messages.error(request, "Ajoutez au moins une ligne à la commande.")
+                messages.error(request, _("Ajoutez au moins une ligne à la commande."))
             else:
                 invoice = services.build_invoice(
                     boutique=request.boutique,
@@ -733,7 +743,7 @@ def commande_create(request):
 
                 if settings.IS_OFFLINE:
                     outbox.enqueue(OutboxEntry.INVOICE, invoice.id)
-                messages.success(request, f"{invoice.number} créée en brouillon.")
+                messages.success(request, _("%(invoice)s créée en brouillon.") % {"invoice": invoice.number})
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(boutique=request.boutique)
@@ -820,7 +830,7 @@ def invoice_send_whatsapp(request, invoice_id):
         else None
     )
     if not phone:
-        messages.error(request, "Ce client n'a pas de numéro de téléphone.")
+        messages.error(request, _("Ce client n'a pas de numéro de téléphone."))
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
     pdf_url = _public_pdf_url(request, invoice)
@@ -834,9 +844,12 @@ def invoice_send_whatsapp(request, invoice_id):
             filename=f"{invoice.number}.pdf",
         )
     except WhatsAppSendError as exc:
-        messages.error(request, f"Échec de l'envoi WhatsApp : {exc}")
+        messages.error(request, _("Échec de l'envoi WhatsApp : %(error)s") % {"error": exc})
     else:
-        messages.success(request, f"Facture envoyée par WhatsApp à {invoice.client.name}.")
+        messages.success(
+            request,
+            _("Facture envoyée par WhatsApp à %(client)s.") % {"client": invoice.client.name},
+        )
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 
@@ -845,7 +858,7 @@ def invoice_send_whatsapp(request, invoice_id):
 def invoice_validate(request, invoice_id):
     invoice = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique)
     services.validate_invoice(invoice, created_by=request.user)
-    messages.success(request, f"{invoice.number} validé.")
+    messages.success(request, _("%(invoice)s validé.") % {"invoice": invoice.number})
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 
@@ -857,7 +870,7 @@ def devis_generate_invoice(request, invoice_id):
     complet/acompte que juste après une vente (voir sale_create)."""
     devis = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.DEVIS)
     if devis.status != Invoice.VALIDEE:
-        messages.error(request, "Validez d'abord le devis avant de générer la facture.")
+        messages.error(request, _("Validez d'abord le devis avant de générer la facture."))
         return redirect("sales:invoice_detail", invoice_id=devis.id)
 
     if settings.IS_OFFLINE:
@@ -868,8 +881,10 @@ def devis_generate_invoice(request, invoice_id):
         # ne jamais se synchroniser.
         messages.error(
             request,
-            "La conversion de devis en facture n'est pas encore disponible hors-ligne — "
-            "utilisez le poste en ligne.",
+            _(
+                "La conversion de devis en facture n'est pas encore disponible hors-ligne — "
+                "utilisez le poste en ligne."
+            ),
         )
         return redirect("sales:invoice_detail", invoice_id=devis.id)
 
@@ -888,7 +903,10 @@ def devis_generate_invoice(request, invoice_id):
                 invoice, amount=paid_amount, method=Payment.ESPECES, created_by=request.user,
             )
 
-        messages.success(request, f"{invoice.number} générée depuis {devis.number}.")
+        messages.success(
+            request,
+            _("%(invoice)s générée depuis %(devis)s.") % {"invoice": invoice.number, "devis": devis.number},
+        )
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
     return redirect("sales:invoice_detail", invoice_id=devis.id)
@@ -904,7 +922,7 @@ def commande_generate_invoice(request, invoice_id):
     services.convert_commande_to_invoice()."""
     commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
     if commande.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
-        messages.error(request, "Cette commande ne peut plus être validée.")
+        messages.error(request, _("Cette commande ne peut plus être validée."))
         return redirect("sales:invoice_detail", invoice_id=commande.id)
 
     if settings.IS_OFFLINE:
@@ -914,14 +932,19 @@ def commande_generate_invoice(request, invoice_id):
         # stock + marquer CONVERTIE" côté serveur.
         messages.error(
             request,
-            "La validation de commande en facture n'est pas encore disponible hors-ligne — "
-            "utilisez le poste en ligne.",
+            _(
+                "La validation de commande en facture n'est pas encore disponible hors-ligne — "
+                "utilisez le poste en ligne."
+            ),
         )
         return redirect("sales:invoice_detail", invoice_id=commande.id)
 
     if request.method == "POST":
         invoice = services.convert_commande_to_invoice(commande, created_by=request.user)
-        messages.success(request, f"{invoice.number} générée depuis {commande.number}.")
+        messages.success(
+            request,
+            _("%(invoice)s générée depuis %(commande)s.") % {"invoice": invoice.number, "commande": commande.number},
+        )
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
     return redirect("sales:invoice_detail", invoice_id=commande.id)
@@ -949,7 +972,7 @@ def payment_create(request, invoice_id):
             )
             if settings.IS_OFFLINE:
                 outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
-            messages.success(request, "Paiement enregistré.")
+            messages.success(request, _("Paiement enregistré."))
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 

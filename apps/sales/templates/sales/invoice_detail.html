@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ invoice.number }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -12,54 +13,55 @@
                 {{ invoice.get_status_display }}
             </span>
         </h1>
+        {% trans "Client de passage" as walk_in_client %}
         <div class="text-muted">
-            {{ invoice.get_type_display }} — {{ invoice.client|default:"Client de passage" }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %} — {{ invoice.issue_date|date:"d/m/Y" }}
-            {% if invoice.sale %}— générée depuis la vente <a href="{% url 'sales:sale_detail' invoice.sale.id %}">{{ invoice.sale.number }}</a>{% endif %}
+            {{ invoice.get_type_display }} — {{ invoice.client|default:walk_in_client }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %} — {{ invoice.issue_date|date:"d/m/Y" }}
+            {% if invoice.sale %}— {% blocktrans trimmed with number=invoice.sale.number %}générée depuis la vente {{ number }}{% endblocktrans %}{% endif %}
         </div>
     </div>
     <div class="d-flex gap-2">
         <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF ({% if invoice.pdf_format == "A4" %}A4{% else %}80 mm{% endif %})</a>
-        <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> Imprimer</button>
+        <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> {% trans "Imprimer" %}</button>
         {% if invoice.type == "DEVIS" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
-        <a href="{% url 'sales:devis_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Modifier</a>
+        <a href="{% url 'sales:devis_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
         {% endif %}
         <!-- <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a> -->
         <!-- <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a> -->
         {% if has_client_phone and whatsapp_api_configured %}
         <form method="post" action="{% url 'sales:invoice_send_whatsapp' invoice.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-whatsapp"><i class="bi bi-whatsapp"></i> Envoyer par WhatsApp</button>
+            <button type="submit" class="btn btn-whatsapp"><i class="bi bi-whatsapp"></i> {% trans "Envoyer par WhatsApp" %}</button>
         </form>
         {% elif whatsapp_url %}
-        <a href="{{ whatsapp_url }}" class="btn btn-whatsapp" target="_blank" rel="noopener" title="API WhatsApp non configurée : ceci ouvre WhatsApp avec un lien vers le PDF, sans pièce jointe automatique">
-            <i class="bi bi-whatsapp"></i> Envoyer
+        <a href="{{ whatsapp_url }}" class="btn btn-whatsapp" target="_blank" rel="noopener" title="{% trans 'API WhatsApp non configurée : ceci ouvre WhatsApp avec un lien vers le PDF, sans pièce jointe automatique' %}">
+            <i class="bi bi-whatsapp"></i> {% trans "Envoyer" %}
         </a>
         {% elif invoice.client %}
-        <span class="btn btn-outline-secondary disabled text-muted" title="Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp">
-            <i class="bi bi-whatsapp"></i> WhatsApp (pas de téléphone)
+        <span class="btn btn-outline-secondary disabled text-muted" title="{% trans 'Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp' %}">
+            <i class="bi bi-whatsapp"></i> {% trans "WhatsApp (pas de téléphone)" %}
         </span>
         {% endif %}
         {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
         <form method="post" action="{% url 'sales:commande_generate_invoice' invoice.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider la commande</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> {% trans "Valider la commande" %}</button>
         </form>
         {% elif invoice.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Valider le devis</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> {% trans "Valider le devis" %}</button>
         </form>
         {% elif invoice.type == "DEVIS" and invoice.status == "VALIDEE" %}
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#devis-payment-modal">
-            <i class="bi bi-receipt"></i> Générer la facture
+            <i class="bi bi-receipt"></i> {% trans "Générer la facture" %}
         </button>
         {% elif invoice.type == "DEVIS" and invoice.status == "CONVERTIE" and converted_invoice %}
         <a href="{% url 'sales:invoice_detail' converted_invoice.id %}" class="btn btn-primary">
-            <i class="bi bi-receipt"></i> Voir la facture {{ converted_invoice.number }}
+            <i class="bi bi-receipt"></i> {% blocktrans trimmed with number=converted_invoice.number %}Voir la facture {{ number }}{% endblocktrans %}
         </a>
         {% elif invoice.type == "COMMANDE" and invoice.status == "CONVERTIE" and converted_invoice %}
         <a href="{% url 'sales:invoice_detail' converted_invoice.id %}" class="btn btn-primary">
-            <i class="bi bi-receipt"></i> Voir la facture {{ converted_invoice.number }}
+            <i class="bi bi-receipt"></i> {% blocktrans trimmed with number=converted_invoice.number %}Voir la facture {{ number }}{% endblocktrans %}
         </a>
         {% endif %}
     </div>
@@ -67,12 +69,12 @@
 
 {% if invoice.type == "COMMANDE" %}
 <div class="card-app mb-3">
-    <div class="card-app-header">Informations de la commande</div>
+    <div class="card-app-header">{% trans "Informations de la commande" %}</div>
     <div class="card-app-body">
         <div class="row g-2">
-            <div class="col-sm-4"><span class="text-muted small">Client</span><br>{{ invoice.client|default:"Client de passage" }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %}</div>
-            <div class="col-sm-4"><span class="text-muted small">Date</span><br>{{ invoice.issue_date|date:"d/m/Y" }}</div>
-            <div class="col-sm-4"><span class="text-muted small">Devise</span><br>{{ invoice.currency }}</div>
+            <div class="col-sm-4"><span class="text-muted small">{% trans "Client" %}</span><br>{{ invoice.client|default:walk_in_client }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %}</div>
+            <div class="col-sm-4"><span class="text-muted small">{% trans "Date" %}</span><br>{{ invoice.issue_date|date:"d/m/Y" }}</div>
+            <div class="col-sm-4"><span class="text-muted small">{% trans "Devise" %}</span><br>{{ invoice.currency }}</div>
         </div>
         {% if invoice.note %}
         <hr>
@@ -89,7 +91,7 @@
             <table class="table mb-0">
                 <thead><tr>
                     {% if invoice.type == "COMMANDE" %}<th></th>{% endif %}
-                    <th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Remise</th><th>Total TTC</th>
+                    <th>{% trans "Description" %}</th><th>{% trans "Qté" %}</th><th>{% trans "PU HT" %}</th><th>{% trans "TVA %" %}</th><th>{% trans "Remise" %}</th><th>{% trans "Total TTC" %}</th>
                 </tr></thead>
                 <tbody>
                     {% for line in invoice.lines.all %}
@@ -121,17 +123,17 @@
              toujours vide. Aperçu du PDF réel à la place, plus utile pour
              relire le document avant de l'envoyer/l'imprimer. -->
         <div class="card-app">
-            <div class="card-app-header">Aperçu du devis</div>
+            <div class="card-app-header">{% trans "Aperçu du devis" %}</div>
             <div class="card-app-body p-0">
-                <iframe src="{% url 'sales:invoice_pdf' invoice.id %}" title="Aperçu du devis" style="width:100%; height:70vh; border:0; border-radius:0 0 8px 8px;"></iframe>
+                <iframe src="{% url 'sales:invoice_pdf' invoice.id %}" title="{% trans 'Aperçu du devis' %}" style="width:100%; height:70vh; border:0; border-radius:0 0 8px 8px;"></iframe>
             </div>
         </div>
         {% else %}
         <div class="card-app">
-            <div class="card-app-header">Paiements</div>
+            <div class="card-app-header">{% trans "Paiements" %}</div>
             <div class="table-app" style="border:none; box-shadow:none;">
                 <table class="table mb-0">
-                    <thead><tr><th>Date</th><th>Montant</th><th>Méthode</th><th>Référence</th></tr></thead>
+                    <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Montant" %}</th><th>{% trans "Méthode" %}</th><th>{% trans "Référence" %}</th></tr></thead>
                     <tbody>
                         {% for payment in invoice.payments.all %}
                         <tr>
@@ -141,7 +143,7 @@
                             <td>{{ payment.reference|default:"—" }}</td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">Aucun paiement enregistré.</td></tr>
+                        <tr><td colspan="4" class="text-muted text-center py-3">{% trans "Aucun paiement enregistré." %}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -176,18 +178,18 @@
 
     <div class="col-lg-4">
         <div class="card-app">
-            <div class="card-app-header">Récapitulatif</div>
+            <div class="card-app-header">{% trans "Récapitulatif" %}</div>
             <div class="card-app-body">
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span>{{ invoice.subtotal_ht }} {{ invoice.currency }}</span></div>
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span>{{ invoice.total_tva }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Sous-total HT" %}</span><span>{{ invoice.subtotal_ht }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "TVA" %}</span><span>{{ invoice.total_tva }} {{ invoice.currency }}</span></div>
                 {% if invoice.discount_amount %}
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">Remise globale</span><span class="text-danger">-{{ invoice.discount_amount }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Remise globale" %}</span><span class="text-danger">-{{ invoice.discount_amount }} {{ invoice.currency }}</span></div>
                 {% endif %}
                 <hr>
-                <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>{% trans "Total TTC" %}</span><span>{{ invoice.total_ttc }} {{ invoice.currency }}</span></div>
                 {% if invoice.amount_paid %}
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">Payé</span><span class="text-success">{{ invoice.amount_paid }} {{ invoice.currency }}</span></div>
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">Reste à payer</span><span class="{% if invoice.balance_due %}text-danger fw-semibold{% endif %}">{{ invoice.balance_due }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Payé" %}</span><span class="text-success">{{ invoice.amount_paid }} {{ invoice.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Reste à payer" %}</span><span class="{% if invoice.balance_due %}text-danger fw-semibold{% endif %}">{{ invoice.balance_due }} {{ invoice.currency }}</span></div>
                 {% endif %}
             </div>
         </div>
@@ -205,28 +207,28 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Générer la facture</h5>
+                <h5 class="modal-title">{% trans "Générer la facture" %}</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <p>Total du devis : <strong>{{ invoice.total_ttc }} {{ invoice.currency }}</strong></p>
+                <p>{% blocktrans trimmed with total=invoice.total_ttc currency=invoice.currency %}Total du devis : <strong>{{ total }} {{ currency }}</strong>{% endblocktrans %}</p>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio" name="devis-payment-choice" id="devis-payment-full" value="full" checked>
-                    <label class="form-check-label" for="devis-payment-full">Le client paie tout maintenant</label>
+                    <label class="form-check-label" for="devis-payment-full">{% trans "Le client paie tout maintenant" %}</label>
                 </div>
                 <div class="form-check mb-2">
                     <input class="form-check-input" type="radio" name="devis-payment-choice" id="devis-payment-partial" value="partial">
-                    <label class="form-check-label" for="devis-payment-partial">Le client fait un acompte</label>
+                    <label class="form-check-label" for="devis-payment-partial">{% trans "Le client fait un acompte" %}</label>
                 </div>
                 <div id="devis-deposit-wrapper" class="mt-2" style="display:none;">
-                    <label class="form-label" for="devis-deposit-input">Montant de l'acompte ({{ invoice.currency }})</label>
+                    <label class="form-label" for="devis-deposit-input">{% blocktrans trimmed with currency=invoice.currency %}Montant de l'acompte ({{ currency }}){% endblocktrans %}</label>
                     <input type="number" min="0" step="1" class="form-control" id="devis-deposit-input">
                     <div class="form-text text-danger" id="devis-deposit-error" style="display:none;"></div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="devis-payment-confirm">Confirmer et générer la facture</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="devis-payment-confirm">{% trans "Confirmer et générer la facture" %}</button>
             </div>
         </div>
     </div>
@@ -277,7 +279,7 @@ document.getElementById("print-invoice-btn").addEventListener("click", function 
         if (paymentType === "partial") {
             depositAmount = parseFloat(depositInput.value);
             if (isNaN(depositAmount) || depositAmount <= 0 || depositAmount > invoiceTotal) {
-                depositError.textContent = "Entrez un montant d'acompte valide (entre 1 et " + invoiceTotal + ").";
+                depositError.textContent = "{% trans 'Entrez un montant d\'acompte valide (entre 1 et' %} " + invoiceTotal + ").";
                 depositError.style.display = "block";
                 return;
             }

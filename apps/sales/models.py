@@ -4,20 +4,21 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Sum
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import BoutiqueScopedModel, CompteScopedModel, TimeStampedModel, UUIDModel
 
- 
+
 class Client(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     name = models.CharField(max_length=255)
     phone = models.CharField(max_length=30, blank=True)
     email = models.EmailField(blank=True)
     address = models.CharField(max_length=255, blank=True)
-    nif = models.CharField("NIF / identifiant fiscal", max_length=50, blank=True)
+    nif = models.CharField(_("NIF / identifiant fiscal"), max_length=50, blank=True)
 
     class Meta:
-        verbose_name = "client"
-        verbose_name_plural = "clients"
+        verbose_name = _("client")
+        verbose_name_plural = _("clients")
 
     def __str__(self):
         return self.name
@@ -25,13 +26,13 @@ class Client(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
 
 class TaxRate(UUIDModel, CompteScopedModel, TimeStampedModel):
     name = models.CharField(max_length=100)
-    rate = models.DecimalField("taux (%)", max_digits=5, decimal_places=2)
+    rate = models.DecimalField(_("taux (%)"), max_digits=5, decimal_places=2)
     is_default = models.BooleanField(default=False)
     active_from = models.DateField(default=timezone.localdate)
 
     class Meta:
-        verbose_name = "taux de TVA"
-        verbose_name_plural = "taux de TVA"
+        verbose_name = _("taux de TVA")
+        verbose_name_plural = _("taux de TVA")
 
     def __str__(self):
         return f"{self.name} ({self.rate}%)"
@@ -47,9 +48,9 @@ class Sale(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     CONFIRMEE = "CONFIRMEE"
     ANNULEE = "ANNULEE"
     STATUS_CHOICES = [
-        (BROUILLON, "Brouillon"),
-        (CONFIRMEE, "Confirmée"),
-        (ANNULEE, "Annulée"),
+        (BROUILLON, _("Brouillon")),
+        (CONFIRMEE, _("Confirmée")),
+        (ANNULEE, _("Annulée")),
     ]
 
     client = models.ForeignKey(
@@ -70,8 +71,8 @@ class Sale(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     )
 
     class Meta:
-        verbose_name = "vente"
-        verbose_name_plural = "ventes"
+        verbose_name = _("vente")
+        verbose_name_plural = _("ventes")
         ordering = ["-sale_date", "-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["boutique", "number"], name="unique_sale_number_par_boutique"),
@@ -102,8 +103,8 @@ class SaleLine(UUIDModel):
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
-        verbose_name = "ligne de vente"
-        verbose_name_plural = "lignes de vente"
+        verbose_name = _("ligne de vente")
+        verbose_name_plural = _("lignes de vente")
         ordering = ["position"]
 
     def __str__(self):
@@ -114,7 +115,7 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     DEVIS = "DEVIS"
     FACTURE = "FACTURE"
     COMMANDE = "COMMANDE"
-    TYPE_CHOICES = [(DEVIS, "Devis"), (FACTURE, "Facture"), (COMMANDE, "Commande")]
+    TYPE_CHOICES = [(DEVIS, _("Devis")), (FACTURE, _("Facture")), (COMMANDE, _("Commande"))]
 
     BROUILLON = "BROUILLON"
     VALIDEE = "VALIDEE"
@@ -123,17 +124,17 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     ANNULEE = "ANNULEE"
     CONVERTIE = "CONVERTIE"
     STATUS_CHOICES = [
-        (BROUILLON, "Brouillon"),
-        (VALIDEE, "Validée"),
-        (PAYEE, "Payée"),
-        (PARTIELLEMENT_PAYEE, "Partiellement payée"),
-        (ANNULEE, "Annulée"),
-        (CONVERTIE, "Convertie en facture"),
+        (BROUILLON, _("Brouillon")),
+        (VALIDEE, _("Validée")),
+        (PAYEE, _("Payée")),
+        (PARTIELLEMENT_PAYEE, _("Partiellement payée")),
+        (ANNULEE, _("Annulée")),
+        (CONVERTIE, _("Convertie en facture")),
     ]
 
     PDF_FORMAT_80MM = "80MM"
     PDF_FORMAT_A4 = "A4"
-    PDF_FORMAT_CHOICES = [(PDF_FORMAT_80MM, "Ticket 80mm"), (PDF_FORMAT_A4, "A4")]
+    PDF_FORMAT_CHOICES = [(PDF_FORMAT_80MM, _("Ticket 80mm")), (PDF_FORMAT_A4, "A4")]
 
     client = models.ForeignKey(
         Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices"
@@ -148,14 +149,14 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     total_tva = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     total_ttc = models.DecimalField(max_digits=14, decimal_places=0, default=0)
     discount_amount = models.DecimalField(
-        "remise globale (FCFA)", max_digits=14, decimal_places=0, default=0
+        _("remise globale (FCFA)"), max_digits=14, decimal_places=0, default=0
     )
     note = models.TextField(
-        "note interne", blank=True,
-        help_text="Usage interne uniquement — n'apparaît jamais sur le reçu/PDF.",
+        _("note interne"), blank=True,
+        help_text=_("Usage interne uniquement — n'apparaît jamais sur le reçu/PDF."),
     )
     pdf_format = models.CharField(
-        "format du PDF", max_length=10, choices=PDF_FORMAT_CHOICES, default=PDF_FORMAT_80MM,
+        _("format du PDF"), max_length=10, choices=PDF_FORMAT_CHOICES, default=PDF_FORMAT_80MM,
     )
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"
@@ -165,8 +166,8 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     )
 
     class Meta:
-        verbose_name = "facture / devis"
-        verbose_name_plural = "factures / devis"
+        verbose_name = _("facture / devis")
+        verbose_name_plural = _("factures / devis")
         ordering = ["-issue_date", "-created_at"]
         constraints = [
             models.UniqueConstraint(fields=["boutique", "number"], name="unique_invoice_number_par_boutique"),
@@ -214,15 +215,15 @@ class InvoiceLine(UUIDModel):
     unit_price_ht = models.DecimalField(max_digits=12, decimal_places=0)
     tva_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
     discount_amount = models.DecimalField(
-        "remise (FCFA)", max_digits=12, decimal_places=0, default=0
+        _("remise (FCFA)"), max_digits=12, decimal_places=0, default=0
     )
     line_total_ht = models.DecimalField(max_digits=14, decimal_places=0)
     line_total_ttc = models.DecimalField(max_digits=14, decimal_places=0)
     position = models.PositiveIntegerField(default=0)
 
     class Meta:
-        verbose_name = "ligne de facture"
-        verbose_name_plural = "lignes de facture"
+        verbose_name = _("ligne de facture")
+        verbose_name_plural = _("lignes de facture")
         ordering = ["position"]
 
     def __str__(self):
@@ -236,11 +237,11 @@ class Payment(UUIDModel, TimeStampedModel):
     CARTE = "CARTE"
     CHEQUE = "CHEQUE"
     METHOD_CHOICES = [
-        (ESPECES, "Espèces"),
+        (ESPECES, _("Espèces")),
         (MOBILE_MONEY, "Mobile Money"),
-        (VIREMENT, "Virement"),
-        (CARTE, "Carte"),
-        (CHEQUE, "Chèque"),
+        (VIREMENT, _("Virement")),
+        (CARTE, _("Carte")),
+        (CHEQUE, _("Chèque")),
     ]
 
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="payments")
@@ -254,8 +255,8 @@ class Payment(UUIDModel, TimeStampedModel):
     )
 
     class Meta:
-        verbose_name = "paiement"
-        verbose_name_plural = "paiements"
+        verbose_name = _("paiement")
+        verbose_name_plural = _("paiements")
         ordering = ["-paid_at"]
 
     def __str__(self):

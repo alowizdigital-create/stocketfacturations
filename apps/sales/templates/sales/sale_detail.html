@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ sale.number }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -11,23 +12,24 @@
                 {{ sale.get_status_display }}
             </span>
         </h1>
+        {% trans "Client de passage" as walk_in_client %}
         <div class="text-muted">
-            {{ sale.client|default:"Client de passage" }} — {{ sale.sale_date|date:"d/m/Y" }}
+            {{ sale.client|default:walk_in_client }} — {{ sale.sale_date|date:"d/m/Y" }}
         </div>
     </div>
     <div class="d-flex gap-2">
         {% if sale.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:sale_confirm' sale.id %}">
             {% csrf_token %}
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> Confirmer la vente (déduit le stock)</button>
+            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> {% trans "Confirmer la vente (déduit le stock)" %}</button>
         </form>
         {% elif sale.status == "CONFIRMEE" %}
             {% if sale.invoice_id %}
-            <a href="{% url 'sales:invoice_detail' sale.invoice_id %}" class="btn btn-outline-secondary"><i class="bi bi-receipt"></i> Voir la facture {{ sale.invoice.number }}</a>
+            <a href="{% url 'sales:invoice_detail' sale.invoice_id %}" class="btn btn-outline-secondary"><i class="bi bi-receipt"></i> {% blocktrans trimmed with number=sale.invoice.number %}Voir la facture {{ number }}{% endblocktrans %}</a>
             {% else %}
             <form method="post" action="{% url 'sales:sale_generate_invoice' sale.id %}">
                 {% csrf_token %}
-                <button type="submit" class="btn btn-primary"><i class="bi bi-file-earmark-plus"></i> Générer la facture</button>
+                <button type="submit" class="btn btn-primary"><i class="bi bi-file-earmark-plus"></i> {% trans "Générer la facture" %}</button>
             </form>
             {% endif %}
         {% endif %}
@@ -38,7 +40,7 @@
     <div class="col-lg-8">
         <div class="table-app">
             <table class="table mb-0">
-                <thead><tr><th>Description</th><th>Qté</th><th>PU HT</th><th>TVA %</th><th>Total TTC</th></tr></thead>
+                <thead><tr><th>{% trans "Description" %}</th><th>{% trans "Qté" %}</th><th>{% trans "PU HT" %}</th><th>{% trans "TVA %" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
                 <tbody>
                     {% for line in sale.lines.all %}
                     <tr>
@@ -55,12 +57,12 @@
     </div>
     <div class="col-lg-4">
         <div class="card-app">
-            <div class="card-app-header">Récapitulatif</div>
+            <div class="card-app-header">{% trans "Récapitulatif" %}</div>
             <div class="card-app-body">
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span>{{ sale.subtotal_ht }} {{ sale.currency }}</span></div>
-                <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span>{{ sale.total_tva }} {{ sale.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Sous-total HT" %}</span><span>{{ sale.subtotal_ht }} {{ sale.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "TVA" %}</span><span>{{ sale.total_tva }} {{ sale.currency }}</span></div>
                 <hr>
-                <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span>{{ sale.total_ttc }} {{ sale.currency }}</span></div>
+                <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>{% trans "Total TTC" %}</span><span>{{ sale.total_ttc }} {{ sale.currency }}</span></div>
             </div>
         </div>
     </div>

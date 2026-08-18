@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Choisir une boutique{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Choisir une boutique" %}{% endblock %}
 {% block auth_content %}
 <div class="auth-shell">
     <div class="auth-card" style="max-width: 480px;">
         <div class="auth-brand"><i class="bi bi-boxes"></i> Zweey</div>
-        <h1 class="h5 mb-3">Choisir une boutique</h1>
+        <h1 class="h5 mb-3">{% trans "Choisir une boutique" %}</h1>
         {% if not memberships %}
-        <p class="text-muted">Vous n'êtes affecté à aucune boutique active.</p>
+        <p class="text-muted">{% trans "Vous n'êtes affecté à aucune boutique active." %}</p>
         {% else %}
         <div class="d-grid gap-2">
             {% for m in memberships %}

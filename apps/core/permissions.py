@@ -3,6 +3,7 @@ from functools import wraps
 from django.conf import settings
 from django.contrib import messages
 from django.shortcuts import redirect
+from django.utils.translation import gettext as _
 
 
 def _redirect_back(request):
@@ -23,14 +24,14 @@ def boutique_role_required(*roles):
         @wraps(view_func)
         def wrapped(request, *args, **kwargs):
             if request.boutique is None:
-                messages.error(request, "Aucune boutique sélectionnée.")
+                messages.error(request, _("Aucune boutique sélectionnée."))
                 return _redirect_back(request)
 
             has_role = request.boutique.memberships.filter(
                 user=request.user, is_active=True, role__in=roles
             ).exists()
             if not has_role:
-                messages.error(request, "Vous n'avez pas les droits nécessaires pour effectuer cette action.")
+                messages.error(request, _("Vous n'avez pas les droits nécessaires pour effectuer cette action."))
                 return _redirect_back(request)
 
             return view_func(request, *args, **kwargs)
@@ -54,9 +55,11 @@ def block_when_offline(redirect_url_name):
             if settings.IS_OFFLINE:
                 messages.error(
                     request,
-                    "Le catalogue (produits, catégories, unités) se gère uniquement "
-                    "depuis le poste en ligne — les changements faits ici ne seraient "
-                    "jamais synchronisés.",
+                    _(
+                        "Le catalogue (produits, catégories, unités) se gère uniquement "
+                        "depuis le poste en ligne — les changements faits ici ne seraient "
+                        "jamais synchronisés."
+                    ),
                 )
                 return redirect(redirect_url_name)
             return view_func(request, *args, **kwargs)
@@ -75,7 +78,7 @@ def compte_admin_required(view_func):
     @wraps(view_func)
     def wrapped(request, *args, **kwargs):
         if not request.is_compte_admin:
-            messages.error(request, "Cette action est réservée aux administrateurs de l'entreprise.")
+            messages.error(request, _("Cette action est réservée aux administrateurs de l'entreprise."))
             return _redirect_back(request)
         return view_func(request, *args, **kwargs)
 

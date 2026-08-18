@@ -1,22 +1,23 @@
 {% extends "base.html" %}
-{% block title %}Produits{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Produits" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <!-- <div>
         <h1>Produits</h1>
     </div> -->
-    <a href="{% url 'catalog:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouveau produit</a>
+    <a href="{% url 'catalog:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau produit" %}</a>
 </div>
 
 <form method="get" class="mb-3">
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un produit (nom, référence, code-barres)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un produit (nom, référence, code-barres)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
@@ -24,7 +25,7 @@
 <div class="table-app">
     <table class="table mb-0">
         <thead>
-            <tr><th></th><th>Nom</th><th class="d-none d-md-table-cell">Catégorie</th><th>Prix</th><th>Statut</th><th></th></tr>
+            <tr><th></th><th>{% trans "Nom" %}</th><th class="d-none d-md-table-cell">{% trans "Catégorie" %}</th><th>{% trans "Prix" %}</th><th>{% trans "Statut" %}</th><th></th></tr>
         </thead>
         <tbody>
             {% for product in products %}
@@ -43,18 +44,18 @@
                 <!-- <td class="d-none d-md-table-cell">{{ product.tva_rate }}%</td> -->
                 <td>
                     {% if product.is_active %}
-                    <span class="badge-status badge-green">Actif</span>
+                    <span class="badge-status badge-green">{% trans "Actif" %}</span>
                     {% else %}
-                    <span class="badge-status badge-gray">Inactif</span>
+                    <span class="badge-status badge-gray">{% trans "Inactif" %}</span>
                     {% endif %}
                     {% if product.is_low_stock %}
-                    <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Rupture de stock</span>
+                    <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> {% trans "Rupture de stock" %}</span>
                     {% endif %}
                 </td>
                 <td class="text-end">
-                    <a href="{% url 'catalog:product_update' product.id %}" class="me-3"><i class="bi bi-pencil"></i> Modifier</a>
+                    <a href="{% url 'catalog:product_update' product.id %}" class="me-3"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
                     {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
-                    <form method="post" action="{% url 'catalog:product_delete' product.id %}" class="d-inline" onsubmit="return confirm('Supprimer ce produit ?');">
+                    <form method="post" action="{% url 'catalog:product_delete' product.id %}" class="d-inline" onsubmit="return confirm('{% trans "Supprimer ce produit ?" %}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
                     </form>
@@ -62,7 +63,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="8" class="text-muted text-center py-4">Aucun produit pour le moment.</td></tr>
+            <tr><td colspan="8" class="text-muted text-center py-4">{% trans "Aucun produit pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

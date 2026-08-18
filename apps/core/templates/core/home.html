@@ -1,9 +1,10 @@
 {% extends "base.html" %}
-{% block title %}Tableau de bord{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Tableau de bord" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Tableau de bord</h1>
+        <h1>{% trans "Tableau de bord" %}</h1>
         <div class="text-muted">{{ request.boutique.name }} — {% now "d F Y" %}</div>
     </div>
 </div>
@@ -14,7 +15,7 @@
             <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
             <div>
                 <div class="stat-value">{{ ca_mois }} {{ request.boutique.devise }}</div>
-                <div class="stat-label">Chiffre d'affaires du mois</div>
+                <div class="stat-label">{% trans "Chiffre d'affaires du mois" %}</div>
             </div>
         </div>
     </div>
@@ -23,7 +24,7 @@
             <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
             <div>
                 <div class="stat-value">{{ nb_produits }}</div>
-                <div class="stat-label">Produits actifs</div>
+                <div class="stat-label">{% trans "Produits actifs" %}</div>
             </div>
         </div>
     </div>
@@ -32,7 +33,7 @@
             <div class="stat-icon"><i class="bi bi-receipt"></i></div>
             <div>
                 <div class="stat-value">{{ nb_factures_impayees }}</div>
-                <div class="stat-label">Factures non soldées</div>
+                <div class="stat-label">{% trans "Factures non soldées" %}</div>
             </div>
         </div>
     </div>
@@ -41,7 +42,7 @@
             <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
             <div>
                 <div class="stat-value">{{ nb_stock_bas }}</div>
-                <div class="stat-label">Produits en stock bas</div>
+                <div class="stat-label">{% trans "Produits en stock bas" %}</div>
             </div>
         </div>
     </div>
@@ -50,15 +51,15 @@
 <div class="row g-3">
     <div class="col-lg-8">
         <div class="card-app">
-            <div class="card-app-header">Dernières ventes</div>
+            <div class="card-app-header">{% trans "Dernières ventes" %}</div>
             <div class="table-app" style="border:none; box-shadow:none;">
                 <table class="table mb-0">
-                    <thead><tr><th>CLIENT</th><th>FACTURE</th><th>Statut</th><th class="d-none d-md-table-cell">TOTAL TTC</th><th>DATE</th></tr></thead>
+                    <thead><tr><th>{% trans "CLIENT" %}</th><th>{% trans "FACTURE" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-md-table-cell">{% trans "TOTAL TTC" %}</th><th>{% trans "DATE" %}</th></tr></thead>
                     <tbody>
                         {% for sale in dernieres_ventes %}
                         <tr>
                             <td>{{ sale.client|default:"—" }}</td>
-                           
+
                             <td class="d-none d-md-table-cell">
                                 {% if sale.invoice_id %}
                                 <a href="{% url 'sales:invoice_detail' sale.invoice_id %}">{{ sale.invoice.number }}</a>
@@ -67,7 +68,7 @@
                                 {% endif %}
                             </td>
                              <td>
-                                <span class="badge-status   
+                                <span class="badge-status
                                     {% if sale.status == 'CONFIRMEE' %}badge-green
                                     {% elif sale.status == 'ANNULEE' %}badge-red
                                     {% else %}badge-gray{% endif %}">
@@ -78,7 +79,7 @@
                             <td><a href="{% url 'sales:sale_detail' sale.id %}">{{ sale.sale_date }}</a></td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="5" class="text-muted">Aucune vente pour le moment.</td></tr>
+                        <tr><td colspan="5" class="text-muted">{% trans "Aucune vente pour le moment." %}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -87,13 +88,13 @@
     </div>
     <div class="col-lg-4">
         <div class="card-app">
-            <div class="card-app-header">Actions rapides</div>
+            <div class="card-app-header">{% trans "Actions rapides" %}</div>
             <div class="card-app-body d-grid gap-2">
-                <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle vente</a>
-                <a href="{% url 'sales:client_create' %}" class="btn btn-outline-secondary"><i class="bi bi-person-plus"></i> Nouveau client</a>
+                <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle vente" %}</a>
+                <a href="{% url 'sales:client_create' %}" class="btn btn-outline-secondary"><i class="bi bi-person-plus"></i> {% trans "Nouveau client" %}</a>
                 {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
-                <a href="{% url 'catalog:product_create' %}" class="btn btn-outline-secondary"><i class="bi bi-box-seam"></i> Nouveau produit</a>
-                <a href="{% url 'stock:movement_create' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right"></i> Mouvement de stock</a>
+                <a href="{% url 'catalog:product_create' %}" class="btn btn-outline-secondary"><i class="bi bi-box-seam"></i> {% trans "Nouveau produit" %}</a>
+                <a href="{% url 'stock:movement_create' %}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left-right"></i> {% trans "Mouvement de stock" %}</a>
                 {% endif %}
             </div>
         </div>

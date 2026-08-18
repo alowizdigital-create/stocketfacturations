@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-{% block title %}Taux de change{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Taux de change" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Taux de change — {{ boutique.name }}</h1>
+        <h1>{% blocktrans trimmed with name=boutique.name %}Taux de change — {{ name }}{% endblocktrans %}</h1>
         <div class="text-muted">
-            Permet de proposer une vente ou un devis dans une autre devise que celle de la boutique
-            ({{ boutique.devise }}), avec conversion automatique des montants.
+            {% blocktrans trimmed with devise=boutique.devise %}Permet de proposer une vente ou un devis dans une autre devise que celle de la boutique ({{ devise }}), avec conversion automatique des montants.{% endblocktrans %}
         </div>
     </div>
-    <a href="{% url 'tenants:company_settings' %}" class="btn btn-outline-secondary">Retour aux paramètres</a>
+    <a href="{% url 'tenants:company_settings' %}" class="btn btn-outline-secondary">{% trans "Retour aux paramètres" %}</a>
 </div>
 
 <div class="card-app mb-3" style="max-width: 560px;">
@@ -25,28 +25,28 @@
                 {{ field.errors }}
             </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary">Ajouter</button>
+            <button type="submit" class="btn btn-primary">{% trans "Ajouter" %}</button>
         </form>
     </div>
 </div>
 
 <div class="table-app" style="max-width: 560px;">
     <table class="table mb-0">
-        <thead><tr><th>Devise</th><th>Taux</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Devise" %}</th><th>{% trans "Taux" %}</th><th></th></tr></thead>
         <tbody>
             {% for rate in rates %}
             <tr>
                 <td class="fw-semibold">{{ rate.currency }}</td>
                 <td>1 {{ rate.currency }} = {{ rate.rate }} {{ boutique.devise }}</td>
                 <td class="text-end">
-                    <form method="post" action="{% url 'tenants:exchange_rate_delete' rate.id %}" onsubmit="return confirm('Supprimer ce taux de change ?');">
+                    <form method="post" action="{% url 'tenants:exchange_rate_delete' rate.id %}" onsubmit="return confirm('{% trans "Supprimer ce taux de change ?" %}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-muted text-center py-4">Aucun taux de change configuré — seule la devise de la boutique ({{ boutique.devise }}) est proposée sur les ventes/devis.</td></tr>
+            <tr><td colspan="3" class="text-muted text-center py-4">{% blocktrans trimmed with devise=boutique.devise %}Aucun taux de change configuré — seule la devise de la boutique ({{ devise }}) est proposée sur les ventes/devis.{% endblocktrans %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

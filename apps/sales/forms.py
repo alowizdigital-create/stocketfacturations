@@ -2,13 +2,14 @@ from decimal import Decimal
 
 from django import forms
 from django.forms import formset_factory
+from django.utils.translation import gettext_lazy as _
 
 from apps.catalog.models import Product
 from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
 from .models import Client, Invoice, Payment
- 
+
 
 class ClientForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
@@ -18,11 +19,11 @@ class ClientForm(BootstrapFormMixin, forms.ModelForm):
 
 class ClientImportForm(BootstrapFormMixin, forms.Form):
     file = forms.FileField(
-        label="Fichier CSV ou vCard (.vcf)",
+        label=_("Fichier CSV ou vCard (.vcf)"),
         help_text=(
-            "CSV : colonnes nom, téléphone, email, adresse (name/phone/email/address acceptés aussi). "
-            "vCard : export standard d'un carnet de contacts téléphone/Google/Outlook. "
-            "Seul le nom est obligatoire."
+            _("CSV : colonnes nom, téléphone, email, adresse (name/phone/email/address acceptés aussi). "
+              "vCard : export standard d'un carnet de contacts téléphone/Google/Outlook. "
+              "Seul le nom est obligatoire.")
         ),
         widget=forms.ClearableFileInput(attrs={"accept": ".csv,.vcf,text/csv,text/vcard"}),
     )
@@ -31,7 +32,7 @@ class ClientImportForm(BootstrapFormMixin, forms.Form):
         uploaded = self.cleaned_data["file"]
         name = (uploaded.name or "").lower()
         if not (name.endswith(".csv") or name.endswith(".vcf") or name.endswith(".txt")):
-            raise forms.ValidationError("Format non reconnu : utilisez un fichier .csv ou .vcf.")
+            raise forms.ValidationError(_("Format non reconnu : utilisez un fichier .csv ou .vcf."))
         return uploaded
 
 
@@ -49,27 +50,27 @@ def _currency_choices_for_boutique(boutique):
     for code in codes:
         label = label_by_code.get(code, code)
         if code == boutique.devise:
-            label += " — devise de la boutique"
+            label += " — " + str(_("devise de la boutique"))
         choices.append((code, label))
     return choices
 
 
 class InvoiceForm(BootstrapFormMixin, forms.Form):
-    client = forms.ModelChoiceField(queryset=Client.objects.none(), required=False, label="Client")
+    client = forms.ModelChoiceField(queryset=Client.objects.none(), required=False, label=_("Client"))
     currency = forms.ChoiceField(
-        label="Devise",
+        label=_("Devise"),
         required=False,
-        help_text="Devise de ce document — par défaut celle de la boutique, modifiable au cas par cas.",
+        help_text=_("Devise de ce document — par défaut celle de la boutique, modifiable au cas par cas."),
     )
     discount_amount = forms.IntegerField(
-        label="Remise globale (FCFA)", min_value=0, required=False, initial=0,
+        label=_("Remise globale (FCFA)"), min_value=0, required=False, initial=0,
     )
     # N'est affiché dans le template que pour un devis (voir
     # document_kind dans invoice_form.html) — une commande/facture garde
     # le format ticket 80mm par défaut, non demandé ici.
     pdf_format = forms.ChoiceField(
         choices=Invoice.PDF_FORMAT_CHOICES, initial=Invoice.PDF_FORMAT_80MM,
-        required=False, label="Format du PDF",
+        required=False, label=_("Format du PDF"),
     )
     # Ces deux champs ne concernent qu'une commande (voir invoice_form.html)
     # — un devis n'a ni acompte ni note interne dans le périmètre actuel.
@@ -106,17 +107,17 @@ class SaleForm(BootstrapFormMixin, forms.Form):
     # Champ caché : la sélection se fait via la recherche par nom en JS
     # (voir sale_form.html), qui écrit l'id du client choisi ici.
     client = forms.ModelChoiceField(
-        queryset=Client.objects.none(), required=False, label="Client", widget=forms.HiddenInput()
+        queryset=Client.objects.none(), required=False, label=_("Client"), widget=forms.HiddenInput()
     )
     currency = forms.ChoiceField(
-        label="Devise",
+        label=_("Devise"),
         required=False,
-        help_text="Devise de cette vente — par défaut celle de la boutique, modifiable au cas par cas.",
+        help_text=_("Devise de cette vente — par défaut celle de la boutique, modifiable au cas par cas."),
     )
     # Renseignés par le pop-up de paiement affiché au clic sur "Enregistrer
     # la vente" (voir sale_form.html) : paiement complet ou acompte.
     payment_type = forms.ChoiceField(
-        choices=[("full", "Payé en totalité"), ("partial", "Acompte")],
+        choices=[("full", _("Payé en totalité")), ("partial", _("Acompte"))],
         widget=forms.HiddenInput(), initial="full", required=False,
     )
     deposit_amount = forms.DecimalField(
@@ -142,16 +143,16 @@ class InvoiceLineForm(BootstrapFormMixin, forms.Form):
     # La sélection se fait via la recherche en direct en JS (même principe
     # que l'écran de vente) : ce champ ne porte que l'id du produit choisi.
     product = forms.ModelChoiceField(
-        queryset=Product.objects.none(), required=False, label="Produit",
+        queryset=Product.objects.none(), required=False, label=_("Produit"),
         widget=forms.HiddenInput(),
     )
-    description = forms.CharField(max_length=255, label="Description")
+    description = forms.CharField(max_length=255, label=_("Description"))
     quantity = forms.IntegerField(
-        min_value=1, initial=1, label="Quantité", widget=forms.NumberInput(attrs={"step": "1"})
+        min_value=1, initial=1, label=_("Quantité"), widget=forms.NumberInput(attrs={"step": "1"})
     )
-    unit_price_ht = forms.DecimalField(max_digits=12, decimal_places=0, min_value=Decimal("0"), label="Prix HT")
+    unit_price_ht = forms.DecimalField(max_digits=12, decimal_places=0, min_value=Decimal("0"), label=_("Prix HT"))
     tva_rate = forms.DecimalField(
-        max_digits=5, decimal_places=2, min_value=Decimal("0"), initial=Decimal("0"), label="TVA %"
+        max_digits=5, decimal_places=2, min_value=Decimal("0"), initial=Decimal("0"), label=_("TVA %")
     )
     # Pas de valeur initiale non-None : avec initial=0, Django considère à
     # tort qu'une ligne vide non soumise (champ retiré de l'affichage) "a
@@ -159,7 +160,7 @@ class InvoiceLineForm(BootstrapFormMixin, forms.Form):
     # non-None face à une valeur absente), ce qui bloquait la validation de
     # toute ligne vide restante en fin de tableau.
     discount_amount = forms.IntegerField(
-        label="Remise (FCFA)", min_value=0, required=False,
+        label=_("Remise (FCFA)"), min_value=0, required=False,
     )
 
     def __init__(self, *args, compte=None, **kwargs):

@@ -5,6 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
 from apps.catalog.models import Unit
@@ -135,11 +136,11 @@ def staff_create(request):
                 Membership.objects.create(
                     user=user, boutique=data["boutique"], role=data["role"]
                 )
-            messages.success(request, f"Compte créé pour {user.email}.")
+            messages.success(request, _("Compte créé pour %(email)s.") % {"email": user.email})
             return redirect("tenants:staff_list")
     else:
         form = StaffCreateForm(compte=request.compte)
-    return render(request, "tenants/staff_form.html", {"form": form, "title": "Nouvel employé"})
+    return render(request, "tenants/staff_form.html", {"form": form, "title": _("Nouvel employé")})
 
 
 @login_required
@@ -151,21 +152,23 @@ def staff_update(request, membership_id):
         boutique__compte=request.compte,
     )
     if membership.user_id == request.user.id:
-        messages.error(request, "Vous ne pouvez pas modifier votre propre accès depuis cet écran.")
+        messages.error(request, _("Vous ne pouvez pas modifier votre propre accès depuis cet écran."))
         return redirect("tenants:staff_list")
 
     if request.method == "POST":
         form = StaffUpdateForm(request.POST, instance=membership, compte=request.compte)
         if form.is_valid():
             form.save()
-            messages.success(request, f"Accès de {membership.user.email} mis à jour.")
+            messages.success(
+                request, _("Accès de %(email)s mis à jour.") % {"email": membership.user.email}
+            )
             return redirect("tenants:staff_list")
     else:
         form = StaffUpdateForm(instance=membership, compte=request.compte)
     return render(
         request,
         "tenants/staff_form.html",
-        {"form": form, "title": f"Modifier l'accès de {membership.user.email}"},
+        {"form": form, "title": _("Modifier l'accès de %(email)s") % {"email": membership.user.email}},
     )
 
 
@@ -185,8 +188,10 @@ def company_settings(request):
     if request.method == "POST" and settings.IS_OFFLINE:
         messages.error(
             request,
-            "Les paramètres de l'entreprise/boutique se gèrent uniquement depuis le poste "
-            "en ligne — un changement fait ici ne serait jamais synchronisé.",
+            _(
+                "Les paramètres de l'entreprise/boutique se gèrent uniquement depuis le poste "
+                "en ligne — un changement fait ici ne serait jamais synchronisé."
+            ),
         )
         return redirect("tenants:company_settings")
 
@@ -195,14 +200,14 @@ def company_settings(request):
         boutique_form = BoutiqueRegionalForm(request.POST, instance=boutique)
         if boutique_form.is_valid():
             boutique_form.save()
-            messages.success(request, "Paramètres régionaux de la boutique mis à jour.")
+            messages.success(request, _("Paramètres régionaux de la boutique mis à jour."))
             return redirect("tenants:company_settings")
     elif request.method == "POST":
         form = CompteSettingsForm(request.POST, request.FILES, instance=compte)
         boutique_form = BoutiqueRegionalForm(instance=boutique) if boutique is not None else None
         if form.is_valid():
             form.save()
-            messages.success(request, "Paramètres de l'entreprise mis à jour.")
+            messages.success(request, _("Paramètres de l'entreprise mis à jour."))
             return redirect("tenants:company_settings")
     else:
         form = CompteSettingsForm(instance=compte)
@@ -220,7 +225,7 @@ def company_settings(request):
 def exchange_rate_list(request):
     boutique = request.boutique
     if boutique is None:
-        messages.error(request, "Aucune boutique sélectionnée.")
+        messages.error(request, _("Aucune boutique sélectionnée."))
         return redirect("tenants:company_settings")
 
     # Les taux de change sont "pull-only" (aucun endpoint de push) — même
@@ -229,8 +234,10 @@ def exchange_rate_list(request):
     if request.method == "POST" and settings.IS_OFFLINE:
         messages.error(
             request,
-            "Les taux de change se gèrent uniquement depuis le poste en ligne — "
-            "un ajout fait ici ne serait jamais synchronisé.",
+            _(
+                "Les taux de change se gèrent uniquement depuis le poste en ligne — "
+                "un ajout fait ici ne serait jamais synchronisé."
+            ),
         )
         return redirect("tenants:exchange_rate_list")
 
@@ -238,7 +245,7 @@ def exchange_rate_list(request):
         form = ExchangeRateForm(request.POST, boutique=boutique)
         if form.is_valid():
             form.save()
-            messages.success(request, "Taux de change ajouté.")
+            messages.success(request, _("Taux de change ajouté."))
             return redirect("tenants:exchange_rate_list")
     else:
         form = ExchangeRateForm(boutique=boutique)
@@ -258,7 +265,7 @@ def exchange_rate_delete(request, rate_id):
     rate = get_object_or_404(ExchangeRate, id=rate_id, boutique__compte=request.compte)
     if request.method == "POST":
         rate.delete()
-        messages.success(request, "Taux de change supprimé.")
+        messages.success(request, _("Taux de change supprimé."))
     return redirect("tenants:exchange_rate_list")
 
 
@@ -271,7 +278,7 @@ def boutique_token(request):
 
     boutique = request.boutique
     if boutique is None:
-        messages.error(request, "Aucune boutique sélectionnée.")
+        messages.error(request, _("Aucune boutique sélectionnée."))
         return redirect("tenants:company_settings")
 
     token = BoutiqueAPIToken.objects.filter(boutique=boutique).first()
@@ -287,12 +294,12 @@ def boutique_token(request):
 def boutique_token_generate(request):
     boutique = request.boutique
     if boutique is None:
-        messages.error(request, "Aucune boutique sélectionnée.")
+        messages.error(request, _("Aucune boutique sélectionnée."))
         return redirect("tenants:company_settings")
 
     token, raw_token = BoutiqueAPIToken.issue(boutique)
     messages.warning(
-        request, "Notez ce jeton maintenant : il ne sera plus jamais affiché en clair."
+        request, _("Notez ce jeton maintenant : il ne sera plus jamais affiché en clair.")
     )
     return render(
         request, "tenants/boutique_token.html",
@@ -303,7 +310,7 @@ def boutique_token_generate(request):
 @login_required
 @compte_admin_required
 def subscription_view(request):
-    subscription, _ = Subscription.objects.get_or_create(
+    subscription, _created = Subscription.objects.get_or_create(
         compte=request.compte,
         defaults={"plan": Plan.objects.filter(is_active=True).order_by("price_monthly").first()},
     )
@@ -311,7 +318,7 @@ def subscription_view(request):
         form = SubscriptionForm(request.POST, instance=subscription)
         if form.is_valid():
             form.save()
-            messages.success(request, "Abonnement mis à jour.")
+            messages.success(request, _("Abonnement mis à jour."))
             return redirect("tenants:subscription")
     else:
         form = SubscriptionForm(instance=subscription)

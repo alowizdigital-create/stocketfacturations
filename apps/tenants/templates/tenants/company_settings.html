@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Paramètres de l'entreprise{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Paramètres de l'entreprise" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Paramètres de l'entreprise</h1>
-        <div class="text-muted">Le logo est repris en haut des factures/devis (ticket 80 mm).</div>
+        <h1>{% trans "Paramètres de l'entreprise" %}</h1>
+        <div class="text-muted">{% trans "Le logo est repris en haut des factures/devis (ticket 80 mm)." %}</div>
     </div>
 </div>
 <div class="card-app" style="max-width: 520px;">
@@ -26,8 +27,8 @@
             </div>
             {% endfor %}
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
-                <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">Annuler</a>
+                <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                <a href="{% url 'core:home' %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
             </div>
         </form>
     </div>
@@ -35,13 +36,10 @@
 
 {% if boutique_form %}
 <div class="card-app mt-3" style="max-width: 520px;">
-    <div class="card-app-header">Paramètres régionaux — {{ request.boutique.name }}</div>
+    <div class="card-app-header">{% blocktrans trimmed with name=request.boutique.name %}Paramètres régionaux — {{ name }}{% endblocktrans %}</div>
     <div class="card-app-body">
         <p class="text-muted small">
-            Pour que l'application fonctionne correctement quel que soit le pays :
-            la devise s'affiche partout (factures, devis, POS), et l'indicatif
-            téléphonique complète automatiquement les numéros WhatsApp saisis
-            sans code pays (ex: <code>07 12 34 56 78</code> → <code>+225 07 12 34 56 78</code>).
+            {% blocktrans trimmed %}Pour que l'application fonctionne correctement quel que soit le pays : la devise s'affiche partout (factures, devis, POS), et l'indicatif téléphonique complète automatiquement les numéros WhatsApp saisis sans code pays (ex: <code>07 12 34 56 78</code> → <code>+225 07 12 34 56 78</code>).{% endblocktrans %}
         </p>
         <form method="post">
             {% csrf_token %}
@@ -50,8 +48,8 @@
             {% for field in boutique_form %}
             {% if field.name == "om_account_name" %}
             <hr>
-            <h6 class="mb-3">Moyens de paiement (Mobile Money)</h6>
-            <p class="text-muted small">Affichés sur les factures et devis pour indiquer au client où payer. Laisser vide pour ne pas afficher un moyen de paiement.</p>
+            <h6 class="mb-3">{% trans "Moyens de paiement (Mobile Money)" %}</h6>
+            <p class="text-muted small">{% trans "Affichés sur les factures et devis pour indiquer au client où payer. Laisser vide pour ne pas afficher un moyen de paiement." %}</p>
             {% endif %}
             <div class="mb-3">
                 <label class="form-label">{{ field.label }}</label>
@@ -60,7 +58,7 @@
                 {{ field.errors }}
             </div>
             {% endfor %}
-            <button type="submit" class="btn btn-primary">Enregistrer</button>
+            <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
         </form>
     </div>
 </div>
@@ -68,20 +66,20 @@
 <div class="card-app mt-3" style="max-width: 520px;">
     <div class="card-app-body d-flex justify-content-between align-items-center">
         <div>
-            <div class="fw-semibold">Taux de change</div>
-            <div class="text-muted small">Pour proposer une vente/un devis dans une autre devise, convertie automatiquement.</div>
+            <div class="fw-semibold">{% trans "Taux de change" %}</div>
+            <div class="text-muted small">{% trans "Pour proposer une vente/un devis dans une autre devise, convertie automatiquement." %}</div>
         </div>
-        <a href="{% url 'tenants:exchange_rate_list' %}" class="btn btn-outline-secondary btn-sm">Gérer</a>
+        <a href="{% url 'tenants:exchange_rate_list' %}" class="btn btn-outline-secondary btn-sm">{% trans "Gérer" %}</a>
     </div>
 </div>
 
 <div class="card-app mt-3" style="max-width: 520px;">
     <div class="card-app-body d-flex justify-content-between align-items-center">
         <div>
-            <div class="fw-semibold">Synchronisation hors-ligne</div>
-            <div class="text-muted small">Générez le jeton d'activation du poste offline de cette boutique.</div>
+            <div class="fw-semibold">{% trans "Synchronisation hors-ligne" %}</div>
+            <div class="text-muted small">{% trans "Générez le jeton d'activation du poste offline de cette boutique." %}</div>
         </div>
-        <a href="{% url 'tenants:boutique_token' %}" class="btn btn-outline-secondary btn-sm">Gérer</a>
+        <a href="{% url 'tenants:boutique_token' %}" class="btn btn-outline-secondary btn-sm">{% trans "Gérer" %}</a>
     </div>
 </div>
 {% endif %}

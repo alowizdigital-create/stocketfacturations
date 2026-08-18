@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}Nouveau client{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Nouveau client" %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Nouveau client</h1></div></div>
+<div class="page-header"><div><h1>{% trans "Nouveau client" %}</h1></div></div>
 <div class="card-app" style="max-width: 560px;">
     <div class="card-app-body">
         <form method="post">
@@ -14,8 +15,8 @@
             </div>
             {% endfor %}
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
-                <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary">Annuler</a>
+                <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
             </div>
         </form>
     </div>

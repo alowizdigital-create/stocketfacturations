@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django import forms
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.forms import BootstrapFormMixin
 
@@ -30,18 +31,17 @@ class MultipleFileField(forms.FileField):
 
 class ProductForm(BootstrapFormMixin, forms.ModelForm):
     extra_images = MultipleFileField(
-        label="Photos supplémentaires",
+        label=_("Photos supplémentaires"),
         required=False,
-        help_text=f"Jusqu'à {MAX_PRODUCT_IMAGES} photos au total par produit (photo principale incluse).",
     )
     # Uniquement à la création (voir include_quantity) — modifier le stock
     # d'un produit existant passe par le module Mouvements de stock, pas
     # par ce formulaire.
     initial_quantity = forms.DecimalField(
-        label="Quantité en stock",
+        label=_("Quantité en stock"),
         max_digits=12, decimal_places=3, min_value=Decimal("0"),
         required=False, initial=0,
-        help_text="Quantité disponible dès la création du produit (laisser à 0 si aucun stock pour l'instant).",
+        help_text=_("Quantité disponible dès la création du produit (laisser à 0 si aucun stock pour l'instant)."),
     )
 
     class Meta:
@@ -59,16 +59,19 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "is_active",
         ]
         labels = {
-            "name": "Nom",
-            "image": "Photo principale",
-            "category": "Catégorie",
-            "unit": "Unité",
-            "is_active": "Actif",
+            "name": _("Nom"),
+            "image": _("Photo principale"),
+            "category": _("Catégorie"),
+            "unit": _("Unité"),
+            "is_active": _("Actif"),
         }
 
     def __init__(self, *args, compte=None, include_quantity=False, require_image=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.compte = compte
+        self.fields["extra_images"].help_text = _(
+            "Jusqu'à %(max)s photos au total par produit (photo principale incluse)."
+        ) % {"max": MAX_PRODUCT_IMAGES}
         if compte is not None:
             self.fields["category"].queryset = Category.objects.filter(compte=compte)
             self.fields["unit"].queryset = Unit.objects.filter(compte=compte)
@@ -110,7 +113,7 @@ class CategoryForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Category
         fields = ["name", "parent"]
-        labels = {"name": "Nom", "parent": "Catégorie parente"}
+        labels = {"name": _("Nom"), "parent": _("Catégorie parente")}
 
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -132,7 +135,7 @@ class UnitForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Unit
         fields = ["name", "symbol"]
-        labels = {"name": "Nom", "symbol": "Symbole"}
+        labels = {"name": _("Nom"), "symbol": _("Symbole")}
 
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)

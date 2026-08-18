@@ -1,7 +1,8 @@
 {% extends "base.html" %}
-{% block title %}{% if editing_invoice %}Modifier le devis{% elif document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}{% endblock %}
+{% load i18n %}
+{% block title %}{% if editing_invoice %}{% trans "Modifier le devis" %}{% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>{% if editing_invoice %}Modifier le devis {{ editing_invoice.number }}{% elif document_kind == "commande" %}Nouvelle commande{% else %}Nouveau devis{% endif %}</h1></div></div>
+<div class="page-header"><div><h1>{% if editing_invoice %}{% blocktrans trimmed with number=editing_invoice.number %}Modifier le devis {{ number }}{% endblocktrans %}{% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}</h1></div></div>
 <form method="post" id="devis-form">
     {% csrf_token %}
     <div class="card-app mb-3">
@@ -17,7 +18,7 @@
             </div>
             <div class="col-md-4">
                 <label class="form-label">
-                    <button type="button" id="toggle-global-discount" class="btn btn-link p-0"><i class="bi bi-cash-coin"></i> Remise sur la facture</button>
+                    <button type="button" id="toggle-global-discount" class="btn btn-link p-0"><i class="bi bi-cash-coin"></i> {% trans "Remise sur la facture" %}</button>
                 </label>
                 <div id="global-discount-field" class="d-none">
                     {{ form.discount_amount }}
@@ -27,14 +28,14 @@
             <div class="col-md-4">
                 <label class="form-label">{{ form.pdf_format.label }}</label>
                 {{ form.pdf_format }}
-                <div class="form-text">Format du reçu PDF imprimé/partagé pour ce devis.</div>
+                <div class="form-text">{% trans "Format du reçu PDF imprimé/partagé pour ce devis." %}</div>
             </div>
             {% endif %}
         </div>
     </div>
 
     <div class="card-app">
-        <div class="card-app-header">Lignes</div>
+        <div class="card-app-header">{% trans "Lignes" %}</div>
         <div class="card-app-body">
             {{ formset.management_form }}
             {{ formset.non_form_errors }}
@@ -42,13 +43,13 @@
                 <table class="table mb-0" id="lines-table">
                     <thead>
                         <tr>
-                            <th style="min-width:220px">Produit</th>
-                            <th style="min-width:200px">Description</th>
-                            <th style="width:120px">Qté</th>
-                            <th style="width:120px">PU HT</th>
-                            <th style="width:90px">TVA %</th>
+                            <th style="min-width:220px">{% trans "Produit" %}</th>
+                            <th style="min-width:200px">{% trans "Description" %}</th>
+                            <th style="width:120px">{% trans "Qté" %}</th>
+                            <th style="width:120px">{% trans "PU HT" %}</th>
+                            <th style="width:90px">{% trans "TVA %" %}</th>
                             <!-- <th style="width:120px">Remise (FCFA)</th> -->
-                            <th style="width:100px">Total TTC</th>
+                            <th style="width:100px">{% trans "Total TTC" %}</th>
                             <th style="width:40px"></th>
                         </tr>
                     </thead>
@@ -59,7 +60,7 @@
                                 <div class="product-picker">
                                     {{ line_form.product }}
                                     <div class="product-search-box">
-                                        <input type="text" class="form-control form-control-sm product-search-input" placeholder="Rechercher un produit..." autocomplete="off">
+                                        <input type="text" class="form-control form-control-sm product-search-input" placeholder="{% trans 'Rechercher un produit...' %}" autocomplete="off">
                                     </div>
                                     <div class="product-selected d-none">
                                         <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
@@ -76,7 +77,7 @@
                             <td>{{ line_form.unit_price_ht }}</td>
                             <td>{{ line_form.tva_rate }}</td>
                             <!-- <td>{{ line_form.discount_amount }}</td> -->
-                            <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="Modifier"><i class="bi bi-pencil"></i></button></td>
+                            <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="{% trans 'Modifier' %}"><i class="bi bi-pencil"></i></button></td>
                             <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
                         </tr>
                         {% if line_form.non_field_errors %}
@@ -87,8 +88,8 @@
                 </table>
             </div>
             <div class="d-flex gap-2">
-                <button type="button" id="add-product-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> Ajouter un produit</button>
-                <button type="button" id="add-fee-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> Ajouter un frais (ex: expédition)</button>
+                <button type="button" id="add-product-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> {% trans "Ajouter un produit" %}</button>
+                <button type="button" id="add-fee-row" class="btn btn-outline-secondary btn-sm"><i class="bi bi-plus-lg"></i> {% trans "Ajouter un frais (ex: expédition)" %}</button>
             </div>
         </div>
     </div>
@@ -97,11 +98,11 @@
         <div class="col-lg-4 offset-lg-8">
             <div class="card-app">
                 <div class="card-app-body">
-                    <div class="d-flex justify-content-between py-1"><span class="text-muted">Sous-total HT</span><span id="recap-subtotal">0</span></div>
-                    <div class="d-flex justify-content-between py-1"><span class="text-muted">TVA</span><span id="recap-tva">0</span></div>
-                    <div id="recap-discount-row" class="d-flex justify-content-between py-1 d-none"><span class="text-muted">Remise globale</span><span id="recap-discount">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "Sous-total HT" %}</span><span id="recap-subtotal">0</span></div>
+                    <div class="d-flex justify-content-between py-1"><span class="text-muted">{% trans "TVA" %}</span><span id="recap-tva">0</span></div>
+                    <div id="recap-discount-row" class="d-flex justify-content-between py-1 d-none"><span class="text-muted">{% trans "Remise globale" %}</span><span id="recap-discount">0</span></div>
                     <hr>
-                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>Total TTC</span><span id="recap-total">0</span></div>
+                    <div class="d-flex justify-content-between py-1 fw-bold fs-5"><span>{% trans "Total TTC" %}</span><span id="recap-total">0</span></div>
                 </div>
             </div>
         </div>
@@ -110,8 +111,8 @@
     {{ form.note }}
     {{ form.deposit_amount }}
     <div class="d-flex gap-2 mt-4">
-        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if editing_invoice %}Enregistrer les modifications{% elif document_kind == "commande" %}Créer la commande{% else %}Créer le devis{% endif %}</button>
-        <a href="{% if editing_invoice %}{% url 'sales:invoice_detail' editing_invoice.id %}{% elif document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">Annuler</a>
+        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if editing_invoice %}{% trans "Enregistrer les modifications" %}{% elif document_kind == "commande" %}{% trans "Créer la commande" %}{% else %}{% trans "Créer le devis" %}{% endif %}</button>
+        <a href="{% if editing_invoice %}{% url 'sales:invoice_detail' editing_invoice.id %}{% elif document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
     </div>
 </form>
 
@@ -123,29 +124,29 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Finaliser la commande</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <h5 class="modal-title">{% trans "Finaliser la commande" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             <div class="modal-body">
                 <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
-                    <span class="text-muted">Total de la commande</span>
+                    <span class="text-muted">{% trans "Total de la commande" %}</span>
                     <span class="fw-bold fs-5" id="commande-modal-total">0</span>
                 </div>
                 <div class="mb-3">
-                    <label class="form-label" for="commande-deposit-input">Acompte encaissé (FCFA)</label>
+                    <label class="form-label" for="commande-deposit-input">{% trans "Acompte encaissé (FCFA)" %}</label>
                     <input type="number" min="0" step="1" class="form-control form-control-lg" id="commande-deposit-input" value="0">
-                    <div class="form-text">Laissez 0 si le client n'a encore rien versé.</div>
-                    <div class="text-danger small mt-1 d-none" id="commande-deposit-error">Entrez un montant valide, entre 0 et le total.</div>
+                    <div class="form-text">{% trans "Laissez 0 si le client n'a encore rien versé." %}</div>
+                    <div class="text-danger small mt-1 d-none" id="commande-deposit-error">{% trans "Entrez un montant valide, entre 0 et le total." %}</div>
                 </div>
                 <div>
-                    <label class="form-label" for="commande-note-input">Note (usage interne)</label>
+                    <label class="form-label" for="commande-note-input">{% trans "Note (usage interne)" %}</label>
                     <textarea class="form-control" id="commande-note-input" rows="3"></textarea>
-                    <div class="form-text">N'apparaît jamais sur le reçu/PDF envoyé au client.</div>
+                    <div class="form-text">{% trans "N'apparaît jamais sur le reçu/PDF envoyé au client." %}</div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="commande-info-confirm">Créer la commande</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="commande-info-confirm">{% trans "Créer la commande" %}</button>
             </div>
         </div>
     </div>
@@ -158,7 +159,7 @@
             <div class="product-picker">
                 {{ formset.empty_form.product }}
                 <div class="product-search-box">
-                    <input type="text" class="form-control form-control-sm product-search-input" placeholder="Rechercher un produit..." autocomplete="off">
+                    <input type="text" class="form-control form-control-sm product-search-input" placeholder="{% trans 'Rechercher un produit...' %}" autocomplete="off">
                 </div>
                 <div class="product-selected d-none">
                     <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
@@ -175,7 +176,7 @@
         <td>{{ formset.empty_form.unit_price_ht }}</td>
         <td>{{ formset.empty_form.tva_rate }}</td>
         <!-- <td>{{ formset.empty_form.discount_amount }}</td> -->
-        <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="Modifier"><i class="bi bi-pencil"></i></button></td>
+        <td class="text-end fw-semibold"><span class="line-total">0</span><button type="button" class="btn btn-link p-0 ms-1 line-edit-trigger d-none d-lg-none" title="{% trans 'Modifier' %}"><i class="bi bi-pencil"></i></button></td>
         <td class="text-center"><button type="button" class="btn btn-link text-danger p-0 line-remove"><i class="bi bi-trash"></i></button></td>
     </tr>
 </template>
@@ -193,31 +194,31 @@
             <div class="modal-header">
                 <div class="d-flex align-items-center gap-2">
                     <span class="product-thumb-wrap" id="line-edit-thumb"><i class="bi bi-image"></i></span>
-                    <h5 class="modal-title mb-0" id="line-edit-title">Produit</h5>
+                    <h5 class="modal-title mb-0" id="line-edit-title">{% trans "Produit" %}</h5>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             <div class="modal-body">
                 <div class="mb-3">
-                    <label class="form-label">Quantité</label>
+                    <label class="form-label">{% trans "Quantité" %}</label>
                     <input type="number" min="1" step="1" class="form-control form-control-lg" id="line-edit-quantity">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">Prix unitaire HT</label>
+                    <label class="form-label">{% trans "Prix unitaire HT" %}</label>
                     <input type="number" min="0" step="1" class="form-control form-control-lg" id="line-edit-price">
                 </div>
                 <div class="mb-3">
-                    <label class="form-label">TVA %</label>
+                    <label class="form-label">{% trans "TVA %" %}</label>
                     <input type="number" min="0" step="0.01" class="form-control form-control-lg" id="line-edit-tva">
                 </div>
                 <div class="d-flex justify-content-between align-items-center pt-2 border-top">
-                    <span class="text-muted">Total TTC</span>
+                    <span class="text-muted">{% trans "Total TTC" %}</span>
                     <span class="fw-bold fs-5" id="line-edit-total">0</span>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="line-edit-save">Enregistrer</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="line-edit-save">{% trans "Enregistrer" %}</button>
             </div>
         </div>
     </div>
@@ -385,7 +386,7 @@
     }
 
     addProductBtn.addEventListener("click", () => addRow(null));
-    addFeeBtn.addEventListener("click", () => addRow("Frais supplémentaire"));
+    addFeeBtn.addEventListener("click", () => addRow("{% trans 'Frais supplémentaire' %}"));
 
     toggleGlobalBtn.addEventListener("click", () => {
         globalDiscountField.classList.toggle("d-none");
@@ -422,7 +423,7 @@
         const priceText = price !== undefined && price !== null && price !== "" ? fmt(parseFloat(price)) : "";
         const metaEl = selectedBox.querySelector(".product-selected-meta");
         if (metaEl) {
-            metaEl.textContent = [unit, priceText, sku ? "Réf " + sku : ""].filter(Boolean).join(" · ");
+            metaEl.textContent = [unit, priceText, sku ? "{% trans 'Réf' %} " + sku : ""].filter(Boolean).join(" · ");
         }
     }
 
@@ -491,7 +492,7 @@
 
     function renderResults(items) {
         if (!items.length) {
-            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun produit trouvé</div>';
+            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">{% trans "Aucun produit trouvé" %}</div>';
         } else {
             resultsEl.innerHTML = items.map((p) => {
                 const img = p.image_url ? `<img src="${p.image_url}" class="pos-thumb" alt="">` : `<span class="pos-thumb pos-thumb-placeholder">${(p.name || "?").trim().charAt(0).toUpperCase()}</span>`;
@@ -500,9 +501,9 @@
                     ${img}
                     <div class="pos-item-info">
                         <div class="pos-item-name">${p.name}</div>
-                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
+                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} {% trans "en stock" %}</span></div>
                     </div>
-                    <input type="number" min="1" step="1" value="1" class="form-control form-control-sm pos-item-qty" title="Quantité à ajouter">
+                    <input type="number" min="1" step="1" value="1" class="form-control form-control-sm pos-item-qty" title="{% trans 'Quantité à ajouter' %}">
                     <div class="pos-item-price">${fmt(convert(p.price, boutiqueDevise, currency))}</div>
                 </div>`;
             }).join("");

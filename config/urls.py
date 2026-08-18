@@ -8,6 +8,12 @@ from apps.core.views import service_worker
 urlpatterns = [
     path("sw.js", service_worker, name="service_worker"),
     path("admin/", admin.site.urls),
+    # Vue standard Django pour le sélecteur de langue (templates/base.html) —
+    # POST-only, bascule request.session[LANGUAGE_SESSION_KEY] puis
+    # redirige vers `next`. Pas de préfixe /fr//en/ dans les URLs (pas
+    # i18n_patterns) : casserait les chemins fixes attendus par le poste
+    # offline (ex: /api/v1/sync/activate/, testé en dur dans apps/sync/tests).
+    path("i18n/", include("django.conf.urls.i18n")),
     path("comptes/", include("apps.accounts.urls")),
     path("entreprises/", include("apps.tenants.urls")),
     path("catalogue/", include("apps.catalog.urls")),

@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from django.db.models import ProtectedError, Q
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.utils.translation import gettext as _
 
 from apps.core.permissions import block_when_offline, boutique_role_required
 from apps.stock import services as stock_services
@@ -186,7 +187,7 @@ def _save_extra_images(product, files):
 def product_create(request):
     if not Unit.objects.filter(compte=request.compte).exists():
         messages.warning(
-            request, "Créez d'abord au moins une unité de mesure avant d'ajouter un produit."
+            request, _("Créez d'abord au moins une unité de mesure avant d'ajouter un produit.")
         )
         return redirect("catalog:unit_create")
 
@@ -214,11 +215,11 @@ def product_create(request):
 
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.PRODUCT, product.id)
-            messages.success(request, "Produit créé.")
+            messages.success(request, _("Produit créé."))
             return redirect("catalog:product_list")
     else:
         form = ProductForm(compte=request.compte, include_quantity=True, require_image=True)
-    return render(request, "catalog/product_form.html", {"form": form, "title": "Nouveau produit"})
+    return render(request, "catalog/product_form.html", {"form": form, "title": _("Nouveau produit")})
 
 
 @login_required
@@ -232,11 +233,11 @@ def product_update(request, product_id):
             _save_extra_images(product, form.cleaned_data["extra_images"])
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.PRODUCT, product.id)
-            messages.success(request, "Produit modifié.")
+            messages.success(request, _("Produit modifié."))
             return redirect("catalog:product_list")
     else:
         form = ProductForm(instance=product, compte=request.compte)
-    return render(request, "catalog/product_form.html", {"form": form, "title": "Modifier le produit"})
+    return render(request, "catalog/product_form.html", {"form": form, "title": _("Modifier le produit")})
 
 
 @login_required
@@ -248,7 +249,7 @@ def product_image_delete(request, image_id):
     if request.method == "POST":
         image.image.delete(save=False)
         image.delete()
-        messages.success(request, "Photo supprimée.")
+        messages.success(request, _("Photo supprimée."))
     return redirect("catalog:product_update", product_id=product_id)
 
 
@@ -260,12 +261,14 @@ def product_delete(request, product_id):
     if request.method == "POST":
         try:
             product.delete()
-            messages.success(request, "Produit supprimé.")
+            messages.success(request, _("Produit supprimé."))
         except ProtectedError:
             messages.error(
                 request,
-                "Impossible de supprimer : ce produit a des mouvements de stock "
-                "(ventes, entrées...) liés — désactivez-le plutôt.",
+                _(
+                    "Impossible de supprimer : ce produit a des mouvements de stock "
+                    "(ventes, entrées...) liés — désactivez-le plutôt."
+                ),
             )
     return redirect("catalog:product_list")
 
@@ -291,11 +294,11 @@ def category_create(request):
             category = form.save()
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
-            messages.success(request, "Catégorie créée.")
+            messages.success(request, _("Catégorie créée."))
             return redirect("catalog:category_list")
     else:
         form = CategoryForm(compte=request.compte)
-    return render(request, "catalog/category_form.html", {"form": form, "title": "Nouvelle catégorie"})
+    return render(request, "catalog/category_form.html", {"form": form, "title": _("Nouvelle catégorie")})
 
 
 @login_required
@@ -306,7 +309,7 @@ def category_quick_create(request):
     ajouter une catégorie manquante. Même logique de sauvegarde que
     category_create, juste une réponse JSON au lieu d'une redirection."""
     if request.method != "POST":
-        return JsonResponse({"detail": "Méthode non autorisée."}, status=405)
+        return JsonResponse({"detail": _("Méthode non autorisée.")}, status=405)
     form = CategoryForm(request.POST, compte=request.compte)
     if form.is_valid():
         category = form.save()
@@ -323,7 +326,7 @@ def unit_quick_create(request):
     produit (voir product_form.html) — même patron que
     category_quick_create pour l'unité."""
     if request.method != "POST":
-        return JsonResponse({"detail": "Méthode non autorisée."}, status=405)
+        return JsonResponse({"detail": _("Méthode non autorisée.")}, status=405)
     form = UnitForm(request.POST, compte=request.compte)
     if form.is_valid():
         unit = form.save()
@@ -343,11 +346,11 @@ def category_update(request, category_id):
             category = form.save()
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.CATEGORY, category.id)
-            messages.success(request, "Catégorie modifiée.")
+            messages.success(request, _("Catégorie modifiée."))
             return redirect("catalog:category_list")
     else:
         form = CategoryForm(instance=category, compte=request.compte)
-    return render(request, "catalog/category_form.html", {"form": form, "title": "Modifier la catégorie"})
+    return render(request, "catalog/category_form.html", {"form": form, "title": _("Modifier la catégorie")})
 
 
 @login_required
@@ -358,9 +361,9 @@ def category_delete(request, category_id):
     if request.method == "POST":
         try:
             category.delete()
-            messages.success(request, "Catégorie supprimée.")
+            messages.success(request, _("Catégorie supprimée."))
         except ProtectedError:
-            messages.error(request, "Impossible de supprimer : des produits utilisent encore cette catégorie.")
+            messages.error(request, _("Impossible de supprimer : des produits utilisent encore cette catégorie."))
     return redirect("catalog:category_list")
 
 
@@ -385,11 +388,11 @@ def unit_create(request):
             unit = form.save()
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.UNIT, unit.id)
-            messages.success(request, "Unité créée.")
+            messages.success(request, _("Unité créée."))
             return redirect("catalog:unit_list")
     else:
         form = UnitForm(compte=request.compte)
-    return render(request, "catalog/unit_form.html", {"form": form, "title": "Nouvelle unité"})
+    return render(request, "catalog/unit_form.html", {"form": form, "title": _("Nouvelle unité")})
 
 
 @login_required
@@ -402,11 +405,11 @@ def unit_update(request, unit_id):
             unit = form.save()
             if settings.IS_OFFLINE:
                 sync_outbox.enqueue(OutboxEntry.UNIT, unit.id)
-            messages.success(request, "Unité modifiée.")
+            messages.success(request, _("Unité modifiée."))
             return redirect("catalog:unit_list")
     else:
         form = UnitForm(instance=unit, compte=request.compte)
-    return render(request, "catalog/unit_form.html", {"form": form, "title": "Modifier l'unité"})
+    return render(request, "catalog/unit_form.html", {"form": form, "title": _("Modifier l'unité")})
 
 
 @login_required
@@ -417,7 +420,7 @@ def unit_delete(request, unit_id):
     if request.method == "POST":
         try:
             unit.delete()
-            messages.success(request, "Unité supprimée.")
+            messages.success(request, _("Unité supprimée."))
         except ProtectedError:
-            messages.error(request, "Impossible de supprimer : des produits utilisent encore cette unité.")
+            messages.error(request, _("Impossible de supprimer : des produits utilisent encore cette unité."))
     return redirect("catalog:unit_list")

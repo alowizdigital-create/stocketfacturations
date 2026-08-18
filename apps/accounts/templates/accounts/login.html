@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Connexion{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Connexion" %}{% endblock %}
 {% block auth_content %}
 <div class="auth-shell">
     <div class="auth-card">
         <div class="auth-brand"><i class="bi bi-boxes"></i> Zweey</div>
-        <h1 class="h5 mb-3">Connexion</h1>
+        <h1 class="h5 mb-3">{% trans "Connexion" %}</h1>
         <form method="post">
             {% csrf_token %}
             {% if form.non_field_errors %}
@@ -15,14 +16,14 @@
                 <input type="email" name="{{ form.username.html_name }}" class="form-control" required autofocus>
             </div>
             <div class="mb-3">
-                <label class="form-label">Mot de passe</label>
+                <label class="form-label">{% trans "Mot de passe" %}</label>
                 <input type="password" name="{{ form.password.html_name }}" class="form-control" required>
-                <div class="text-end mt-1"><a href="{% url 'accounts:password_reset' %}" class="small">Mot de passe oublié ?</a></div>
+                <div class="text-end mt-1"><a href="{% url 'accounts:password_reset' %}" class="small">{% trans "Mot de passe oublié ?" %}</a></div>
             </div>
-            <button type="submit" class="btn btn-primary w-100 py-2">Se connecter</button>
+            <button type="submit" class="btn btn-primary w-100 py-2">{% trans "Se connecter" %}</button>
         </form>
         <p class="text-center text-muted small mt-3 mb-0">
-            Pas encore de compte ? <a href="{% url 'tenants:signup' %}">Créer une entreprise</a>
+            {% trans "Pas encore de compte ?" %} <a href="{% url 'tenants:signup' %}">{% trans "Créer une entreprise" %}</a>
         </p>
     </div>
 </div>

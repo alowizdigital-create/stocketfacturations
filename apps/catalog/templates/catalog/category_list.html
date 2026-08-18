@@ -1,8 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Catégories{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Catégories" %}{% endblock %}
 {% block content %}
 <div class="page-header">
-    <a href="{% url 'catalog:category_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle catégorie</a>
+    <a href="{% url 'catalog:category_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle catégorie" %}</a>
      <!-- <div>
         <div class="text-muted">Organisez votre catalogue de produits</div>
     </div> -->
@@ -12,18 +13,18 @@
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher une catégorie...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une catégorie...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'catalog:category_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'catalog:category_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Nom</th><th>Catégorie parente</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Nom" %}</th><th>{% trans "Catégorie parente" %}</th><th></th></tr></thead>
         <tbody>
             {% for category in categories %}
             <tr>
@@ -31,14 +32,14 @@
                 <td>{{ category.parent|default:"—" }}</td>
                 <td class="text-end">
                     <a href="{% url 'catalog:category_update' category.id %}" class="me-3"><i class="bi bi-pencil"></i></a>
-                    <form method="post" action="{% url 'catalog:category_delete' category.id %}" class="d-inline" onsubmit="return confirm('Supprimer cette catégorie ?');">
+                    <form method="post" action="{% url 'catalog:category_delete' category.id %}" class="d-inline" onsubmit="return confirm('{% trans "Supprimer cette catégorie ?" %}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-muted text-center py-4">Aucune catégorie pour le moment.</td></tr>
+            <tr><td colspan="3" class="text-muted text-center py-4">{% trans "Aucune catégorie pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

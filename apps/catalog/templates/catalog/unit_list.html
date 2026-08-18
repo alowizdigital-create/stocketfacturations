@@ -1,11 +1,12 @@
 {% extends "base.html" %}
-{% block title %}Unités{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Unités" %}{% endblock %}
 {% block content %}
 <div class="page-header">
-    <a href="{% url 'catalog:unit_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle unité</a>
+    <a href="{% url 'catalog:unit_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle unité" %}</a>
      <div>
         <!-- <h1>Unités de mesure</h1> -->
-        <div class="text-muted">Pièce, Kg, Litre, Carton... — définies par vous</div>
+        <div class="text-muted">{% trans "Pièce, Kg, Litre, Carton... — définies par vous" %}</div>
     </div>
 </div>
 
@@ -13,18 +14,18 @@
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher une unité (nom, symbole)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une unité (nom, symbole)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'catalog:unit_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'catalog:unit_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Nom</th><th>Symbole</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Nom" %}</th><th>{% trans "Symbole" %}</th><th></th></tr></thead>
         <tbody>
             {% for unit in units %}
             <tr>
@@ -32,14 +33,14 @@
                 <td>{{ unit.symbol|default:"—" }}</td>
                 <td class="text-end">
                     <a href="{% url 'catalog:unit_update' unit.id %}" class="me-3"><i class="bi bi-pencil"></i></a>
-                    <form method="post" action="{% url 'catalog:unit_delete' unit.id %}" class="d-inline" onsubmit="return confirm('Supprimer cette unité ?');">
+                    <form method="post" action="{% url 'catalog:unit_delete' unit.id %}" class="d-inline" onsubmit="return confirm('{% trans "Supprimer cette unité ?" %}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-link text-danger p-0"><i class="bi bi-trash"></i></button>
                     </form>
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="3" class="text-muted text-center py-4">Aucune unité pour le moment.</td></tr>
+            <tr><td colspan="3" class="text-muted text-center py-4">{% trans "Aucune unité pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

@@ -1,17 +1,18 @@
 {% extends "base.html" %}
-{% block title %}Nouveau mouvement de stock{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Nouveau mouvement de stock" %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>Nouveau mouvement de stock</h1></div></div>
+<div class="page-header"><div><h1>{% trans "Nouveau mouvement de stock" %}</h1></div></div>
 <div class="card-app" style="max-width: 520px;">
     <div class="card-app-body">
         <form method="post" id="movement-form">
             {% csrf_token %}
             <div class="mb-3">
-                <label class="form-label">Produit</label>
+                <label class="form-label">{% trans "Produit" %}</label>
                 <div class="product-picker">
                     {{ form.product }}
                     <div class="product-search-box">
-                        <input type="text" id="movement-product-search" class="form-control" placeholder="Rechercher un produit (nom, référence, code-barres)..." autocomplete="off">
+                        <input type="text" id="movement-product-search" class="form-control" placeholder="{% trans 'Rechercher un produit (nom, référence, code-barres)...' %}" autocomplete="off">
                     </div>
                     <div class="product-selected d-none border rounded px-2 py-2">
                         <span class="product-thumb-wrap"><i class="bi bi-image"></i></span>
@@ -37,9 +38,9 @@
             {{ form.type }}
             {{ form.type.errors }}
             <div class="d-flex flex-wrap gap-2 mt-4">
-                <button type="submit" id="movement-submit-sortie" class="btn btn-outline-danger"><i class="bi bi-dash-lg"></i> Sortie</button>
-                <button type="submit" id="movement-submit-entree" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Entrée</button>
-                <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary ms-auto">Annuler</a>
+                <button type="submit" id="movement-submit-sortie" class="btn btn-outline-danger"><i class="bi bi-dash-lg"></i> {% trans "Sortie" %}</button>
+                <button type="submit" id="movement-submit-entree" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Entrée" %}</button>
+                <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary ms-auto">{% trans "Annuler" %}</a>
             </div>
         </form>
     </div>
@@ -70,7 +71,7 @@
             ? `<img src="${data.image_url}" alt="">` : placeholderThumb();
         selectedBox.querySelector(".product-selected-name").textContent = data.name;
         selectedBox.querySelector(".product-selected-meta").textContent =
-            [data.unit, data.sku ? "Réf " + data.sku : "", data.stock_qty + " en stock actuellement"].filter(Boolean).join(" · ");
+            [data.unit, data.sku ? "{% trans 'Réf' %} " + data.sku : "", data.stock_qty + " {% trans 'en stock actuellement' %}"].filter(Boolean).join(" · ");
         searchInput.value = "";
         searchBox.classList.add("d-none");
         selectedBox.classList.remove("d-none");
@@ -99,7 +100,7 @@
 
     function renderResults(items) {
         if (!items.length) {
-            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">Aucun produit trouvé</div>';
+            resultsEl.innerHTML = '<div class="text-muted text-center py-3 small">{% trans "Aucun produit trouvé" %}</div>';
         } else {
             resultsEl.innerHTML = items.map((p) => {
                 const img = p.image_url ? `<img src="${p.image_url}" class="pos-thumb" alt="">` : `<span class="pos-thumb pos-thumb-placeholder">${(p.name || "?").trim().charAt(0).toUpperCase()}</span>`;
@@ -108,7 +109,7 @@
                     ${img}
                     <div class="pos-item-info">
                         <div class="pos-item-name">${p.name}</div>
-                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} en stock</span></div>
+                        <div class="text-muted small">${p.sku ? p.sku + " · " : ""}${p.unit} <span class="badge-status badge-gray">${p.stock_qty} {% trans "en stock" %}</span></div>
                     </div>
                 </div>`;
             }).join("");

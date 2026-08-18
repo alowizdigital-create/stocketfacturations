@@ -1,23 +1,25 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ product.name }}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
         <h1>{{ product.name }}
             {% if product.is_active %}
-            <span class="badge-status badge-green">Actif</span>
+            <span class="badge-status badge-green">{% trans "Actif" %}</span>
             {% else %}
-            <span class="badge-status badge-gray">Inactif</span>
+            <span class="badge-status badge-gray">{% trans "Inactif" %}</span>
             {% endif %}
             {% if is_low_stock %}
-            <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> Rupture de stock</span>
+            <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> {% trans "Rupture de stock" %}</span>
             {% endif %}
         </h1>
-        <div class="text-muted">{{ product.category|default:"Sans catégorie" }}</div>
+        {% trans "Sans catégorie" as sans_categorie %}
+        <div class="text-muted">{{ product.category|default:sans_categorie }}</div>
     </div>
     <div class="d-flex gap-2">
-        <a href="{% url 'catalog:product_update' product.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> Modifier</a>
-        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">Retour</a>
+        <a href="{% url 'catalog:product_update' product.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
+        <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">{% trans "Retour" %}</a>
     </div>
 </div>
 
@@ -44,31 +46,31 @@
     </div>
     <div class="col-lg-8">
         <div class="card-app">
-            <div class="card-app-header">Informations</div>
+            <div class="card-app-header">{% trans "Informations" %}</div>
             <div class="card-app-body">
                 <div class="row g-3">
                     <div class="col-md-6">
-                        <div class="text-muted small">Prix de vente</div>
+                        <div class="text-muted small">{% trans "Prix de vente" %}</div>
                         <div class="fw-semibold">{{ effective_price }} {{ request.boutique.devise }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="text-muted small">Taux de TVA</div>
+                        <div class="text-muted small">{% trans "Taux de TVA" %}</div>
                         <div class="fw-semibold">{{ product.tva_rate }}%</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="text-muted small">Unité</div>
+                        <div class="text-muted small">{% trans "Unité" %}</div>
                         <div class="fw-semibold">{{ product.unit }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="text-muted small">Référence (SKU)</div>
+                        <div class="text-muted small">{% trans "Référence (SKU)" %}</div>
                         <div class="fw-semibold">{{ product.sku|default:"—" }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="text-muted small">Code-barres</div>
+                        <div class="text-muted small">{% trans "Code-barres" %}</div>
                         <div class="fw-semibold">{{ product.barcode|default:"—" }}</div>
                     </div>
                     <div class="col-md-6">
-                        <div class="text-muted small">Seuil de stock bas</div>
+                        <div class="text-muted small">{% trans "Seuil de stock bas" %}</div>
                         <div class="fw-semibold">{{ product.low_stock_threshold_default }}</div>
                     </div>
                 </div>
@@ -77,16 +79,16 @@
 
         <div class="card-app mt-3">
             <div class="card-app-header d-flex justify-content-between align-items-center">
-                <span>Stock — {{ request.boutique.name }}</span>
+                <span>{% blocktrans trimmed with name=request.boutique.name %}Stock — {{ name }}{% endblocktrans %}</span>
                 {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
                 <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#stock-movement-modal">
-                    <i class="bi bi-arrow-left-right"></i> Mouvement de stock
+                    <i class="bi bi-arrow-left-right"></i> {% trans "Mouvement de stock" %}
                 </button>
                 {% endif %}
             </div>
             <div class="card-app-body">
                 <div class="stat-value">{{ stock_qty }} {{ product.unit.symbol|default:product.unit.name }}</div>
-                <div class="text-muted small">Quantité actuellement en stock dans cette boutique</div>
+                <div class="text-muted small">{% trans "Quantité actuellement en stock dans cette boutique" %}</div>
             </div>
         </div>
     </div>
@@ -100,23 +102,23 @@
                 {% csrf_token %}
                 <input type="hidden" name="type" id="movement-type-input">
                 <div class="modal-header">
-                    <h5 class="modal-title">Mouvement de stock — {{ product.name }}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <h5 class="modal-title">{% blocktrans trimmed with name=product.name %}Mouvement de stock — {{ name }}{% endblocktrans %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="text-muted small mb-3">Stock actuel : {{ stock_qty }} {{ product.unit.symbol|default:product.unit.name }}</div>
+                    <div class="text-muted small mb-3">{% blocktrans trimmed with qty=stock_qty unit=product.unit.symbol|default:product.unit.name %}Stock actuel : {{ qty }} {{ unit }}{% endblocktrans %}</div>
                     <div class="mb-3">
-                        <label class="form-label" for="movement-quantity">Quantité</label>
+                        <label class="form-label" for="movement-quantity">{% trans "Quantité" %}</label>
                         <input type="number" step="0.001" min="0.001" name="quantity" id="movement-quantity" class="form-control" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label" for="movement-reason">Motif (optionnel)</label>
+                        <label class="form-label" for="movement-reason">{% trans "Motif (optionnel)" %}</label>
                         <input type="text" name="reason" id="movement-reason" class="form-control" maxlength="255">
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="submit" class="btn btn-outline-danger" onclick="document.getElementById('movement-type-input').value='SORTIE'"><i class="bi bi-dash-lg"></i> Retirer</button>
-                    <button type="submit" class="btn btn-primary" onclick="document.getElementById('movement-type-input').value='ENTREE'"><i class="bi bi-plus-lg"></i> Compléter</button>
+                    <button type="submit" class="btn btn-outline-danger" onclick="document.getElementById('movement-type-input').value='SORTIE'"><i class="bi bi-dash-lg"></i> {% trans "Retirer" %}</button>
+                    <button type="submit" class="btn btn-primary" onclick="document.getElementById('movement-type-input').value='ENTREE'"><i class="bi bi-plus-lg"></i> {% trans "Compléter" %}</button>
                 </div>
             </form>
         </div>

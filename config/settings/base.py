@@ -36,6 +36,10 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    # Doit suivre SessionMiddleware (lit la langue choisie en session) et
+    # précéder CommonMiddleware (qui en dépend pour rediriger correctement) —
+    # ordre imposé par Django, voir sa documentation i18n.
+    "django.middleware.locale.LocaleMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -56,6 +60,7 @@ TEMPLATES = [
                 "django.template.context_processors.request",
                 "django.contrib.auth.context_processors.auth",
                 "django.contrib.messages.context_processors.messages",
+                "django.template.context_processors.i18n",
             ],
         },
     },
@@ -72,7 +77,26 @@ AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.NumericPasswordValidator"},
 ]
 
+# Expiration par inactivité (pas depuis la connexion) : SESSION_SAVE_EVERY_REQUEST
+# force le rafraîchissement du cookie à chaque requête, donc une session
+# active toute une journée ne se coupe jamais en plein milieu — seule une
+# session vraiment inutilisée pendant SESSION_COOKIE_AGE expire. Réduit la
+# fenêtre d'exposition si une session Windows/navigateur reste ouverte sans
+# surveillance (poste partagé en boutique, ex: version offline).
+SESSION_COOKIE_AGE = env.int("SESSION_COOKIE_AGE", default=8 * 60 * 60)  # 8h d'inactivité
+SESSION_SAVE_EVERY_REQUEST = True
+
 LANGUAGE_CODE = "fr-fr"
+# Français = langue source des templates (les chaînes {% trans %}/gettext
+# sont écrites en français directement dans le code) — seul un catalogue
+# anglais est donc nécessaire (locale/en/LC_MESSAGES/django.po), pas de
+# catalogue français. Compilé en .mo via scripts/compile_translations.py
+# (outil pure-Python, voir le commentaire dans ce script) plutôt que
+# `manage.py compilemessages`, qui nécessite les binaires GNU gettext —
+# absents par défaut sur ce poste Windows et non garantis sur l'image
+# Docker de prod ni sur la machine de build de l'exe.
+LANGUAGES = [("fr", "Français"), ("en", "English")]
+LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = env("DJANGO_TIME_ZONE", default="Africa/Abidjan")
 USE_I18N = True
 USE_TZ = True

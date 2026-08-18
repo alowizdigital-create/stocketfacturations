@@ -11,6 +11,7 @@ from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
+from django.utils.translation import gettext as _
 from rest_framework import generics, pagination, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -625,12 +626,12 @@ def activate_device(request):
             client = SyncClient(base_url=settings.SYNC_BASE_URL, token=raw_token)
             data = client.ping()
         except requests.RequestException as exc:
-            form.add_error(None, f"Connexion au serveur impossible : {exc}")
+            form.add_error(None, _("Connexion au serveur impossible : %(error)s") % {"error": exc})
         else:
             if reactivating and str(existing.boutique_id) != str(data["boutique"]["id"]):
                 form.add_error(
                     None,
-                    "Ce jeton appartient à une autre boutique que celle déjà activée sur ce poste.",
+                    _("Ce jeton appartient à une autre boutique que celle déjà activée sur ce poste."),
                 )
             else:
                 if reactivating:
@@ -650,8 +651,8 @@ def activate_device(request):
                 run_pull_cycle(client)
                 messages.success(
                     request,
-                    "Poste réactivé et synchronisation reprise." if reactivating
-                    else "Poste activé et données synchronisées.",
+                    _("Poste réactivé et synchronisation reprise.") if reactivating
+                    else _("Poste activé et données synchronisées."),
                 )
                 return redirect("accounts:login")
 

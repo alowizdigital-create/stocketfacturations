@@ -1,30 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Ventes{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Ventes" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <!-- <div>
         <h1>Ventes</h1>
         <div class="text-muted">{{ request.boutique.name }}</div>
     </div> -->
-    <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Nouvelle vente</a>
+    <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle vente" %}</a>
 </div>
 
 <form method="get" class="mb-3">
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher une vente (numéro, client)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une vente (numéro, client)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'sales:sale_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Numéro</th><th>Client</th><th>Statut</th><th class="d-none d-md-table-cell">Facture</th><th class="d-none d-md-table-cell">Date</th><th>Total TTC</th></tr></thead>
+        <thead><tr><th>{% trans "Numéro" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-md-table-cell">{% trans "Facture" %}</th><th class="d-none d-md-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
         <tbody>
             {% for sale in sales %}
             <tr>
@@ -49,7 +50,7 @@
                 <td>{{ sale.total_ttc }} {{ sale.currency }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="6" class="text-muted text-center py-4">Aucune vente pour le moment.</td></tr>
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune vente pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

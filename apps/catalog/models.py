@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 from apps.core.models import CompteScopedModel, TimeStampedModel, UUIDModel
 from apps.tenants.models import Boutique
@@ -11,8 +12,8 @@ class Category(UUIDModel, CompteScopedModel, TimeStampedModel):
     )
 
     class Meta:
-        verbose_name = "catégorie"
-        verbose_name_plural = "catégories"
+        verbose_name = _("catégorie")
+        verbose_name_plural = _("catégories")
 
     def __str__(self):
         return self.name
@@ -22,12 +23,12 @@ class Unit(UUIDModel, CompteScopedModel, TimeStampedModel):
     """Unité de mesure définie par l'entreprise (Pièce, Kg, Litre, Carton,
     Sac...) — plus de liste figée en dur, chaque Compte gère les siennes."""
 
-    name = models.CharField("nom", max_length=50)
-    symbol = models.CharField("symbole", max_length=10, blank=True)
+    name = models.CharField(_("nom"), max_length=50)
+    symbol = models.CharField(_("symbole"), max_length=10, blank=True)
 
     class Meta:
-        verbose_name = "unité"
-        verbose_name_plural = "unités"
+        verbose_name = _("unité")
+        verbose_name_plural = _("unités")
         constraints = [
             models.UniqueConstraint(fields=["compte", "name"], name="unique_unit_name_par_compte"),
         ]
@@ -41,22 +42,22 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         Category, on_delete=models.SET_NULL, null=True, blank=True, related_name="products"
     )
     name = models.CharField(max_length=255)
-    sku = models.CharField("référence (SKU)", max_length=64, blank=True)
-    barcode = models.CharField("code-barres", max_length=64, blank=True)
-    image = models.ImageField("photo", upload_to="produits/", null=True, blank=True)
+    sku = models.CharField(_("référence (SKU)"), max_length=64, blank=True)
+    barcode = models.CharField(_("code-barres"), max_length=64, blank=True)
+    image = models.ImageField(_("photo"), upload_to="produits/", null=True, blank=True)
     unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="products")
     default_sale_price = models.DecimalField(
-        "prix de vente (FCFA)", max_digits=12, decimal_places=0
+        _("prix de vente (FCFA)"), max_digits=12, decimal_places=0
     )
     tva_rate = models.DecimalField(
-        "taux de TVA (%)", max_digits=5, decimal_places=2, default=0
+        _("taux de TVA (%)"), max_digits=5, decimal_places=2, default=0
     )
-    low_stock_threshold_default = models.PositiveIntegerField("seuil de stock bas", default=5)
+    low_stock_threshold_default = models.PositiveIntegerField(_("seuil de stock bas"), default=5)
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = "produit"
-        verbose_name_plural = "produits"
+        verbose_name = _("produit")
+        verbose_name_plural = _("produits")
         constraints = [
             models.UniqueConstraint(fields=["compte", "sku"], name="unique_sku_par_compte", condition=~models.Q(sku="")),
         ]
@@ -73,12 +74,12 @@ class ProductImage(UUIDModel, TimeStampedModel):
     imposée en formulaire."""
 
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="extra_images")
-    image = models.ImageField("photo", upload_to="produits/")
+    image = models.ImageField(_("photo"), upload_to="produits/")
     position = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
-        verbose_name = "image produit"
-        verbose_name_plural = "images produit"
+        verbose_name = _("image produit")
+        verbose_name_plural = _("images produit")
         ordering = ["position", "created_at"]
 
     def __str__(self):
@@ -98,8 +99,8 @@ class ProductBoutiquePrice(UUIDModel, TimeStampedModel):
     is_available = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = "prix boutique"
-        verbose_name_plural = "prix boutique"
+        verbose_name = _("prix boutique")
+        verbose_name_plural = _("prix boutique")
         constraints = [
             models.UniqueConstraint(fields=["product", "boutique"], name="unique_product_boutique_price"),
         ]

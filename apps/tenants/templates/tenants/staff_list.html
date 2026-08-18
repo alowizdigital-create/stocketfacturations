@@ -1,30 +1,31 @@
 {% extends "base.html" %}
-{% block title %}Équipe{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Équipe" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div>
-        <h1>Équipe</h1>
-        <div class="text-muted">Employés de {{ request.compte.name }}, toutes boutiques confondues</div>
+        <h1>{% trans "Équipe" %}</h1>
+        <div class="text-muted">{% blocktrans trimmed with name=request.compte.name %}Employés de {{ name }}, toutes boutiques confondues{% endblocktrans %}</div>
     </div>
-    <a href="{% url 'tenants:staff_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Nouvel employé</a>
+    <a href="{% url 'tenants:staff_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> {% trans "Nouvel employé" %}</a>
 </div>
 
 <form method="get" class="mb-3">
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un employé (nom, email)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un employé (nom, email)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'tenants:staff_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'tenants:staff_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Employé</th><th class="d-none d-md-table-cell">Boutique</th><th>Rôle</th><th>Statut</th><th></th></tr></thead>
+        <thead><tr><th>{% trans "Employé" %}</th><th class="d-none d-md-table-cell">{% trans "Boutique" %}</th><th>{% trans "Rôle" %}</th><th>{% trans "Statut" %}</th><th></th></tr></thead>
         <tbody>
             {% for m in memberships %}
             <tr>
@@ -36,21 +37,21 @@
                 <td><span class="badge-status badge-purple">{{ m.get_role_display }}</span></td>
                 <td>
                     {% if m.is_active %}
-                    <span class="badge-status badge-green">Actif</span>
+                    <span class="badge-status badge-green">{% trans "Actif" %}</span>
                     {% else %}
-                    <span class="badge-status badge-gray">Désactivé</span>
+                    <span class="badge-status badge-gray">{% trans "Désactivé" %}</span>
                     {% endif %}
                 </td>
                 <td class="text-end">
                     {% if m.user_id == request.user.id %}
-                    <span class="text-muted small">Vous</span>
+                    <span class="text-muted small">{% trans "Vous" %}</span>
                     {% else %}
-                    <a href="{% url 'tenants:staff_update' m.id %}"><i class="bi bi-pencil"></i> Modifier</a>
+                    <a href="{% url 'tenants:staff_update' m.id %}"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
                     {% endif %}
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">Aucun employé pour le moment.</td></tr>
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucun employé pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

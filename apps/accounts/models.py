@@ -3,6 +3,7 @@ import uuid
 from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
 from django.contrib.auth.models import PermissionsMixin
 from django.db import models
+from django.utils.translation import gettext_lazy as _
 
 
 class UserManager(BaseUserManager):
@@ -51,8 +52,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     REQUIRED_FIELDS = []
 
     class Meta:
-        verbose_name = "utilisateur"
-        verbose_name_plural = "utilisateurs"
+        verbose_name = _("utilisateur")
+        verbose_name_plural = _("utilisateurs")
 
     def __str__(self):
         return self.get_full_name() or self.email

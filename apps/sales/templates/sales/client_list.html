@@ -1,10 +1,11 @@
 {% extends "base.html" %}
-{% block title %}Clients{% endblock %}
+{% load i18n %}
+{% block title %}{% trans "Clients" %}{% endblock %}
 {% block content %}
 <div class="page-header">
     <div class="d-flex gap-2">
-        <a href="{% url 'sales:client_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> Nouveau client</a>
-        <a href="{% url 'sales:client_import' %}" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> Importer</a>
+        <a href="{% url 'sales:client_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> {% trans "Nouveau client" %}</a>
+        <a href="{% url 'sales:client_import' %}" class="btn btn-outline-secondary"><i class="bi bi-upload"></i> {% trans "Importer" %}</a>
     </div>
 </div>
 
@@ -12,23 +13,23 @@
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="Rechercher un client (nom, téléphone, email)...">
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un client (nom, téléphone, email)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="Rechercher"><i class="bi bi-search"></i></button>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary" title="Effacer"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'sales:client_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>Nom</th><th>Téléphone</th><th class="d-none d-md-table-cell">Email</th></tr></thead>
+        <thead><tr><th>{% trans "Nom" %}</th><th>{% trans "Téléphone" %}</th><th class="d-none d-md-table-cell">Email</th></tr></thead>
         <tbody>
             {% for client in clients %}
             <tr><td class="fw-semibold">{{ client.name }}</td><td>{{ client.phone|default:"—" }}</td><td class="d-none d-md-table-cell">{{ client.email|default:"—" }}</td></tr>
             {% empty %}
-            <tr><td colspan="3" class="text-muted text-center py-4">Aucun client.</td></tr>
+            <tr><td colspan="3" class="text-muted text-center py-4">{% trans "Aucun client." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

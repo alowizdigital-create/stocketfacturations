@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load i18n %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -8,19 +9,19 @@
 {% if form.instance.image or form.instance.extra_images.all %}
 <div class="card-app mb-3" style="max-width: 640px;">
     <div class="card-app-body">
-        <div class="mb-2 text-muted small">Photos actuelles</div>
+        <div class="mb-2 text-muted small">{% trans "Photos actuelles" %}</div>
         <div class="d-flex flex-wrap gap-2">
             {% if form.instance.image %}
             <div>
                 <img src="{{ form.instance.image.url }}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
-                <div class="text-muted small text-center">Principale</div>
+                <div class="text-muted small text-center">{% trans "Principale" %}</div>
             </div>
             {% endif %}
             {% for extra in form.instance.extra_images.all %}
             <div>
                 <div class="position-relative">
                     <img src="{{ extra.image.url }}" alt="" style="width:90px;height:90px;object-fit:cover;border-radius:8px;border:1px solid var(--border);">
-                    <form method="post" action="{% url 'catalog:product_image_delete' extra.id %}" class="position-absolute top-0 end-0" onsubmit="return confirm('Supprimer cette photo ?');">
+                    <form method="post" action="{% url 'catalog:product_image_delete' extra.id %}" class="position-absolute top-0 end-0" onsubmit="return confirm('{% trans "Supprimer cette photo ?" %}');">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-danger p-0" style="width:22px;height:22px;line-height:1;border-radius:50%;transform:translate(30%,-30%);"><i class="bi bi-x"></i></button>
                     </form>
@@ -43,14 +44,14 @@
                 {% if field.name == "category" %}
                 <div class="d-flex gap-2 align-items-start">
                     <div class="flex-grow-1">{{ field }}</div>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-category-modal" title="Nouvelle catégorie">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-category-modal" title="{% trans 'Nouvelle catégorie' %}">
                         <i class="bi bi-plus-lg"></i>
                     </button>
                 </div>
                 {% elif field.name == "unit" %}
                 <div class="d-flex gap-2 align-items-start">
                     <div class="flex-grow-1">{{ field }}</div>
-                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-unit-modal" title="Nouvelle unité">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-unit-modal" title="{% trans 'Nouvelle unité' %}">
                         <i class="bi bi-plus-lg"></i>
                     </button>
                 </div>
@@ -62,8 +63,8 @@
             </div>
             {% endfor %}
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn btn-primary">Enregistrer</button>
-                <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">Annuler</a>
+                <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
             </div>
         </form>
     </div>
@@ -75,17 +76,17 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Nouvelle catégorie</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <h5 class="modal-title">{% trans "Nouvelle catégorie" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label" for="quick-category-name">Nom</label>
+                <label class="form-label" for="quick-category-name">{% trans "Nom" %}</label>
                 <input type="text" id="quick-category-name" class="form-control" autocomplete="off">
                 <div class="text-danger small mt-1 d-none" id="quick-category-error"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="quick-category-confirm">Créer</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="quick-category-confirm">{% trans "Créer" %}</button>
             </div>
         </div>
     </div>
@@ -97,25 +98,106 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title">Nouvelle unité</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <h5 class="modal-title">{% trans "Nouvelle unité" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label" for="quick-unit-name">Nom</label>
+                <label class="form-label" for="quick-unit-name">{% trans "Nom" %}</label>
                 <input type="text" id="quick-unit-name" class="form-control" autocomplete="off">
-                <label class="form-label mt-2" for="quick-unit-symbol">Symbole (optionnel)</label>
+                <label class="form-label mt-2" for="quick-unit-symbol">{% trans "Symbole (optionnel)" %}</label>
                 <input type="text" id="quick-unit-symbol" class="form-control" autocomplete="off">
                 <div class="text-danger small mt-1 d-none" id="quick-unit-error"></div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="quick-unit-confirm">Créer</button>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="quick-unit-confirm">{% trans "Créer" %}</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
+// Recompresse les photos côté navigateur avant l'envoi : un iPhone
+// envoie souvent des photos de 3 à 8 Mo (parfois en HEIC), ce qui sur
+// une connexion mobile lente laisse le temps à Safari de mettre l'onglet
+// en veille pendant l'upload — le cookie CSRF n'est alors plus renvoyé
+// avec la requête suspendue puis relancée, d'où un "jeton CSRF manquant"
+// à la soumission. Réduire la taille/durée de l'upload réduit fortement
+// cette fenêtre. Bonus : convertit aussi le HEIC en JPEG, que Pillow
+// (validation serveur) ne sait pas toujours lire selon l'installation.
+(function () {
+    var MAX_DIMENSION = 1600;
+    var JPEG_QUALITY = 0.82;
+    var COMPRESS_THRESHOLD_BYTES = 400 * 1024; // pas la peine de retoucher une image déjà petite
+
+    function compressImageFile(file) {
+        if (!file.type || file.type.indexOf("image/") !== 0) {
+            return Promise.resolve(file);
+        }
+        if (file.size <= COMPRESS_THRESHOLD_BYTES) {
+            return Promise.resolve(file);
+        }
+        return new Promise(function (resolve) {
+            var img = new Image();
+            var objectUrl = URL.createObjectURL(file);
+            img.onload = function () {
+                URL.revokeObjectURL(objectUrl);
+                var scale = Math.min(1, MAX_DIMENSION / Math.max(img.width, img.height));
+                var canvas = document.createElement("canvas");
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                var ctx = canvas.getContext("2d");
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob(function (blob) {
+                    if (!blob) {
+                        resolve(file);
+                        return;
+                    }
+                    var newName = file.name.replace(/\.\w+$/, "") + ".jpg";
+                    resolve(new File([blob], newName, {type: "image/jpeg"}));
+                }, "image/jpeg", JPEG_QUALITY);
+            };
+            img.onerror = function () {
+                URL.revokeObjectURL(objectUrl);
+                resolve(file); // format non décodable par le navigateur : on envoie tel quel
+            };
+            img.src = objectUrl;
+        });
+    }
+
+    function compressFileInput(input) {
+        var files = Array.prototype.slice.call(input.files || []);
+        if (!files.length) return Promise.resolve();
+        return Promise.all(files.map(compressImageFile)).then(function (compressed) {
+            var dt = new DataTransfer();
+            compressed.forEach(function (f) { dt.items.add(f); });
+            input.files = dt.files;
+        });
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+        var form = document.querySelector('form[enctype="multipart/form-data"]');
+        var imageInput = document.getElementById("id_image");
+        var extraInput = document.getElementById("id_extra_images");
+        if (!form || typeof DataTransfer === "undefined") return;
+
+        form.addEventListener("submit", function (event) {
+            if (form.dataset.compressed === "1") return; // déjà fait, on laisse partir
+            event.preventDefault();
+            var submitBtn = form.querySelector('button[type="submit"]');
+            if (submitBtn) submitBtn.disabled = true;
+            Promise.all([
+                imageInput ? compressFileInput(imageInput) : Promise.resolve(),
+                extraInput ? compressFileInput(extraInput) : Promise.resolve(),
+            ]).finally(function () {
+                form.dataset.compressed = "1";
+                if (submitBtn) submitBtn.disabled = false;
+                form.submit();
+            });
+        });
+    });
+})();
+
 document.addEventListener("DOMContentLoaded", function () {
     var modalEl = document.getElementById("quick-category-modal");
     if (!modalEl) return;
@@ -135,7 +217,7 @@ document.addEventListener("DOMContentLoaded", function () {
     confirmBtn.addEventListener("click", function () {
         var name = nameInput.value.trim();
         if (!name) {
-            errorEl.textContent = "Le nom est obligatoire.";
+            errorEl.textContent = "{% trans 'Le nom est obligatoire.' %}";
             errorEl.classList.remove("d-none");
             return;
         }
@@ -152,7 +234,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 confirmBtn.disabled = false;
                 if (!result.ok) {
                     var errors = result.data.errors;
-                    var message = errors && errors.name ? errors.name[0] : "Impossible de créer la catégorie.";
+                    var message = errors && errors.name ? errors.name[0] : "{% trans 'Impossible de créer la catégorie.' %}";
                     errorEl.textContent = message;
                     errorEl.classList.remove("d-none");
                     return;
@@ -166,7 +248,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(function () {
                 confirmBtn.disabled = false;
-                errorEl.textContent = "Erreur réseau — réessayez.";
+                errorEl.textContent = "{% trans 'Erreur réseau — réessayez.' %}";
                 errorEl.classList.remove("d-none");
             });
     });
@@ -190,7 +272,7 @@ document.addEventListener("DOMContentLoaded", function () {
     unitConfirmBtn.addEventListener("click", function () {
         var name = unitNameInput.value.trim();
         if (!name) {
-            unitErrorEl.textContent = "Le nom est obligatoire.";
+            unitErrorEl.textContent = "{% trans 'Le nom est obligatoire.' %}";
             unitErrorEl.classList.remove("d-none");
             return;
         }
@@ -208,7 +290,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 unitConfirmBtn.disabled = false;
                 if (!result.ok) {
                     var errors = result.data.errors;
-                    var message = errors && errors.name ? errors.name[0] : "Impossible de créer l'unité.";
+                    var message = errors && errors.name ? errors.name[0] : "{% trans "Impossible de créer l'unité." %}";
                     unitErrorEl.textContent = message;
                     unitErrorEl.classList.remove("d-none");
                     return;
@@ -222,7 +304,7 @@ document.addEventListener("DOMContentLoaded", function () {
             })
             .catch(function () {
                 unitConfirmBtn.disabled = false;
-                unitErrorEl.textContent = "Erreur réseau — réessayez.";
+                unitErrorEl.textContent = "{% trans 'Erreur réseau — réessayez.' %}";
                 unitErrorEl.classList.remove("d-none");
             });
     });
