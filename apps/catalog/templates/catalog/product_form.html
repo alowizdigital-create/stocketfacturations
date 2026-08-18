@@ -184,15 +184,27 @@
         form.addEventListener("submit", function (event) {
             if (form.dataset.compressed === "1") return; // déjà fait, on laisse partir
             event.preventDefault();
+            // event.preventDefault() ici empêche le spinner générique posé
+            // sur document (voir base.html) de se déclencher — et form.submit()
+            // plus bas ne redéclenche de toute façon aucun événement "submit"
+            // (contrairement à requestSubmit()). On applique donc nous-mêmes
+            // le même traitement visuel, dès le début de la compression (pas
+            // seulement pendant l'upload réseau) puisque c'est déjà là que le
+            // bouton doit sembler "occupé" pour l'utilisateur.
             var submitBtn = form.querySelector('button[type="submit"]');
-            if (submitBtn) submitBtn.disabled = true;
+            if (submitBtn && !submitBtn.disabled) {
+                submitBtn.dataset.originalHtml = submitBtn.innerHTML;
+                submitBtn.disabled = true;
+                submitBtn.classList.add("btn-loading");
+                submitBtn.innerHTML =
+                    '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> {% trans "Patientez…" %}';
+            }
             Promise.all([
                 imageInput ? compressFileInput(imageInput) : Promise.resolve(),
                 extraInput ? compressFileInput(extraInput) : Promise.resolve(),
             ]).finally(function () {
                 form.dataset.compressed = "1";
-                if (submitBtn) submitBtn.disabled = false;
-                form.submit();
+                form.submit(); // navigation en cours : le bouton reste désactivé jusqu'au rechargement
             });
         });
     });
