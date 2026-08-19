@@ -1,7 +1,9 @@
+import secrets
 import uuid
 
 from django.db import models
 from django.utils import timezone
+from django.utils.translation import gettext_lazy as _
 
 
 class UUIDModel(models.Model):
@@ -59,3 +61,45 @@ class CompteScopedModel(models.Model):
 
     class Meta:
         abstract = True
+
+
+# Exclut les caractères visuellement ambigus (0/O, 1/l/I) — surtout utile
+# si un client recopie le code à la main plutôt que de taper le lien.
+_SHORT_CODE_ALPHABET = "23456789abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ"
+
+
+def _generate_short_code(length=6):
+    return "".join(secrets.choice(_SHORT_CODE_ALPHABET) for _ in range(length))
+
+
+class ShortLink(models.Model):
+    """Redirection code court -> chemin relatif. Génère des liens type
+    /s/aB3xY9/ pour raccourcir les URL envoyées aux clients (WhatsApp) —
+    volontairement auto-hébergé (pas un service tiers) : fonctionne aussi
+    hors-ligne, et n'expose aucune donnée cliente vers un tiers. Générique
+    (pas spécifique aux factures), réutilisable pour tout futur lien à
+    raccourcir."""
+
+    code = models.CharField(max_length=10, unique=True, editable=False)
+    target_path = models.CharField(max_length=500, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _("lien court")
+        verbose_name_plural = _("liens courts")
+
+    def __str__(self):
+        return self.code
+
+    @classmethod
+    def get_or_create_for_path(cls, target_path):
+        existing = cls.objects.filter(target_path=target_path).first()
+        if existing:
+            return existing
+        for _attempt in range(5):
+            obj, created = cls.objects.get_or_create(
+                code=_generate_short_code(), defaults={"target_path": target_path}
+            )
+            if created:
+                return obj
+        raise RuntimeError("Impossible de générer un code court unique.")

@@ -55,6 +55,52 @@ def _show_fatal_error(message):
         pass
 
 
+def _ensure_desktop_shortcut(log):
+    """Crée un raccourci sur le Bureau au premier lancement — l'app est
+    distribuée en --onedir portable (voir scripts/build_exe.ps1), sans
+    installeur classique qui s'en chargerait autrement. Idempotent (ne
+    recrée rien si le raccourci existe déjà, même renommé/déplacé par
+    l'utilisateur puisqu'on ne vérifie que le chemin standard) et jamais
+    bloquant : un échec ici (permissions, PowerShell absent...) ne doit
+    jamais empêcher l'application de démarrer.
+
+    Utilise le Bureau réel de l'utilisateur (résolu par PowerShell via
+    [Environment]::GetFolderPath, pas un simple %USERPROFILE%\\Desktop en
+    dur) — nécessaire car ce dossier peut être redirigé (OneDrive Known
+    Folder Move, Bureau localisé)."""
+    if not getattr(sys, "frozen", False):
+        return
+    try:
+        import subprocess
+
+        exe_path = sys.executable
+        exe_dir = str(Path(exe_path).parent)
+        ps_script = (
+            '$desktop = [Environment]::GetFolderPath("Desktop"); '
+            '$path = Join-Path $desktop "Zweey.lnk"; '
+            'if (-not (Test-Path $path)) { '
+            "$shell = New-Object -ComObject WScript.Shell; "
+            "$sc = $shell.CreateShortcut($path); "
+            f'$sc.TargetPath = "{exe_path}"; '
+            f'$sc.WorkingDirectory = "{exe_dir}"; '
+            f'$sc.IconLocation = "{exe_path},0"; '
+            '$sc.Description = "Zweey - Gestion de stock et facturation"; '
+            "$sc.Save() }"
+        )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-WindowStyle", "Hidden", "-Command", ps_script],
+            timeout=10,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode != 0:
+            log.warning("Raccourci Bureau non créé (code %s) : %s", result.returncode, result.stderr)
+    except Exception:
+        log.exception("Impossible de créer le raccourci sur le Bureau (non bloquant).")
+
+
 def _resolve_port(preferred=8765):
     """Port fixe si disponible (pratique, stable) ; sinon un port libre
     découvert dynamiquement — ne bloque jamais le démarrage pour cette
@@ -75,6 +121,8 @@ def main():
     data_dir, log_file = _bootstrap_logging()
     log = logging.getLogger("desktop.launcher")
     log.info("Démarrage — logs dans %s", log_file)
+
+    _ensure_desktop_shortcut(log)
 
     os.environ["DJANGO_SETTINGS_MODULE"] = "config.settings.offline"
 

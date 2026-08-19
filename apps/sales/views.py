@@ -16,6 +16,7 @@ from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 
 from apps.catalog.models import Product
+from apps.core.models import ShortLink
 from apps.core.permissions import boutique_role_required
 from apps.sync import outbox
 from apps.sync.models import OutboxEntry
@@ -767,18 +768,20 @@ def _public_pdf_url(request, invoice):
     return request.build_absolute_uri(reverse("sales:invoice_public_pdf", args=[invoice.id]))
 
 
+def _shorten(request, target_path):
+    """Remplace un chemin par un lien court /s/<code>/ — les URL publiques
+    envoyées par WhatsApp (UUID inclus) sont sinon assez longues pour
+    alourdir le message. Auto-hébergé (voir ShortLink), pas de service
+    tiers : fonctionne aussi hors-ligne et n'expose rien à un tiers."""
+    link = ShortLink.get_or_create_for_path(target_path)
+    return request.build_absolute_uri(reverse("core:short_link", args=[link.code]))
+
+
 def _public_view_url(request, invoice):
-    """Page web publique (sans connexion) montrant le devis/facture — prix,
-    quantités, total — c'est le lien "détails" envoyé au client."""
-    return request.build_absolute_uri(reverse("sales:invoice_public_view", args=[invoice.id]))
-
-
-def _public_gallery_url(request, invoice):
-    """Page web publique (sans connexion) dédiée aux photos : toutes les
-    images de chaque produit de la commande (photo principale + photos
-    supplémentaires), pas seulement la première — c'est le second lien
-    envoyé au client, séparé de celui des prix."""
-    return request.build_absolute_uri(reverse("sales:invoice_public_gallery", args=[invoice.id]))
+    """Lien unique envoyé au client — ouvre directement le PDF (ticket/A4),
+    pas la page web publique : le client doit voir le document tel quel
+    (mêmes infos que le reçu papier), pas une mise en page web séparée."""
+    return _shorten(request, reverse("sales:invoice_public_pdf", args=[invoice.id]))
 
 
 @login_required
@@ -797,7 +800,6 @@ def invoice_detail(request, invoice_id):
             phone=invoice.client.phone,
             invoice=invoice,
             view_url=_public_view_url(request, invoice),
-            gallery_url=_public_gallery_url(request, invoice),
         )
 
     converted_invoice = None
@@ -835,11 +837,10 @@ def invoice_send_whatsapp(request, invoice_id):
 
     pdf_url = _public_pdf_url(request, invoice)
     view_url = _public_view_url(request, invoice)
-    gallery_url = _public_gallery_url(request, invoice)
     try:
         send_document(
             to=phone,
-            message=build_message(invoice, view_link=view_url, gallery_link=gallery_url),
+            message=build_message(invoice, view_link=view_url),
             document_url=pdf_url,
             filename=f"{invoice.number}.pdf",
         )

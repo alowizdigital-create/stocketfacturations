@@ -2,13 +2,15 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.http import HttpResponse
-from django.shortcuts import redirect, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
 from apps.catalog.models import Product
 from apps.catalog.services import get_effective_low_stock_threshold
 from apps.sales.models import Invoice, Sale
 from apps.stock.models import StockLevel
+
+from .models import ShortLink
 
 
 def service_worker(request):
@@ -19,6 +21,13 @@ def service_worker(request):
     statiques."""
     path = settings.BASE_DIR / "static" / "sw.js"
     return HttpResponse(path.read_text(encoding="utf-8"), content_type="application/javascript")
+
+
+def short_link_redirect(request, code):
+    """Public (pas de connexion requise) — c'est un lien cliqué par un
+    client, jamais par un membre du personnel connecté."""
+    link = get_object_or_404(ShortLink, code=code)
+    return redirect(link.target_path)
 
 
 @login_required

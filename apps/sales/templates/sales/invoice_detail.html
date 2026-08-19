@@ -20,7 +20,11 @@
         </div>
     </div>
     <div class="d-flex gap-2">
+        {% if IS_OFFLINE %}
+        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#pdf-preview-modal"><i class="bi bi-file-earmark-pdf"></i> PDF ({% if invoice.pdf_format == "A4" %}A4{% else %}80 mm{% endif %})</button>
+        {% else %}
         <a href="{% url 'sales:invoice_pdf' invoice.id %}" class="btn btn-outline-secondary" target="_blank"><i class="bi bi-file-earmark-pdf"></i> PDF ({% if invoice.pdf_format == "A4" %}A4{% else %}80 mm{% endif %})</a>
+        {% endif %}
         <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> {% trans "Imprimer" %}</button>
         {% if invoice.type == "DEVIS" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
         <a href="{% url 'sales:devis_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
@@ -37,7 +41,7 @@
             <i class="bi bi-whatsapp"></i> {% trans "Envoyer" %}
         </a>
         {% elif invoice.client %}
-        <span class="btn btn-outline-secondary disabled text-muted" title="{% trans 'Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp' %}">
+        <span class="btn btn-outline-secondary disabled text-muted" title="{% trans "Ajoutez un numéro de téléphone au client pour activer l'envoi WhatsApp" %}">
             <i class="bi bi-whatsapp"></i> {% trans "WhatsApp (pas de téléphone)" %}
         </span>
         {% endif %}
@@ -233,6 +237,85 @@
         </div>
     </div>
 </div>
+{% endif %}
+
+{% if IS_OFFLINE %}
+<!-- Aperçu du PDF dans une modale (plutôt qu'une navigation vers l'URL du
+     PDF) : dans l'app offline (fenêtre pywebview, sans barre d'adresse ni
+     bouton "précédent"), naviguer directement vers l'URL du PDF laissait
+     l'utilisateur bloqué sans moyen de revenir à la facture. Une modale
+     reste sur cette même page — la fermer suffit à revenir à l'app.
+     En ligne, ce n'est pas nécessaire (l'onglet du navigateur suffit),
+     donc ce bloc n'est rendu qu'en offline. -->
+<div class="modal fade" id="pdf-preview-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="height:85vh;">
+            <div class="modal-header">
+                <h5 class="modal-title">{{ invoice.number }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+            </div>
+            <div class="modal-body p-0">
+                <iframe id="pdf-preview-frame" title="{{ invoice.number }}" style="width:100%; height:100%; border:0;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <span class="text-danger small me-auto d-none" id="pdf-download-error">{% trans "Téléchargement impossible — réessayez." %}</span>
+                <button type="button" class="btn btn-outline-secondary" id="pdf-download-btn"><i class="bi bi-download"></i> {% trans "Télécharger" %}</button>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">{% trans "Fermer" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+(function () {
+    var pdfModalEl = document.getElementById("pdf-preview-modal");
+    var pdfFrame = document.getElementById("pdf-preview-frame");
+    var pdfUrl = "{% url 'sales:invoice_pdf' invoice.id %}";
+    // src posé seulement à l'ouverture (pas au chargement de la page) et
+    // retiré à la fermeture : évite de générer le PDF pour rien si le
+    // bouton n'est jamais cliqué, et libère la mémoire de l'iframe ensuite.
+    pdfModalEl.addEventListener("shown.bs.modal", function () {
+        pdfFrame.src = pdfUrl;
+    });
+    pdfModalEl.addEventListener("hidden.bs.modal", function () {
+        pdfFrame.src = "";
+    });
+
+    // Téléchargement via fetch()+Blob plutôt qu'un <a download href="...">
+    // classique : dans la fenêtre pywebview (WebView2), un lien de
+    // téléchargement pointant vers une URL réseau ne déclenchait aucun
+    // enregistrement (silencieusement ignoré). Un blob local, lui,
+    // déclenche fiablement l'enregistrement natif quel que soit le moteur.
+    var downloadBtn = document.getElementById("pdf-download-btn");
+    var downloadError = document.getElementById("pdf-download-error");
+    var filename = "{{ invoice.number }}.pdf";
+    downloadBtn.addEventListener("click", function () {
+        downloadError.classList.add("d-none");
+        downloadBtn.disabled = true;
+        fetch(pdfUrl)
+            .then(function (resp) {
+                if (!resp.ok) throw new Error("HTTP " + resp.status);
+                return resp.blob();
+            })
+            .then(function (blob) {
+                var blobUrl = URL.createObjectURL(blob);
+                var a = document.createElement("a");
+                a.href = blobUrl;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                setTimeout(function () { URL.revokeObjectURL(blobUrl); }, 1000);
+            })
+            .catch(function () {
+                downloadError.classList.remove("d-none");
+            })
+            .finally(function () {
+                downloadBtn.disabled = false;
+            });
+    });
+})();
+</script>
 {% endif %}
 
 <script>
