@@ -481,7 +481,7 @@ class BasePullView(BoutiqueScopedMixin, generics.ListAPIView):
 
 class PullBoutiqueView(BoutiqueScopedMixin, APIView):
     def get(self, request):
-        data = BoutiquePullSerializer(self.boutique).data
+        data = BoutiquePullSerializer(self.boutique, context={"request": request}).data
         data["server_time"] = timezone.now()
         BoutiqueAPIToken.objects.filter(pk=request.auth.pk).update(last_pull_at=timezone.now())
         return Response(data)

@@ -15,7 +15,21 @@ def _pull_boutique(client):
     from apps.tenants.models import Boutique, Compte
 
     data = client.get("pull/tenants/boutique/")
-    Compte.objects.update_or_create(id=data["compte_id"], defaults={"name": data["compte_name"]})
+    compte, _created = Compte.objects.update_or_create(
+        id=data["compte_id"],
+        defaults={
+            "name": data["compte_name"],
+            "email": data.get("compte_email") or "",
+            "phone": data.get("compte_phone") or "",
+        },
+    )
+    # Ne télécharge que si le champ local est encore vide — même
+    # compromis que pour les photos produit (voir _download_product_image) :
+    # couvre le premier pull et rattrape les anciens, mais ne repropage
+    # jamais automatiquement un logo changé en ligne après coup.
+    logo_url = data.get("compte_logo_url")
+    if logo_url and not compte.logo:
+        _download_compte_logo(compte, logo_url)
     Boutique.objects.update_or_create(
         id=data["id"],
         defaults={
@@ -34,6 +48,18 @@ def _pull_boutique(client):
         },
     )
     return data
+
+
+def _download_compte_logo(compte, logo_url):
+    from django.core.files.base import ContentFile
+
+    try:
+        resp = requests.get(logo_url, timeout=15)
+        resp.raise_for_status()
+        filename = logo_url.rsplit("/", 1)[-1].split("?", 1)[0] or f"{compte.id}.jpg"
+        compte.logo.save(filename, ContentFile(resp.content), save=True)
+    except Exception:  # noqa: BLE001 — best-effort, ne bloque jamais l'upsert des métadonnées
+        log.exception("Échec du téléchargement du logo de l'entreprise %s.", compte.id)
 
 
 def _pull_paginated_resource(client, path, since):

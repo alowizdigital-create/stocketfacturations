@@ -163,6 +163,9 @@ class ProductPushSerializer(serializers.Serializer):
 class BoutiquePullSerializer(serializers.ModelSerializer):
     compte_id = serializers.UUIDField(source="compte.id", read_only=True)
     compte_name = serializers.CharField(source="compte.name", read_only=True)
+    compte_email = serializers.EmailField(source="compte.email", read_only=True)
+    compte_phone = serializers.CharField(source="compte.phone", read_only=True)
+    compte_logo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Boutique
@@ -170,8 +173,15 @@ class BoutiquePullSerializer(serializers.ModelSerializer):
             "id", "name", "code", "address", "phone", "devise",
             "country_calling_code", "om_account_name", "om_number",
             "momo_account_name", "momo_number", "is_default",
-            "compte_id", "compte_name", "updated_at",
+            "compte_id", "compte_name", "compte_email", "compte_phone",
+            "compte_logo_url", "updated_at",
         ]
+
+    def get_compte_logo_url(self, obj):
+        if not obj.compte.logo:
+            return None
+        request = self.context.get("request")
+        return request.build_absolute_uri(obj.compte.logo.url) if request else obj.compte.logo.url
 
 
 class UserPullSerializer(serializers.ModelSerializer):
