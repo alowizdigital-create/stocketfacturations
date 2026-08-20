@@ -116,7 +116,7 @@ class _ReceiptWriter:
             image, (PAGE_WIDTH - draw_w) / 2, self.y, width=draw_w, height=draw_h,
             mask="auto", preserveAspectRatio=True,
         )
-        self.y -= 3 * mm
+        self.y -= 6 * mm
 
 
 def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, client_phone, payment_methods):
@@ -139,7 +139,7 @@ def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, 
     n += 3  # remerciement + entreprise
     height = TOP_BOTTOM_PADDING + n * LINE_HEIGHT + separator_count * SEPARATOR_HEIGHT + TITLE_HEIGHT
     if logo_sized is not None:
-        height += logo_sized[2] + 3 * mm
+        height += logo_sized[2] + 6 * mm
     return height
 
 

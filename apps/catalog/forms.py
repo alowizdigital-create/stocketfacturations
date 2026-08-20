@@ -66,7 +66,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "is_active": _("Actif"),
         }
 
-    def __init__(self, *args, compte=None, include_quantity=False, require_image=False, **kwargs):
+    def __init__(self, *args, compte=None, include_quantity=False, **kwargs):
         super().__init__(*args, **kwargs)
         self.compte = compte
         self.fields["extra_images"].help_text = _(
@@ -81,11 +81,6 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             self.order_fields(
                 ["name", "image", "category", "unit", "default_sale_price", "initial_quantity", "is_active"]
             )
-        # Uniquement à la création (voir require_image) — un produit déjà
-        # créé sans photo avant l'introduction de cette règle ne doit pas
-        # être bloqué en modification tant qu'aucune photo n'est ajoutée.
-        if require_image:
-            self.fields["image"].required = True
 
     def clean_initial_quantity(self):
         return self.cleaned_data.get("initial_quantity") or Decimal("0")
