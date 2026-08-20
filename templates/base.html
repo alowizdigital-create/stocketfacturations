@@ -68,6 +68,23 @@
                 <i class="bi bi-speedometer2"></i> {% trans "Tableau de bord" %}
             </a>
 
+            <div class="sidebar-section">{% trans "Ventes" %}</div>
+            <a class="nav-link {% if '/ventes' in request.path %}active{% endif %}" href="{% url 'sales:sale_list' %}">
+                <i class="bi bi-cart-check"></i> {% trans "Ventes" %}
+            </a>
+            <a class="nav-link {% if '/clients' in request.path %}active{% endif %}" href="{% url 'sales:client_list' %}">
+                <i class="bi bi-people"></i> {% trans "Clients" %}
+            </a>
+            <a class="nav-link {% if '/devis' in request.path %}active{% endif %}" href="{% url 'sales:devis_list' %}">
+                <i class="bi bi-file-earmark-text"></i> {% trans "Devis" %}
+            </a>
+            <a class="nav-link {% if '/commandes' in request.path %}active{% endif %}" href="{% url 'sales:commande_list' %}">
+                <i class="bi bi-bag-check"></i> {% trans "Commandes" %}
+            </a>
+            <a class="nav-link {% if request.path == '/factures/' %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
+                <i class="bi bi-receipt"></i> {% trans "Factures" %}
+            </a>
+
             <div class="sidebar-section">{% trans "Catalogue" %}</div>
             <a class="nav-link {% if '/catalogue/produits' in request.path %}active{% endif %}" href="{% url 'catalog:product_list' %}">
                 <i class="bi bi-box-seam"></i> {% trans "Produits" %}
@@ -87,27 +104,11 @@
                 <i class="bi bi-arrow-left-right"></i> {% trans "Mouvements" %}
             </a>
 
-            <div class="sidebar-section">{% trans "Ventes" %}</div>
-            <a class="nav-link {% if '/ventes' in request.path %}active{% endif %}" href="{% url 'sales:sale_list' %}">
-                <i class="bi bi-cart-check"></i> {% trans "Ventes" %}
-            </a>
-            <a class="nav-link {% if '/clients' in request.path %}active{% endif %}" href="{% url 'sales:client_list' %}">
-                <i class="bi bi-people"></i> {% trans "Clients" %}
-            </a>
-            <a class="nav-link {% if '/devis' in request.path %}active{% endif %}" href="{% url 'sales:devis_list' %}">
-                <i class="bi bi-file-earmark-text"></i> {% trans "Devis" %}
-            </a>
-            <a class="nav-link {% if '/commandes' in request.path %}active{% endif %}" href="{% url 'sales:commande_list' %}">
-                <i class="bi bi-bag-check"></i> {% trans "Commandes" %}
-            </a>
-            <a class="nav-link {% if request.path == '/factures/' %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
-                <i class="bi bi-receipt"></i> {% trans "Factures" %}
-            </a>
-
+            
             {% if request.is_compte_admin %}
             <div class="sidebar-section">{% trans "Administration" %}</div>
             <a class="nav-link {% if '/entreprises/equipe' in request.path %}active{% endif %}" href="{% url 'tenants:staff_list' %}">
-                <i class="bi bi-person-badge"></i> {% trans "Éqipe" %}
+                <i class="bi bi-person-badge"></i> {% trans "Équipe" %}
             </a>
             <a class="nav-link {% if '/entreprises/parametres' in request.path %}active{% endif %}" href="{% url 'tenants:company_settings' %}">
                 <i class="bi bi-gear"></i> {% trans "Paramètres" %}

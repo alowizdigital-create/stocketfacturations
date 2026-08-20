@@ -23,13 +23,21 @@ def _pull_boutique(client):
             "phone": data.get("compte_phone") or "",
         },
     )
-    # Ne télécharge que si le champ local est encore vide — même
-    # compromis que pour les photos produit (voir _download_product_image) :
-    # couvre le premier pull et rattrape les anciens, mais ne repropage
-    # jamais automatiquement un logo changé en ligne après coup.
+    # Contrairement aux photos produit (qui ne se re-téléchargent jamais,
+    # lacune acceptée vu le volume), le logo est un fichier unique par
+    # entreprise : le re-télécharger à chaque changement reste bon marché,
+    # et les paramètres d'entreprise doivent refléter fidèlement ce qui a
+    # été modifié en ligne. Comparaison par nom de fichier (le nommage
+    # Django change dès que le contenu change) pour éviter de re-tirer un
+    # logo inchangé à chaque cycle de synchro.
     logo_url = data.get("compte_logo_url")
-    if logo_url and not compte.logo:
+    remote_logo_name = logo_url.rsplit("/", 1)[-1].split("?", 1)[0] if logo_url else None
+    local_logo_name = compte.logo.name.rsplit("/", 1)[-1] if compte.logo else None
+    if remote_logo_name and remote_logo_name != local_logo_name:
         _download_compte_logo(compte, logo_url)
+    elif not remote_logo_name and compte.logo:
+        # Logo retiré en ligne — reflété localement aussi.
+        compte.logo.delete(save=True)
     Boutique.objects.update_or_create(
         id=data["id"],
         defaults={
