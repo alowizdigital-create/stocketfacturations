@@ -8,6 +8,7 @@ from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.images import ensure_webp
 from apps.core.models import TimeStampedModel, UUIDModel
 
 
@@ -30,6 +31,10 @@ class Compte(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        ensure_webp(self.logo)
+        super().save(*args, **kwargs)
 
 
 class Boutique(UUIDModel, TimeStampedModel):

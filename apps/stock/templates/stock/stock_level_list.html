@@ -3,10 +3,11 @@
 {% block title %}{% trans "Stock" %}{% endblock %}
 {% block content %}
 <div class="page-header">
-    <!-- <div>
-        <h1>Niveaux de stock</h1>
-        <div class="text-muted">{{ request.boutique.name }}</div>
-    </div> -->
+    <div>
+        {% if low_stock_only %}
+        <div class="text-muted">{% trans "Produits en stock bas" %} <a href="{% url 'stock:stock_level_list' %}" class="ms-1">{% trans "(voir tout le stock)" %}</a></div>
+        {% endif %}
+    </div>
     <div class="d-flex gap-2">
         <a href="{% url 'stock:movement_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau mouvement" %}</a>
         <a href="{% url 'stock:movement_history' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> {% trans "Historique" %}</a>
@@ -14,6 +15,7 @@
 </div>
 
 <form method="get" class="mb-3">
+    {% if low_stock_only %}<input type="hidden" name="low_stock" value="1">{% endif %}
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
@@ -21,7 +23,7 @@
         </div>
         <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'stock:stock_level_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'stock:stock_level_list' %}{% if low_stock_only %}?low_stock=1{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>

@@ -51,7 +51,8 @@ def test_push_product_image_saves_file_on_product(api_client, boutique, product)
     assert resp.status_code == 200
     product.refresh_from_db()
     assert product.image
-    assert product.image.name.endswith(".png")
+    # Product.save() convertit systématiquement en WebP (voir apps.core.images).
+    assert product.image.name.endswith(".webp")
 
 
 def test_push_product_image_missing_file_is_rejected(api_client, boutique, product):
@@ -141,8 +142,9 @@ def test_upsert_product_downloads_image_when_local_field_empty(boutique):
     assert product.image
     # Le nom de fichier peut être suffixé par le storage en cas de collision
     # avec un fichier déjà présent d'un run précédent — seul le motif du
-    # nom d'origine importe ici, pas l'égalité stricte.
-    assert "photo" in product.image.name and product.image.name.endswith(".jpg")
+    # nom d'origine importe ici, pas l'égalité stricte. Converti en WebP
+    # avant le premier write (voir _download_product_image).
+    assert "photo" in product.image.name and product.image.name.endswith(".webp")
 
 
 def test_upsert_product_does_not_redownload_when_image_already_present(boutique):

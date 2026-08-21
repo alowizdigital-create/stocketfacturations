@@ -5,11 +5,19 @@
 <div class="page-header">
     <div>
         <h1>{% trans "Factures" %}</h1>
+        {% if unpaid_only %}
+        <div class="text-muted">
+            {% trans "Factures non soldées" %}
+            <a href="{% url 'sales:invoice_list' %}" class="ms-1">{% trans "(voir toutes les factures)" %}</a>
+        </div>
+        {% else %}
         <div class="text-muted">{% trans "Générées depuis une vente confirmée (voir Ventes)." %}</div>
+        {% endif %}
     </div>
 </div>
 
 <form method="get" class="mb-3">
+    {% if unpaid_only %}<input type="hidden" name="unpaid" value="1">{% endif %}
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
@@ -17,7 +25,7 @@
         </div>
         <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'sales:invoice_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        <a href="{% url 'sales:invoice_list' %}{% if unpaid_only %}?unpaid=1{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>

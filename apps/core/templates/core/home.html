@@ -11,40 +11,40 @@
 
 <div class="row g-3 mb-4">
     <div class="col-6 col-lg-3">
-        <div class="stat-card">
+        <a href="{% url 'sales:sale_list' %}?period=month" class="stat-card text-decoration-none text-reset">
             <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
             <div>
                 <div class="stat-value">{{ ca_mois }} {{ request.boutique.devise }}</div>
                 <div class="stat-label">{% trans "Chiffre d'affaires du mois" %}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="stat-card">
-            <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
+        <a href="{% url 'sales:sale_list' %}?period=today" class="stat-card text-decoration-none text-reset">
+            <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
             <div>
-                <div class="stat-value">{{ nb_produits }}</div>
-                <div class="stat-label">{% trans "Produits actifs" %}</div>
+                <div class="stat-value">{{ ca_jour }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Chiffre d'affaires de la journée" %}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="stat-card">
+        <a href="{% url 'sales:invoice_list' %}?unpaid=1" class="stat-card text-decoration-none text-reset">
             <div class="stat-icon"><i class="bi bi-receipt"></i></div>
             <div>
                 <div class="stat-value">{{ nb_factures_impayees }}</div>
                 <div class="stat-label">{% trans "Factures non soldées" %}</div>
             </div>
-        </div>
+        </a>
     </div>
     <div class="col-6 col-lg-3">
-        <div class="stat-card {% if nb_stock_bas %}stat-warn{% endif %}">
+        <a href="{% url 'stock:stock_level_list' %}?low_stock=1" class="stat-card text-decoration-none text-reset {% if nb_stock_bas %}stat-warn{% endif %}">
             <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
             <div>
                 <div class="stat-value">{{ nb_stock_bas }}</div>
                 <div class="stat-label">{% trans "Produits en stock bas" %}</div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
 

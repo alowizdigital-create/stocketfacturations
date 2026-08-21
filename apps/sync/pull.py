@@ -59,13 +59,20 @@ def _pull_boutique(client):
 
 
 def _download_compte_logo(compte, logo_url):
-    from django.core.files.base import ContentFile
+    from apps.core.images import convert_image_bytes_to_webp
 
     try:
         resp = requests.get(logo_url, timeout=15)
         resp.raise_for_status()
         filename = logo_url.rsplit("/", 1)[-1].split("?", 1)[0] or f"{compte.id}.jpg"
-        compte.logo.save(filename, ContentFile(resp.content), save=True)
+        # Converti ici (avant le premier write) plutôt que de compter sur
+        # Compte.save() : le serveur source a lui-même déjà converti son
+        # logo en WebP, donc c'est surtout un filet de sécurité — mais
+        # laisser Compte.save() s'en charger après coup écrirait d'abord
+        # le fichier tel quel puis le remplacerait, laissant un fichier
+        # orphelin dans le stockage.
+        webp_name, content = convert_image_bytes_to_webp(resp.content, filename)
+        compte.logo.save(webp_name, content, save=True)
     except Exception:  # noqa: BLE001 — best-effort, ne bloque jamais l'upsert des métadonnées
         log.exception("Échec du téléchargement du logo de l'entreprise %s.", compte.id)
 
@@ -207,13 +214,16 @@ def _upsert_product(items, compte_id):
 
 
 def _download_product_image(product, image_url):
-    from django.core.files.base import ContentFile
+    from apps.core.images import convert_image_bytes_to_webp
 
     try:
         resp = requests.get(image_url, timeout=15)
         resp.raise_for_status()
         filename = image_url.rsplit("/", 1)[-1].split("?", 1)[0] or f"{product.id}.jpg"
-        product.image.save(filename, ContentFile(resp.content), save=True)
+        # Voir _download_compte_logo : converti ici pour éviter un fichier
+        # orphelin (write initial non-WebP puis remplacement par Product.save()).
+        webp_name, content = convert_image_bytes_to_webp(resp.content, filename)
+        product.image.save(webp_name, content, save=True)
     except Exception:  # noqa: BLE001 — best-effort, ne bloque jamais l'upsert des métadonnées
         log.exception("Échec du téléchargement de la photo du produit %s.", product.id)
 

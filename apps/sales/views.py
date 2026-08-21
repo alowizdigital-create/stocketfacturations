@@ -12,6 +12,7 @@ from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 
@@ -340,12 +341,24 @@ def _extract_lines_data(formset, require_changed=True):
 @login_required
 def sale_list(request):
     query = request.GET.get("q", "").strip()
+    # period=today/month : liens directs depuis les cartes de chiffre
+    # d'affaires du tableau de bord (apps.core.views.home) — mêmes
+    # critères (status=CONFIRMEE, plage de sale_date) que les totaux
+    # affichés, pour que le montant et la liste correspondent exactement.
+    period = request.GET.get("period") or ""
     sales = Sale.objects.filter(boutique=request.boutique).select_related("client", "invoice")
+    if period in ("today", "month"):
+        today = timezone.localdate()
+        sales = sales.filter(status=Sale.CONFIRMEE)
+        if period == "today":
+            sales = sales.filter(sale_date=today)
+        else:
+            sales = sales.filter(sale_date__gte=today.replace(day=1))
     if query:
         sales = sales.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
-    if not query:
+    if not query and not period:
         sales = sales[:10]
-    return render(request, "sales/sale_list.html", {"sales": sales, "query": query})
+    return render(request, "sales/sale_list.html", {"sales": sales, "query": query, "period": period})
 
 
 def _parse_cart(request):
@@ -515,15 +528,25 @@ def invoice_list(request):
     (voir devis_list), ce sont deux documents distincts pour l'utilisateur
     même s'ils partagent le même modèle Invoice en base."""
     query = request.GET.get("q", "").strip()
+    # unpaid=1 : lien direct depuis la carte "Factures non soldées" du
+    # tableau de bord (apps.core.views.home) — mêmes statuts que le
+    # comptage nb_factures_impayees, pour que le chiffre et la liste
+    # correspondent exactement.
+    unpaid_only = request.GET.get("unpaid") == "1"
     invoices = (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.FACTURE)
         .select_related("client")
     )
+    if unpaid_only:
+        invoices = invoices.filter(status__in=[Invoice.VALIDEE, Invoice.PARTIELLEMENT_PAYEE])
     if query:
         invoices = invoices.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
-    if not query:
+    if not query and not unpaid_only:
         invoices = invoices[:10]
-    return render(request, "sales/invoice_list.html", {"invoices": invoices, "query": query})
+    return render(
+        request, "sales/invoice_list.html",
+        {"invoices": invoices, "query": query, "unpaid_only": unpaid_only},
+    )
 
 
 @login_required

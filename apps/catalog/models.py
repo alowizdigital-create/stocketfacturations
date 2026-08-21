@@ -1,6 +1,7 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.images import ensure_webp
 from apps.core.models import CompteScopedModel, TimeStampedModel, UUIDModel
 from apps.tenants.models import Boutique
 
@@ -65,6 +66,10 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
     def __str__(self):
         return self.name
 
+    def save(self, *args, **kwargs):
+        ensure_webp(self.image)
+        super().save(*args, **kwargs)
+
 
 class ProductImage(UUIDModel, TimeStampedModel):
     """Photo supplémentaire d'un produit. `Product.image` reste la photo de
@@ -84,6 +89,10 @@ class ProductImage(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.product.name} — photo {self.position + 1}"
+
+    def save(self, *args, **kwargs):
+        ensure_webp(self.image)
+        super().save(*args, **kwargs)
 
 
 class ProductBoutiquePrice(UUIDModel, TimeStampedModel):

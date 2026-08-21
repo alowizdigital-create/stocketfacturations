@@ -5,7 +5,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.catalog.models import Product
 from apps.catalog.services import get_effective_low_stock_threshold
 from apps.sales.models import Invoice, Sale
 from apps.stock.models import StockLevel
@@ -51,7 +50,14 @@ def home(request):
         or 0
     )
 
-    nb_produits = Product.objects.filter(compte=request.compte, is_active=True).count()
+    ca_jour = (
+        Sale.objects.filter(
+            boutique=boutique,
+            status=Sale.CONFIRMEE,
+            sale_date=today,
+        ).aggregate(total=Sum("total_ttc"))["total"]
+        or 0
+    )
 
     nb_factures_impayees = Invoice.objects.filter(
         boutique=boutique,
@@ -72,7 +78,7 @@ def home(request):
 
     context = {
         "ca_mois": ca_mois,
-        "nb_produits": nb_produits,
+        "ca_jour": ca_jour,
         "nb_factures_impayees": nb_factures_impayees,
         "nb_stock_bas": nb_stock_bas,
         "dernieres_ventes": dernieres_ventes,

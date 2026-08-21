@@ -140,6 +140,11 @@ a:hover { color: var(--brand-dark); }
   display: flex;
   align-items: center;
   gap: 1rem;
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+a.stat-card:hover, a.stat-card:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0,0,0,.09);
 }
 .stat-card .stat-icon {
   width: 44px; height: 44px;

@@ -1738,3 +1738,21 @@ msgstr "Unit"
 
 msgid "Vente"
 msgstr "Sale"
+
+msgid "Chiffre d'affaires de la journée"
+msgstr "Today's revenue"
+
+msgid "(voir toutes les factures)"
+msgstr "(see all invoices)"
+
+msgid "(voir toutes les ventes)"
+msgstr "(see all sales)"
+
+msgid "Ventes confirmées aujourd'hui"
+msgstr "Sales confirmed today"
+
+msgid "Ventes confirmées ce mois-ci"
+msgstr "Sales confirmed this month"
+
+msgid "(voir tout le stock)"
+msgstr "(see all stock)"

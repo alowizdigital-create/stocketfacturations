@@ -22,17 +22,28 @@ MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 @login_required
 def stock_level_list(request):
     query = request.GET.get("q", "").strip()
+    # low_stock=1 : lien direct depuis la carte "Produits en stock bas" du
+    # tableau de bord (apps.core.views.home) — le seuil étant calculé en
+    # Python par produit (pas un simple filtre SQL), il faut évaluer tous
+    # les niveaux avant de filtrer, donc pas de troncature à 10 ici.
+    low_stock_only = request.GET.get("low_stock") == "1"
     levels = StockLevel.objects.filter(boutique=request.boutique).select_related("product")
     if query:
         levels = levels.filter(Q(product__name__icontains=query) | Q(product__sku__icontains=query))
     levels = levels.order_by("product__name")
-    if not query:
+    if not query and not low_stock_only:
         levels = levels[:10]
     rows = []
     for level in levels:
         threshold = get_effective_low_stock_threshold(level.product, request.boutique)
-        rows.append({"level": level, "threshold": threshold, "is_low": level.quantity <= threshold})
-    return render(request, "stock/stock_level_list.html", {"rows": rows, "query": query})
+        is_low = level.quantity <= threshold
+        if low_stock_only and not is_low:
+            continue
+        rows.append({"level": level, "threshold": threshold, "is_low": is_low})
+    return render(
+        request, "stock/stock_level_list.html",
+        {"rows": rows, "query": query, "low_stock_only": low_stock_only},
+    )
 
 
 @login_required
