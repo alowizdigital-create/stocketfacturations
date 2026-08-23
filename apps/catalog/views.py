@@ -133,7 +133,7 @@ def product_list(request):
     # recherche est le moyen de retrouver un produit plus ancien (voir aussi
     # category_list/unit_list/client_list/... même patron).
     if not query:
-        products = products[:10]
+        products = products[:6]
     products = list(products)
 
     stock_by_product = {
@@ -281,7 +281,7 @@ def category_list(request):
         categories = categories.filter(Q(name__icontains=query))
     categories = categories.order_by("-created_at")
     if not query:
-        categories = categories[:10]
+        categories = categories[:6]
     return render(request, "catalog/category_list.html", {"categories": categories, "query": query})
 
 
