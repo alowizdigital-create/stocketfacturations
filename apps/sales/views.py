@@ -573,7 +573,7 @@ def commande_list(request):
     if query:
         commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
     if not query:
-        commandes = commandes[:10]
+        commandes = commandes[:100]
     return render(request, "sales/commande_list.html", {"commandes": commandes, "query": query})
 
 
