@@ -136,6 +136,22 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     PDF_FORMAT_A4 = "A4"
     PDF_FORMAT_CHOICES = [(PDF_FORMAT_80MM, _("Ticket 80mm")), (PDF_FORMAT_A4, "A4")]
 
+    # Suivi de livraison — ne concerne que les commandes (type=COMMANDE) :
+    # indépendant du statut paiement/facturation ci-dessus, une commande
+    # peut être en attente/en préparation/livrée quel que soit son statut
+    # de règlement. Champ porté par Invoice (comme note/pdf_format) plutôt
+    # qu'un modèle séparé, pour rester simple. Trois niveaux : EN_ATTENTE
+    # (venant d'être passée, pas encore commencée) -> EN_COURS (en cours
+    # de préparation) -> LIVREE (remise au client).
+    EN_ATTENTE = "EN_ATTENTE"
+    EN_COURS = "EN_COURS"
+    LIVREE = "LIVREE"
+    DELIVERY_STATUS_CHOICES = [
+        (EN_ATTENTE, _("En attente")),
+        (EN_COURS, _("En cours")),
+        (LIVREE, _("Livrée")),
+    ]
+
     client = models.ForeignKey(
         Client, on_delete=models.SET_NULL, null=True, blank=True, related_name="invoices"
     )
@@ -160,6 +176,14 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     )
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"
+    )
+    delivery_status = models.CharField(
+        _("statut de livraison"), max_length=15, choices=DELIVERY_STATUS_CHOICES, default=EN_ATTENTE,
+    )
+    delivered_at = models.DateTimeField(_("livrée le"), null=True, blank=True)
+    delivered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="commandes_livrees",
     )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="invoices"

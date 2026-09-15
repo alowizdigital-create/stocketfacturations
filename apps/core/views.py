@@ -65,6 +65,15 @@ def home(request):
         status__in=[Invoice.VALIDEE, Invoice.PARTIELLEMENT_PAYEE],
     ).count()
 
+    # Commandes en attente ou en préparation, pas encore remises au client
+    # (voir apps.sales.services.mark_commande_delivered) — les deux
+    # premiers niveaux de Invoice.DELIVERY_STATUS_CHOICES. Une commande
+    # annulée ne compte jamais comme "à livrer".
+    nb_commandes_non_livrees = Invoice.objects.filter(
+        boutique=boutique,
+        type=Invoice.COMMANDE,
+    ).exclude(delivery_status=Invoice.LIVREE).exclude(status=Invoice.ANNULEE).count()
+
     levels = StockLevel.objects.filter(boutique=boutique).select_related("product")
     nb_stock_bas = sum(
         1
@@ -80,6 +89,7 @@ def home(request):
         "ca_mois": ca_mois,
         "ca_jour": ca_jour,
         "nb_factures_impayees": nb_factures_impayees,
+        "nb_commandes_non_livrees": nb_commandes_non_livrees,
         "nb_stock_bas": nb_stock_bas,
         "dernieres_ventes": dernieres_ventes,
     }

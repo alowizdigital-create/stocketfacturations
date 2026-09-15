@@ -616,15 +616,38 @@ def devis_list(request):
 @login_required
 def commande_list(request):
     query = request.GET.get("q", "").strip()
-    commandes = (
+    # Plus de vue "Toutes" : la liste est toujours classée sur l'un des
+    # trois statuts de livraison (voir Invoice.DELIVERY_STATUS_CHOICES),
+    # "en attente" par défaut — c'est l'onglet le plus actionnable. Une
+    # commande annulée ne compte dans aucun des trois, plus rien à
+    # préparer/livrer pour elle.
+    delivery_filter = request.GET.get("livraison") or Invoice.EN_ATTENTE
+    if delivery_filter not in (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.LIVREE):
+        delivery_filter = Invoice.EN_ATTENTE
+
+    base = (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.COMMANDE)
-        .select_related("client")
+        .exclude(status=Invoice.ANNULEE)
+        .select_related("client", "delivered_by")
     )
+    delivery_counts = {
+        Invoice.EN_ATTENTE: base.filter(delivery_status=Invoice.EN_ATTENTE).count(),
+        Invoice.EN_COURS: base.filter(delivery_status=Invoice.EN_COURS).count(),
+        Invoice.LIVREE: base.filter(delivery_status=Invoice.LIVREE).count(),
+    }
+
+    commandes = base.filter(delivery_status=delivery_filter)
     if query:
         commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
     if not query:
         commandes = commandes[:100]
-    return render(request, "sales/commande_list.html", {"commandes": commandes, "query": query})
+    return render(
+        request, "sales/commande_list.html",
+        {
+            "commandes": commandes, "query": query,
+            "delivery_filter": delivery_filter, "delivery_counts": delivery_counts,
+        },
+    )
 
 
 def _preselected_products_for_formset(formset, compte):
@@ -989,11 +1012,13 @@ def devis_generate_invoice(request, invoice_id):
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
 def commande_generate_invoice(request, invoice_id):
-    """Valide une commande en un seul clic : contrairement au devis, pas de
-    choix paiement complet/acompte ici — l'acompte éventuel a déjà été
-    saisi séparément via le formulaire de paiement générique (voir
-    payment_create) et sera reporté automatiquement sur la facture par
-    services.convert_commande_to_invoice()."""
+    """Valide une commande : l'acompte éventuel déjà saisi (formulaire de
+    paiement générique, voir payment_create) est reporté sur la facture par
+    services.convert_commande_to_invoice(), puis on demande — comme pour
+    une vente ou un devis — si le client règle le solde restant maintenant
+    ou ne fait (encore) qu'un acompte. La facture est marquée payée
+    seulement si le solde est réellement couvert ; sinon elle reste
+    partiellement payée, exactement comme une vente à acompte."""
     commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
     if commande.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
         messages.error(request, _("Cette commande ne peut plus être validée."))
@@ -1014,13 +1039,67 @@ def commande_generate_invoice(request, invoice_id):
         return redirect("sales:invoice_detail", invoice_id=commande.id)
 
     if request.method == "POST":
+        payment_type = request.POST.get("payment_type", "full")
+        try:
+            deposit_amount = Decimal(request.POST.get("deposit_amount") or "0")
+        except InvalidOperation:
+            deposit_amount = Decimal("0")
+
         invoice = services.convert_commande_to_invoice(commande, created_by=request.user)
+
+        # Le solde restant (pas invoice.total_ttc) : un acompte déjà versé
+        # sur la commande a pu être reporté sur la facture ci-dessus, il ne
+        # faut pas redemander de payer une seconde fois cette part-là.
+        remaining = invoice.balance_due
+        paid_amount = min(deposit_amount, remaining) if payment_type == "partial" else remaining
+
+        if paid_amount > 0:
+            services.record_payment(
+                invoice, amount=paid_amount, method=Payment.ESPECES, created_by=request.user,
+            )
+
         messages.success(
             request,
             _("%(invoice)s générée depuis %(commande)s.") % {"invoice": invoice.number, "commande": commande.number},
         )
         return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
+    return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def commande_mark_delivered(request, invoice_id):
+    """Marque la commande comme livrée — indépendant de sa facturation
+    (voir services.mark_commande_delivered) : sert à suivre la
+    préparation/livraison, pas le paiement. Enregistre qui a fait la
+    livraison, pour traçabilité."""
+    commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
+    if request.method == "POST":
+        services.mark_commande_delivered(commande, delivered_by=request.user)
+        messages.success(request, _("%(commande)s marquée comme livrée.") % {"commande": commande.number})
+    return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def commande_mark_en_cours(request, invoice_id):
+    """Fait passer la commande en préparation — depuis 'en attente' (on
+    commence à la préparer, ouvert à tout le personnel habilité) ou pour
+    annuler un marquage 'livrée' fait par erreur (réservé aux
+    administrateurs de l'entreprise : une fois la commande remise au
+    client, revenir en arrière ne doit pas être à la portée de n'importe
+    quel caissier/gérant). Voir services.mark_commande_en_cours."""
+    commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
+    if request.method == "POST":
+        if commande.delivery_status == Invoice.LIVREE and not request.is_compte_admin:
+            messages.error(
+                request,
+                _("Seul un administrateur de l'entreprise peut annuler une commande marquée comme livrée."),
+            )
+            return redirect("sales:invoice_detail", invoice_id=commande.id)
+        services.mark_commande_en_cours(commande)
+        messages.success(request, _("%(commande)s remise en cours de préparation.") % {"commande": commande.number})
     return redirect("sales:invoice_detail", invoice_id=commande.id)
 
 

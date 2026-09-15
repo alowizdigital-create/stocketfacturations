@@ -6,7 +6,23 @@
     <a href="{% url 'sales:commande_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle commande" %}</a>
 </div>
 
+<!-- Trois onglets fixes sur Invoice.delivery_status (voir apps.sales.views.commande_list)
+     — pas de vue "Toutes" : chaque commande (non annulée) est toujours
+     classée dans exactement l'un des trois. -->
+<div class="d-flex gap-2 mb-3">
+    <a href="?livraison=EN_ATTENTE" class="btn btn-sm {% if delivery_filter == 'EN_ATTENTE' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {% trans "En attente" %} <span class="badge-status badge-gray ms-1">{{ delivery_counts.EN_ATTENTE }}</span>
+    </a>
+    <a href="?livraison=EN_COURS" class="btn btn-sm {% if delivery_filter == 'EN_COURS' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {% trans "En cours" %} <span class="badge-status badge-orange ms-1">{{ delivery_counts.EN_COURS }}</span>
+    </a>
+    <a href="?livraison=LIVREE" class="btn btn-sm {% if delivery_filter == 'LIVREE' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {% trans "Livrées" %} <span class="badge-status badge-green ms-1">{{ delivery_counts.LIVREE }}</span>
+    </a>
+</div>
+
 <form method="get" class="mb-3">
+    <input type="hidden" name="livraison" value="{{ delivery_filter }}">
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
@@ -14,7 +30,7 @@
         </div>
         <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
-        <a href="{% url 'sales:commande_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        <a href="?livraison={{ delivery_filter }}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
     </div>
 </form>
@@ -40,7 +56,7 @@
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune commande pour le moment." %}</td></tr>
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune commande dans cette catégorie." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

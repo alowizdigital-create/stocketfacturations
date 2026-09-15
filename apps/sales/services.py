@@ -254,7 +254,15 @@ def convert_commande_to_invoice(commande, created_by=None):
     porter un acompte au moment de la conversion — ces paiements sont
     reportés sur la facture générée (pas dupliqués) pour que le "reste à
     payer" soit correct dès l'affichage. Idempotente : renvoie la facture
-    déjà générée si l'opération a déjà eu lieu."""
+    déjà générée si l'opération a déjà eu lieu.
+
+    Crée aussi une Sale(status=CONFIRMEE) liée à cette facture : le
+    chiffre d'affaires du jour/mois (apps.core.views.home, sales:sale_list)
+    ne compte que les ventes confirmées, pas les factures — sans cette
+    Sale, une commande validée n'apparaissait jamais dans le CA. Le stock
+    est déjà déduit ci-dessous (mouvements rattachés à la facture) ; cette
+    Sale ne doit donc pas repasser par confirm_sale(), qui le déduirait une
+    seconde fois."""
 
     if commande.type != Invoice.COMMANDE:
         raise ValueError("Seule une commande peut être convertie en facture.")
@@ -304,12 +312,73 @@ def convert_commande_to_invoice(commande, created_by=None):
                 reason=f"Facture {invoice.number} (commande {commande.number})",
             )
 
+    sale = Sale.objects.create(
+        boutique=commande.boutique,
+        client=commande.client,
+        number=Sale.generate_number(commande.boutique, issue_date),
+        status=Sale.CONFIRMEE,
+        sale_date=issue_date,
+        currency=commande.currency,
+        subtotal_ht=commande.subtotal_ht,
+        total_tva=commande.total_tva,
+        total_ttc=commande.total_ttc,
+        invoice=invoice,
+        created_by=created_by,
+    )
+    for line in commande.lines.all():
+        SaleLine.objects.create(
+            sale=sale,
+            product=line.product,
+            description=line.description,
+            quantity=line.quantity,
+            unit_price_ht=line.unit_price_ht,
+            tva_rate=line.tva_rate,
+            line_total_ht=line.line_total_ht,
+            line_total_ttc=line.line_total_ttc,
+            position=line.position,
+        )
+
     commande.payments.update(invoice=invoice)
     _apply_payment_status(invoice)
 
     commande.status = Invoice.CONVERTIE
     commande.save(update_fields=["status", "updated_at"])
     return invoice
+
+
+def mark_commande_delivered(commande, delivered_by=None):
+    """Marque une commande comme livrée — indépendant du statut
+    facturation/paiement (voir Invoice.delivery_status) : le client a
+    physiquement reçu sa commande, que celle-ci soit déjà convertie en
+    facture ou non. Idempotent : ne fait rien si déjà livrée, pour ne pas
+    écraser delivered_at/delivered_by d'un premier marquage."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être marquée comme livrée.")
+    if commande.delivery_status == Invoice.LIVREE:
+        return commande
+
+    commande.delivery_status = Invoice.LIVREE
+    commande.delivered_at = timezone.now()
+    commande.delivered_by = delivered_by
+    commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
+    return commande
+
+
+def mark_commande_en_cours(commande):
+    """Fait passer la commande en préparation : soit départ depuis
+    EN_ATTENTE (on commence à la préparer), soit annulation d'un marquage
+    'livrée' fait par erreur (delivered_at/delivered_by sont alors
+    effacés — un nouveau marquage livré les réécrira proprement)."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être mise en cours.")
+
+    commande.delivery_status = Invoice.EN_COURS
+    commande.delivered_at = None
+    commande.delivered_by = None
+    commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
+    return commande
 
 
 def _apply_payment_status(invoice):

@@ -12,6 +12,14 @@
                 {% else %}badge-orange{% endif %}">
                 {{ invoice.get_status_display }}
             </span>
+            {% if invoice.type == "COMMANDE" %}
+            <span class="badge-status
+                {% if invoice.delivery_status == 'LIVREE' %}badge-green
+                {% elif invoice.delivery_status == 'EN_COURS' %}badge-orange
+                {% else %}badge-gray{% endif %}">
+                {{ invoice.get_delivery_status_display }}
+            </span>
+            {% endif %}
         </h1>
         {% trans "Client de passage" as walk_in_client %}
         <div class="text-muted">
@@ -46,10 +54,9 @@
         </span>
         {% endif %}
         {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
-        <form method="post" action="{% url 'sales:commande_generate_invoice' invoice.id %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> {% trans "Valider la commande" %}</button>
-        </form>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#commande-payment-modal">
+            <i class="bi bi-check2-circle"></i> {% trans "Valider la commande" %}
+        </button>
         {% elif invoice.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
             {% csrf_token %}
@@ -76,9 +83,42 @@
     <div class="card-app-header">{% trans "Informations de la commande" %}</div>
     <div class="card-app-body">
         <div class="row g-2">
-            <div class="col-sm-4"><span class="text-muted small">{% trans "Client" %}</span><br>{{ invoice.client|default:walk_in_client }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %}</div>
-            <div class="col-sm-4"><span class="text-muted small">{% trans "Date" %}</span><br>{{ invoice.issue_date|date:"d/m/Y" }}</div>
-            <div class="col-sm-4"><span class="text-muted small">{% trans "Devise" %}</span><br>{{ invoice.currency }}</div>
+            <div class="col-sm-3"><span class="text-muted small">{% trans "Client" %}</span><br>{{ invoice.client|default:walk_in_client }}{% if invoice.client.phone %} ({{ invoice.client.phone }}){% endif %}</div>
+            <div class="col-sm-3"><span class="text-muted small">{% trans "Date" %}</span><br>{{ invoice.issue_date|date:"d/m/Y" }}</div>
+            <div class="col-sm-3"><span class="text-muted small">{% trans "Devise" %}</span><br>{{ invoice.currency }}</div>
+            <div class="col-sm-3">
+                <span class="text-muted small">{% trans "Livraison" %}</span><br>
+                {% if invoice.delivery_status == "LIVREE" %}
+                <span class="text-success fw-semibold">
+                    {% blocktrans trimmed with date=invoice.delivered_at|date:"d/m/Y H:i" %}Livrée le {{ date }}{% endblocktrans %}
+                </span>
+                {% if invoice.delivered_by %}
+                <br><span class="text-muted small">{% blocktrans trimmed with name=invoice.delivered_by.get_full_name|default:invoice.delivered_by.email %}par {{ name }}{% endblocktrans %}</span>
+                {% endif %}
+                {% if request.is_compte_admin %}
+                <form method="post" action="{% url 'sales:commande_mark_en_cours' invoice.id %}" class="mt-1">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-link btn-sm p-0 text-muted">{% trans "Annuler (remettre en cours)" %}</button>
+                </form>
+                {% endif %}
+                {% elif invoice.delivery_status == "EN_COURS" %}
+                <span class="text-muted">{% trans "En cours de préparation" %}</span>
+                {% if invoice.status != "ANNULEE" %}
+                <form method="post" action="{% url 'sales:commande_mark_delivered' invoice.id %}" class="mt-1">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-box-seam"></i> {% trans "Marquer comme livrée" %}</button>
+                </form>
+                {% endif %}
+                {% else %}
+                <span class="text-muted">{% trans "En attente" %}</span>
+                {% if invoice.status != "ANNULEE" %}
+                <form method="post" action="{% url 'sales:commande_mark_en_cours' invoice.id %}" class="mt-1">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass-split"></i> {% trans "Commencer la préparation" %}</button>
+                </form>
+                {% endif %}
+                {% endif %}
+            </div>
         </div>
         {% if invoice.note %}
         <hr>
@@ -239,6 +279,50 @@
 </div>
 {% endif %}
 
+{% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
+<form method="post" action="{% url 'sales:commande_generate_invoice' invoice.id %}" id="commande-invoice-form">
+    {% csrf_token %}
+    <input type="hidden" name="payment_type" id="commande-payment-type" value="full">
+    <input type="hidden" name="deposit_amount" id="commande-deposit-amount" value="0">
+</form>
+
+<!-- Comme pour un devis (voir #devis-payment-modal) : à la validation, on
+     demande si le client règle le solde maintenant ou ne fait qu'un
+     acompte — le solde ici est invoice.balance_due (le total de la
+     commande moins un acompte déjà versé à la création), pas le total
+     complet, pour ne pas redemander de payer une part déjà encaissée. -->
+<div class="modal fade" id="commande-payment-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Valider la commande" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>{% blocktrans trimmed with total=invoice.balance_due currency=invoice.currency %}Solde restant : <strong>{{ total }} {{ currency }}</strong>{% endblocktrans %}</p>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="commande-payment-choice" id="commande-payment-full" value="full" checked>
+                    <label class="form-check-label" for="commande-payment-full">{% trans "Le client paie tout maintenant" %}</label>
+                </div>
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="radio" name="commande-payment-choice" id="commande-payment-partial" value="partial">
+                    <label class="form-check-label" for="commande-payment-partial">{% trans "Le client fait un acompte" %}</label>
+                </div>
+                <div id="commande-deposit-wrapper" class="mt-2" style="display:none;">
+                    <label class="form-label" for="commande-deposit-input">{% blocktrans trimmed with currency=invoice.currency %}Montant de l'acompte ({{ currency }}){% endblocktrans %}</label>
+                    <input type="number" min="0" step="1" class="form-control" id="commande-deposit-input">
+                    <div class="form-text text-danger" id="commande-deposit-error" style="display:none;"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="commande-payment-confirm">{% trans "Confirmer et valider la commande" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
 {% if IS_OFFLINE %}
 <!-- Aperçu du PDF dans une modale (plutôt qu'une navigation vers l'URL du
      PDF) : dans l'app offline (fenêtre pywebview, sans barre d'adresse ni
@@ -371,6 +455,41 @@ document.getElementById("print-invoice-btn").addEventListener("click", function 
         document.getElementById("devis-payment-type").value = paymentType;
         document.getElementById("devis-deposit-amount").value = depositAmount;
         document.getElementById("devis-invoice-form").requestSubmit();
+    });
+})();
+{% endif %}
+
+{% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
+(function () {
+    var remaining = {{ invoice.balance_due }};
+    var fullRadio = document.getElementById("commande-payment-full");
+    var partialRadio = document.getElementById("commande-payment-partial");
+    var depositWrapper = document.getElementById("commande-deposit-wrapper");
+    var depositInput = document.getElementById("commande-deposit-input");
+    var depositError = document.getElementById("commande-deposit-error");
+
+    function toggleDepositWrapper() {
+        depositWrapper.style.display = partialRadio.checked ? "block" : "none";
+    }
+    fullRadio.addEventListener("change", toggleDepositWrapper);
+    partialRadio.addEventListener("change", toggleDepositWrapper);
+
+    document.getElementById("commande-payment-confirm").addEventListener("click", function () {
+        var paymentType = partialRadio.checked ? "partial" : "full";
+        var depositAmount = 0;
+
+        if (paymentType === "partial") {
+            depositAmount = parseFloat(depositInput.value);
+            if (isNaN(depositAmount) || depositAmount <= 0 || depositAmount > remaining) {
+                depositError.textContent = "{% trans 'Entrez un montant d\'acompte valide (entre 1 et' %} " + remaining + ").";
+                depositError.style.display = "block";
+                return;
+            }
+        }
+
+        document.getElementById("commande-payment-type").value = paymentType;
+        document.getElementById("commande-deposit-amount").value = depositAmount;
+        document.getElementById("commande-invoice-form").requestSubmit();
     });
 })();
 {% endif %}

@@ -46,6 +46,15 @@
             </div>
         </a>
     </div>
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'sales:commande_list' %}?livraison=EN_ATTENTE" class="stat-card text-decoration-none text-reset {% if nb_commandes_non_livrees %}stat-warn{% endif %}">
+            <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
+            <div>
+                <div class="stat-value">{{ nb_commandes_non_livrees }}</div>
+                <div class="stat-label">{% trans "Commandes non livrées" %}</div>
+            </div>
+        </a>
+    </div>
 </div>
 
 <div class="row g-3">
