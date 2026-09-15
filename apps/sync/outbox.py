@@ -173,6 +173,38 @@ def _serialize_product(object_id):
     }
 
 
+def _serialize_cash_session(object_id):
+    from apps.cashier.models import CashSession
+
+    session = CashSession.objects.get(pk=object_id)
+    return {
+        "id": str(session.id),
+        "status": session.status,
+        "opening_amount": str(session.opening_amount),
+        "opened_at": session.opened_at.isoformat(),
+        "opened_by_user_id": str(session.opened_by_id) if session.opened_by_id else None,
+        "closed_at": session.closed_at.isoformat() if session.closed_at else None,
+        "closed_by_user_id": str(session.closed_by_id) if session.closed_by_id else None,
+        "counted_amount": str(session.counted_amount) if session.counted_amount is not None else None,
+        "closing_note": session.closing_note,
+    }
+
+
+def _serialize_cash_movement(object_id):
+    from apps.cashier.models import CashMovement
+
+    movement = CashMovement.objects.get(pk=object_id)
+    return {
+        "id": str(movement.id),
+        "created_at": movement.created_at.isoformat(),
+        "session_id": str(movement.session_id),
+        "type": movement.type,
+        "amount": str(movement.amount),
+        "reason": movement.reason,
+        "created_by_user_id": str(movement.created_by_id) if movement.created_by_id else None,
+    }
+
+
 def _push_product_image(object_id, client):
     """Appelée une fois la fiche produit elle-même confirmée SENT — envoie
     la photo locale, si présente, via l'endpoint multipart dédié (voir
@@ -215,6 +247,11 @@ PUSH_ENDPOINTS = {
     OutboxEntry.CATEGORY: ("push/catalog/categories/", _serialize_category, None),
     OutboxEntry.UNIT: ("push/catalog/units/", _serialize_unit, None),
     OutboxEntry.PRODUCT: ("push/catalog/products/", _serialize_product, _push_product_image),
+    # Session avant mouvement : un CashMovement référence sa session par id
+    # (voir PushCashMovementsView) — si elle n'est pas encore arrivée, le
+    # mouvement échoue et repart au cycle suivant, sans perte.
+    OutboxEntry.CASH_SESSION: ("push/cash-sessions/", _serialize_cash_session, None),
+    OutboxEntry.CASH_MOVEMENT: ("push/cash-movements/", _serialize_cash_movement, None),
 }
 
 

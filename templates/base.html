@@ -85,6 +85,17 @@
                 <i class="bi bi-receipt"></i> {% trans "Factures" %}
             </a>
 
+            {% comment %}
+            Module caisse désactivé pour le moment (voir config/urls.py) —
+            {% url %} n'est pas évalué à l'intérieur de {% comment %}, contrairement
+            à un simple commentaire HTML <!-- --> qui aurait quand même levé
+            NoReverseMatch puisque le tag est exécuté avant d'être rendu en texte.
+            <div class="sidebar-section">{% trans "Caisse" %}</div>
+            <a class="nav-link {% if '/caisse' in request.path %}active{% endif %}" href="{% url 'cashier:current' %}">
+                <i class="bi bi-cash-coin"></i> {% trans "Caisse" %}
+            </a>
+            {% endcomment %}
+
             <div class="sidebar-section">{% trans "Catalogue" %}</div>
             <a class="nav-link {% if '/catalogue/produits' in request.path %}active{% endif %}" href="{% url 'catalog:product_list' %}">
                 <i class="bi bi-box-seam"></i> {% trans "Produits" %}

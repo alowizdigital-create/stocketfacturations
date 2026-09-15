@@ -1756,3 +1756,120 @@ msgstr "Sales confirmed this month"
 
 msgid "(voir tout le stock)"
 msgstr "(see all stock)"
+
+msgid "Ouverte"
+msgstr "Open"
+
+msgid "Fermée"
+msgstr "Closed"
+
+msgid "session de caisse"
+msgstr "cash session"
+
+msgid "sessions de caisse"
+msgstr "cash sessions"
+
+msgid "motif"
+msgstr "reason"
+
+msgid "mouvement de caisse"
+msgstr "cash movement"
+
+msgid "mouvements de caisse"
+msgstr "cash movements"
+
+msgid "Fond de caisse (montant d'ouverture)"
+msgstr "Opening float (starting amount)"
+
+msgid "Montant compté"
+msgstr "Counted amount"
+
+msgid "Note (optionnel)"
+msgstr "Note (optional)"
+
+msgid "Caisse ouverte."
+msgstr "Cash session opened."
+
+msgid "Mouvement enregistré."
+msgstr "Movement recorded."
+
+msgid "Mouvement invalide — vérifiez le montant et le motif."
+msgstr "Invalid movement — check the amount and reason."
+
+msgid "Caisse fermée."
+msgstr "Cash session closed."
+
+msgid "Montant compté invalide."
+msgstr "Invalid counted amount."
+
+msgid "Ouvrir la caisse"
+msgstr "Open the register"
+
+msgid "Ouvrir"
+msgstr "Open"
+
+msgid "Caisse"
+msgstr "Register"
+
+msgid "Historique de caisse"
+msgstr "Register history"
+
+msgid "Caisse actuelle"
+msgstr "Current register"
+
+msgid "Rechercher une session (numéro)..."
+msgstr "Search a session (number)..."
+
+msgid "Ouverte le"
+msgstr "Opened on"
+
+msgid "Fond de départ"
+msgstr "Opening float"
+
+msgid "Compté"
+msgstr "Counted"
+
+msgid "Écart"
+msgstr "Discrepancy"
+
+msgid "Aucune session de caisse pour le moment."
+msgstr "No cash session yet."
+
+msgid "Montant attendu"
+msgstr "Expected amount"
+
+msgid "Note de fermeture"
+msgstr "Closing note"
+
+msgid "Mouvements manuels"
+msgstr "Manual movements"
+
+msgid "Par"
+msgstr "By"
+
+msgid "Aucun mouvement manuel pour cette session."
+msgstr "No manual movement for this session."
+
+msgid "Ajouter un mouvement"
+msgstr "Add a movement"
+
+msgid "Fermer la caisse"
+msgstr "Close the register"
+
+msgid "Confirmer la fermeture"
+msgstr "Confirm closing"
+
+msgid "Ventes confirmées sur la période choisie"
+msgstr "Confirmed sales for the chosen period"
+
+msgid "Chiffre d'affaires de la période"
+msgstr "Revenue for the period"
+
+msgid "Du"
+msgstr "From"
+
+msgid "au"
+msgstr "to"
+
+msgid "Filtrer par période"
+msgstr "Filter by period"

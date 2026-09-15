@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Caisse" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>{% trans "Historique de caisse" %}</h1></div>
+    <a href="{% url 'cashier:current' %}" class="btn btn-primary"><i class="bi bi-cash-coin"></i> {% trans "Caisse actuelle" %}</a>
+</div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une session (numéro)...' %}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+        {% if query %}
+        <a href="{% url 'cashier:session_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>{% trans "Numéro" %}</th><th>{% trans "Ouverte le" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Fond de départ" %}</th><th class="d-none d-sm-table-cell">{% trans "Compté" %}</th><th>{% trans "Écart" %}</th></tr></thead>
+        <tbody>
+            {% for session in sessions %}
+            <tr>
+                <td><a href="{% url 'cashier:session_detail' session.id %}" class="fw-semibold">{{ session.number }}</a></td>
+                <td class="text-muted">{{ session.opened_at|date:"d/m/Y H:i" }}</td>
+                <td>
+                    <span class="badge-status {% if session.status == 'OUVERTE' %}badge-orange{% else %}badge-gray{% endif %}">
+                        {{ session.get_status_display }}
+                    </span>
+                </td>
+                <td class="d-none d-sm-table-cell">{{ session.opening_amount }} {{ request.boutique.devise }}</td>
+                <td class="d-none d-sm-table-cell">{% if session.counted_amount is not None %}{{ session.counted_amount }} {{ request.boutique.devise }}{% else %}—{% endif %}</td>
+                <td>
+                    {% if session.discrepancy is not None %}
+                    <span class="{% if session.discrepancy == 0 %}text-success{% else %}text-danger{% endif %} fw-semibold">
+                        {{ session.discrepancy }} {{ request.boutique.devise }}
+                    </span>
+                    {% else %}—{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune session de caisse pour le moment." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

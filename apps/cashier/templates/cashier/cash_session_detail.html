@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ session.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ session.number }}
+            <span class="badge-status {% if session.status == 'OUVERTE' %}badge-orange{% else %}badge-gray{% endif %}">
+                {{ session.get_status_display }}
+            </span>
+        </h1>
+        <div class="text-muted">{% trans "Ouverte le" %} {{ session.opened_at|date:"d/m/Y H:i" }}{% if session.opened_by %} — {{ session.opened_by.get_full_name|default:session.opened_by.email }}{% endif %}</div>
+    </div>
+    <a href="{% url 'cashier:session_list' %}" class="btn btn-outline-secondary"><i class="bi bi-clock-history"></i> {% trans "Historique" %}</a>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="stat-value">{{ session.opening_amount }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Fond de départ" %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-cash-stack"></i></div>
+            <div>
+                <div class="stat-value">{{ expected_amount }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Montant attendu" %}</div>
+            </div>
+        </div>
+    </div>
+    {% if session.status == 'FERMEE' %}
+    <div class="col-6 col-md-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-check2-circle"></i></div>
+            <div>
+                <div class="stat-value">{{ session.counted_amount }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Montant compté" %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-md-3">
+        <div class="stat-card {% if session.discrepancy != 0 %}stat-warn{% endif %}">
+            <div class="stat-icon"><i class="bi bi-exclamation-triangle"></i></div>
+            <div>
+                <div class="stat-value">{{ session.discrepancy }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Écart" %}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if session.status == 'OUVERTE' %}
+<div class="d-flex gap-2 mb-3">
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#cash-movement-modal">
+        <i class="bi bi-plus-lg"></i> {% trans "Ajouter un mouvement" %}
+    </button>
+    <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#cash-close-modal">
+        <i class="bi bi-lock"></i> {% trans "Fermer la caisse" %}
+    </button>
+</div>
+{% elif session.closing_note %}
+<div class="card-app mb-3">
+    <div class="card-app-header">{% trans "Note de fermeture" %}</div>
+    <div class="card-app-body">{{ session.closing_note }}</div>
+</div>
+{% endif %}
+
+<div class="card-app">
+    <div class="card-app-header">{% trans "Mouvements manuels" %}</div>
+    <div class="table-app" style="border:none; box-shadow:none;">
+        <table class="table mb-0">
+            <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Type" %}</th><th>{% trans "Montant" %}</th><th>{% trans "Motif" %}</th><th class="d-none d-sm-table-cell">{% trans "Par" %}</th></tr></thead>
+            <tbody>
+                {% for movement in movements %}
+                <tr>
+                    <td class="text-muted">{{ movement.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge-status {% if movement.type == 'ENTREE' %}badge-green{% else %}badge-red{% endif %}">
+                            {{ movement.get_type_display }}
+                        </span>
+                    </td>
+                    <td>{{ movement.amount }} {{ request.boutique.devise }}</td>
+                    <td>{{ movement.reason }}</td>
+                    <td class="d-none d-sm-table-cell text-muted">{{ movement.created_by.get_full_name|default:movement.created_by.email|default:"—" }}</td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucun mouvement manuel pour cette session." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if session.status == 'OUVERTE' %}
+<div class="modal fade" id="cash-movement-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'cashier:movement_create' session.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Ajouter un mouvement" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        {% for radio in movement_form.type %}
+                        <div class="form-check form-check-inline">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ movement_form.amount.label }}</label>
+                        {{ movement_form.amount }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ movement_form.reason.label }}</label>
+                        {{ movement_form.reason }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="cash-close-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'cashier:session_close' session.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Fermer la caisse" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <p>{% blocktrans trimmed with amount=expected_amount currency=request.boutique.devise %}Montant attendu : <strong>{{ amount }} {{ currency }}</strong>{% endblocktrans %}</p>
+                    <div class="mb-3">
+                        <label class="form-label">{{ close_form.counted_amount.label }}</label>
+                        {{ close_form.counted_amount }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ close_form.closing_note.label }}</label>
+                        {{ close_form.closing_note }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                    <button type="submit" class="btn btn-danger">{% trans "Confirmer la fermeture" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

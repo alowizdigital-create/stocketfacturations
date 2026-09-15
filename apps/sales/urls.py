@@ -8,6 +8,7 @@ urlpatterns = [
     path("clients/", views.client_list, name="client_list"),
     path("clients/rechercher/", views.client_search, name="client_search"),
     path("clients/nouveau/", views.client_create, name="client_create"),
+    path("clients/creation-rapide/", views.client_quick_create, name="client_quick_create"),
     path("clients/importer/", views.client_import, name="client_import"),
 
     path("ventes/", views.sale_list, name="sale_list"),

@@ -18,11 +18,17 @@ urlpatterns = [
     path("entreprises/", include("apps.tenants.urls")),
     path("catalogue/", include("apps.catalog.urls")),
     path("stock/", include("apps.stock.urls")),
+    # Module caisse désactivé pour le moment (à la demande de l'utilisateur) —
+    # app toujours dans INSTALLED_APPS (modèles/migrations/données conservés),
+    # juste aucune route accessible. Voir aussi le lien de nav commenté dans
+    # templates/base.html.
+    # path("caisse/", include("apps.cashier.urls")),
     path("", include("apps.sales.urls")),
     path("", include("apps.core.urls")),
     path("api/v1/sync/", include("apps.sync.urls")),
 ]
 
+<<<<<<< HEAD
 # if settings.DEBUG or settings.IS_OFFLINE:
     # DEBUG : mode dev classique. IS_OFFLINE : l'exe tourne avec DEBUG=False
     # (comme en prod) mais waitress n'écoute que sur 127.0.0.1 pour un seul
@@ -35,6 +41,20 @@ urlpatterns = [
     # silencieusement la condition ci-dessus. On enregistre donc la même
     # vue (django.views.static.serve) directement, sans passer par ce
     # helper qui n'est prévu que pour le mode DEBUG.
+=======
+# Toujours servi par Django, DEBUG ou pas : il n'y a pas de bloc dédié aux
+# médias au niveau du reverse proxy (Dokploy/Caddy) pour ce déploiement à
+# un seul conteneur — sans cette route, /media/ renvoie 404 dès que
+# DEBUG=False (observé en réel : photos produits/logo cassées en
+# production). Même topo pour l'exe offline (waitress n'écoute que sur
+# 127.0.0.1, aucun risque à exposer ça soi-même).
+#
+# django.conf.urls.static.static() a été essayé d'abord, mais elle renvoie
+# [] en interne dès que settings.DEBUG est False — elle ignore
+# silencieusement toute condition qu'on mettrait autour. On enregistre donc
+# la même vue (django.views.static.serve) directement, sans passer par ce
+# helper qui n'est prévu que pour le mode DEBUG.
+>>>>>>> d45f1df (boutonclient)
 urlpatterns += [
     re_path(r"^media/(?P<path>.*)$", serve_static, {"document_root": settings.MEDIA_ROOT}),
 ]

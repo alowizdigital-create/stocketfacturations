@@ -21,6 +21,8 @@ urlpatterns = [
         views.PushProductImageView.as_view(),
         name="push_product_image",
     ),
+    path("push/cash-sessions/", views.PushCashSessionsView.as_view(), name="push_cash_sessions"),
+    path("push/cash-movements/", views.PushCashMovementsView.as_view(), name="push_cash_movements"),
 
     path("pull/tenants/boutique/", views.PullBoutiqueView.as_view(), name="pull_boutique"),
     path("pull/accounts/users/", views.PullUsersView.as_view(), name="pull_users"),
@@ -39,4 +41,6 @@ urlpatterns = [
         name="pull_product_boutique_prices",
     ),
     path("pull/stock/levels/", views.PullStockLevelsView.as_view(), name="pull_stock_levels"),
+    path("pull/cashier/sessions/", views.PullCashSessionsView.as_view(), name="pull_cash_sessions"),
+    path("pull/cashier/movements/", views.PullCashMovementsView.as_view(), name="pull_cash_movements"),
 ]

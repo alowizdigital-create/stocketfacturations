@@ -4,6 +4,7 @@ from rest_framework import serializers
 
 from apps.accounts.models import User
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
+from apps.cashier.models import CashMovement, CashSession
 from apps.sales.models import Client, Invoice, InvoiceLine, Payment, Sale, SaleLine, TaxRate
 from apps.stock.models import StockLevel, StockMovement
 from apps.tenants.models import Boutique, ExchangeRate, Membership
@@ -82,6 +83,30 @@ class PaymentPushSerializer(serializers.Serializer):
         choices=[c[0] for c in Payment.METHOD_CHOICES], default=Payment.ESPECES
     )
     reference = serializers.CharField(max_length=100, required=False, allow_blank=True, default="")
+    created_by_user_id = serializers.UUIDField(required=False, allow_null=True)
+
+
+class CashSessionPushSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    status = serializers.ChoiceField(choices=[c[0] for c in CashSession.STATUS_CHOICES])
+    opening_amount = serializers.DecimalField(max_digits=14, decimal_places=0)
+    opened_at = serializers.DateTimeField(required=False)
+    opened_by_user_id = serializers.UUIDField(required=False, allow_null=True)
+    closed_at = serializers.DateTimeField(required=False, allow_null=True)
+    closed_by_user_id = serializers.UUIDField(required=False, allow_null=True)
+    counted_amount = serializers.DecimalField(
+        max_digits=14, decimal_places=0, required=False, allow_null=True
+    )
+    closing_note = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class CashMovementPushSerializer(serializers.Serializer):
+    id = serializers.UUIDField(required=False)
+    created_at = serializers.DateTimeField(required=False)
+    session_id = serializers.UUIDField()
+    type = serializers.ChoiceField(choices=[c[0] for c in CashMovement.TYPE_CHOICES])
+    amount = serializers.DecimalField(max_digits=14, decimal_places=0)
+    reason = serializers.CharField(max_length=255)
     created_by_user_id = serializers.UUIDField(required=False, allow_null=True)
 
 
@@ -216,6 +241,27 @@ class ClientPullSerializer(serializers.ModelSerializer):
     class Meta:
         model = Client
         fields = ["id", "name", "phone", "email", "address", "nif", "updated_at"]
+
+
+class CashSessionPullSerializer(serializers.ModelSerializer):
+    opened_by_user_id = serializers.UUIDField(source="opened_by_id", read_only=True)
+    closed_by_user_id = serializers.UUIDField(source="closed_by_id", read_only=True)
+
+    class Meta:
+        model = CashSession
+        fields = [
+            "id", "number", "status", "opening_amount", "opened_at", "opened_by_user_id",
+            "closed_at", "closed_by_user_id", "counted_amount", "closing_note", "updated_at",
+        ]
+
+
+class CashMovementPullSerializer(serializers.ModelSerializer):
+    session_id = serializers.UUIDField(read_only=True)
+    created_by_user_id = serializers.UUIDField(source="created_by_id", read_only=True)
+
+    class Meta:
+        model = CashMovement
+        fields = ["id", "session_id", "type", "amount", "reason", "created_by_user_id", "updated_at"]
 
 
 class ExchangeRatePullSerializer(serializers.ModelSerializer):

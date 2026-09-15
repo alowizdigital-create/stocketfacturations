@@ -18,6 +18,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.models import User
+from apps.cashier import services as cashier_services
+from apps.cashier.models import CashMovement, CashSession
 from apps.catalog.models import Category, Product, ProductBoutiquePrice, Unit
 from apps.sales import services as sales_services
 from apps.sales.models import Client, Invoice, Payment, Sale, TaxRate
@@ -31,6 +33,10 @@ from .models import DeviceActivation, SyncLog
 from .pull import run_pull_cycle
 from .serializers import (
     BoutiquePullSerializer,
+    CashMovementPullSerializer,
+    CashMovementPushSerializer,
+    CashSessionPullSerializer,
+    CashSessionPushSerializer,
     CategoryPullSerializer,
     CategoryPushSerializer,
     ClientPullSerializer,
@@ -290,6 +296,61 @@ class PushStockMovementsView(BasePushView):
         return {"id": str(movement.id), "status": "duplicate" if was_existing else "created"}
 
 
+class PushCashSessionsView(BasePushView):
+    """Poussée deux fois par session (à l'ouverture, puis à la fermeture) —
+    même `id` les deux fois, upsert par id, jamais de doublon."""
+
+    endpoint_name = "push.cash_sessions"
+    item_serializer_class = CashSessionPushSerializer
+
+    def handle_item(self, boutique, data):
+        item_id = data.get("id")
+        was_existing = item_id is not None and CashSession.objects.filter(pk=item_id).exists()
+        if was_existing:
+            session = CashSession.objects.get(pk=item_id)
+        else:
+            session = cashier_services.open_session(
+                boutique,
+                opening_amount=data["opening_amount"],
+                opened_by=_resolve_created_by(boutique, data.get("opened_by_user_id")),
+                id=item_id,
+                opened_at=data.get("opened_at"),
+            )
+        if data["status"] == CashSession.FERMEE and session.status == CashSession.OUVERTE:
+            session = cashier_services.close_session(
+                session,
+                counted_amount=data.get("counted_amount"),
+                closing_note=data.get("closing_note", ""),
+                closed_by=_resolve_created_by(boutique, data.get("closed_by_user_id")),
+                closed_at=data.get("closed_at"),
+            )
+        return {"id": str(session.id), "status": "duplicate" if was_existing else "created"}
+
+
+class PushCashMovementsView(BasePushView):
+    endpoint_name = "push.cash_movements"
+    item_serializer_class = CashMovementPushSerializer
+
+    def handle_item(self, boutique, data):
+        item_id = data.get("id")
+        was_existing = item_id is not None and CashMovement.objects.filter(pk=item_id).exists()
+        session = CashSession.objects.filter(pk=data["session_id"], boutique=boutique).first()
+        if session is None:
+            return {"id": str(item_id) if item_id else "", "status": "error", "detail": "session_id inconnu."}
+
+        movement = cashier_services.add_movement(
+            session,
+            type=data["type"],
+            amount=data["amount"],
+            reason=data["reason"],
+            created_by=_resolve_created_by(boutique, data.get("created_by_user_id")),
+            id=item_id,
+            created_at=data.get("created_at"),
+            source=CashMovement.SOURCE_OFFLINE,
+        )
+        return {"id": str(movement.id), "status": "duplicate" if was_existing else "created"}
+
+
 class PushInvoicesView(BasePushView):
     endpoint_name = "push.invoices"
     item_serializer_class = InvoicePushSerializer
@@ -518,6 +579,20 @@ class PullClientsView(BasePullView):
 
     def get_base_queryset(self):
         return Client.objects.filter(boutique=self.boutique)
+
+
+class PullCashSessionsView(BasePullView):
+    serializer_class = CashSessionPullSerializer
+
+    def get_base_queryset(self):
+        return CashSession.objects.filter(boutique=self.boutique)
+
+
+class PullCashMovementsView(BasePullView):
+    serializer_class = CashMovementPullSerializer
+
+    def get_base_queryset(self):
+        return CashMovement.objects.filter(boutique=self.boutique)
 
 
 class PullExchangeRatesView(BasePullView):

@@ -9,7 +9,12 @@
         <div class="card-app-body row g-3">
             <div class="col-md-5">
                 <label class="form-label">{{ form.client.label }}</label>
-                {{ form.client }}
+                <div class="d-flex gap-2 align-items-start">
+                    <div class="flex-grow-1">{{ form.client }}</div>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-client-modal" title="{% trans 'Nouveau client' %}">
+                        <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
             </div>
             <div class="col-md-3">
                 <label class="form-label">{{ form.currency.label }}</label>
@@ -223,6 +228,37 @@
         </div>
     </div>
 </div>
+
+<!-- Création rapide d'un client sans quitter cette page — même patron que
+     la pop-up catégorie/unité de product_form.html, voir
+     apps.sales.views.client_quick_create (réponse JSON). -->
+<div class="modal fade" id="quick-client-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">{% trans "Nouveau client" %}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+            </div>
+            <div class="modal-body">
+                <label class="form-label" for="quick-client-name">{% trans "Nom" %}</label>
+                <input type="text" id="quick-client-name" class="form-control" autocomplete="off">
+                <label class="form-label mt-2" for="quick-client-phone">{% trans "Téléphone (optionnel)" %}</label>
+                <input type="text" id="quick-client-phone" class="form-control" autocomplete="off">
+                <label class="form-label mt-2" for="quick-client-email">{% trans "E-mail (optionnel)" %}</label>
+                <input type="email" id="quick-client-email" class="form-control" autocomplete="off">
+                <label class="form-label mt-2" for="quick-client-address">{% trans "Adresse (optionnelle)" %}</label>
+                <input type="text" id="quick-client-address" class="form-control" autocomplete="off">
+                <div class="text-danger small mt-1 d-none" id="quick-client-error"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                <button type="button" class="btn btn-primary" id="quick-client-confirm">{% trans "Créer" %}</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
 {% endblock %}
 
 {% block extra_js %}
@@ -635,6 +671,71 @@
         commandeForm.requestSubmit();
     });
     {% endif %}
+
+    // --- Création rapide d'un client (même patron que product_form.html) --
+    const clientModalEl = document.getElementById("quick-client-modal");
+    if (clientModalEl) {
+        const clientModal = new bootstrap.Modal(clientModalEl);
+        const clientNameInput = document.getElementById("quick-client-name");
+        const clientPhoneInput = document.getElementById("quick-client-phone");
+        const clientEmailInput = document.getElementById("quick-client-email");
+        const clientAddressInput = document.getElementById("quick-client-address");
+        const clientErrorEl = document.getElementById("quick-client-error");
+        const clientConfirmBtn = document.getElementById("quick-client-confirm");
+        const clientSelect = document.getElementById("id_client");
+        const csrfToken = document.querySelector('input[name="csrfmiddlewaretoken"]').value;
+
+        clientModalEl.addEventListener("shown.bs.modal", () => {
+            clientNameInput.value = "";
+            clientPhoneInput.value = "";
+            clientEmailInput.value = "";
+            clientAddressInput.value = "";
+            clientErrorEl.classList.add("d-none");
+            clientNameInput.focus();
+        });
+
+        clientConfirmBtn.addEventListener("click", () => {
+            const name = clientNameInput.value.trim();
+            if (!name) {
+                clientErrorEl.textContent = "{% trans 'Le nom est obligatoire.' %}";
+                clientErrorEl.classList.remove("d-none");
+                return;
+            }
+            clientConfirmBtn.disabled = true;
+            const formData = new FormData();
+            formData.append("name", name);
+            formData.append("phone", clientPhoneInput.value.trim());
+            formData.append("email", clientEmailInput.value.trim());
+            formData.append("address", clientAddressInput.value.trim());
+            fetch("{% url 'sales:client_quick_create' %}", {
+                method: "POST",
+                headers: {"X-CSRFToken": csrfToken},
+                body: formData,
+            })
+                .then((resp) => resp.json().then((data) => ({ok: resp.ok, data: data})))
+                .then((result) => {
+                    clientConfirmBtn.disabled = false;
+                    if (!result.ok) {
+                        const errors = result.data.errors;
+                        const message = errors && (errors.name || errors.email || errors.phone);
+                        clientErrorEl.textContent = message ? message[0] : "{% trans 'Impossible de créer le client.' %}";
+                        clientErrorEl.classList.remove("d-none");
+                        return;
+                    }
+                    const option = document.createElement("option");
+                    option.value = result.data.id;
+                    option.textContent = result.data.name;
+                    option.selected = true;
+                    clientSelect.appendChild(option);
+                    clientModal.hide();
+                })
+                .catch(() => {
+                    clientConfirmBtn.disabled = false;
+                    clientErrorEl.textContent = "{% trans 'Erreur réseau — réessayez.' %}";
+                    clientErrorEl.classList.remove("d-none");
+                });
+        });
+    }
 })();
 </script>
 {% endblock %}

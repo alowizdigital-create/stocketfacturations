@@ -88,6 +88,8 @@ class OutboxEntry(UUIDModel, TimeStampedModel):
     CATEGORY = "category"
     UNIT = "unit"
     PRODUCT = "product"
+    CASH_SESSION = "cash_session"
+    CASH_MOVEMENT = "cash_movement"
     KIND_CHOICES = [
         (CLIENT, "Client"),
         (STOCK_MOVEMENT, "Mouvement de stock"),
@@ -97,6 +99,8 @@ class OutboxEntry(UUIDModel, TimeStampedModel):
         (CATEGORY, "Catégorie"),
         (UNIT, "Unité"),
         (PRODUCT, "Produit"),
+        (CASH_SESSION, "Session de caisse"),
+        (CASH_MOVEMENT, "Mouvement de caisse"),
     ]
 
     PENDING = "PENDING"

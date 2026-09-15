@@ -8,11 +8,12 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.dateparse import parse_date
 from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 
@@ -80,6 +81,28 @@ def client_create(request):
     else:
         form = ClientForm()
     return render(request, "sales/client_form.html", {"form": form})
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def client_quick_create(request):
+    """Création rapide en JSON, utilisée par la pop-up des formulaires de
+    vente/devis/commande (voir sale_form.html et invoice_form.html) —
+    évite de quitter la page pour ajouter un client manquant. Même
+    logique de sauvegarde que client_create, juste une réponse JSON au
+    lieu d'une redirection (voir apps.catalog.views.category_quick_create
+    pour le même patron)."""
+    if request.method != "POST":
+        return JsonResponse({"detail": _("Méthode non autorisée.")}, status=405)
+    form = ClientForm(request.POST)
+    if form.is_valid():
+        client = form.save(commit=False)
+        client.boutique = request.boutique
+        client.save()
+        if settings.IS_OFFLINE:
+            outbox.enqueue(OutboxEntry.CLIENT, client.id)
+        return JsonResponse({"id": str(client.id), "name": client.name, "phone": client.phone})
+    return JsonResponse({"errors": form.errors}, status=400)
 
 
 CLIENT_IMPORT_HEADER_ALIASES = {
@@ -346,19 +369,46 @@ def sale_list(request):
     # critères (status=CONFIRMEE, plage de sale_date) que les totaux
     # affichés, pour que le montant et la liste correspondent exactement.
     period = request.GET.get("period") or ""
+    date_from_str = request.GET.get("date_from") or ""
+    date_to_str = request.GET.get("date_to") or ""
+    date_from = parse_date(date_from_str) if date_from_str else None
+    date_to = parse_date(date_to_str) if date_to_str else None
+    custom_range = bool(date_from or date_to)
+
     sales = Sale.objects.filter(boutique=request.boutique).select_related("client", "invoice")
-    if period in ("today", "month"):
-        today = timezone.localdate()
+
+    revenue_total = None
+    if period in ("today", "month") or custom_range:
+        # Le chiffre d'affaires ne compte que les ventes confirmées (même
+        # définition que apps.core.views.home::ca_mois/ca_jour) — la liste
+        # affichée dans ce cas se limite donc aussi aux ventes confirmées,
+        # pour que le total affiché corresponde exactement à ce qui est listé.
         sales = sales.filter(status=Sale.CONFIRMEE)
-        if period == "today":
-            sales = sales.filter(sale_date=today)
+        if custom_range:
+            if date_from:
+                sales = sales.filter(sale_date__gte=date_from)
+            if date_to:
+                sales = sales.filter(sale_date__lte=date_to)
         else:
-            sales = sales.filter(sale_date__gte=today.replace(day=1))
+            today = timezone.localdate()
+            if period == "today":
+                sales = sales.filter(sale_date=today)
+            else:
+                sales = sales.filter(sale_date__gte=today.replace(day=1))
+        revenue_total = sales.aggregate(total=Sum("total_ttc"))["total"] or Decimal("0")
+
     if query:
         sales = sales.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
-    if not query and not period:
+    if not query and not period and not custom_range:
         sales = sales[:10]
-    return render(request, "sales/sale_list.html", {"sales": sales, "query": query, "period": period})
+    return render(
+        request, "sales/sale_list.html",
+        {
+            "sales": sales, "query": query, "period": period,
+            "date_from": date_from_str, "date_to": date_to_str,
+            "revenue_total": revenue_total,
+        },
+    )
 
 
 def _parse_cart(request):

@@ -375,6 +375,52 @@ def _upsert_product_boutique_price(items, boutique_id):
         )
 
 
+def _upsert_cash_session(items, boutique_id):
+    from apps.cashier.models import CashSession
+
+    for item in items:
+        CashSession.objects.update_or_create(
+            id=item["id"],
+            defaults={
+                "boutique_id": boutique_id,
+                "number": item["number"],
+                "status": item["status"],
+                "opening_amount": item["opening_amount"],
+                "opened_at": item["opened_at"],
+                "opened_by_id": item.get("opened_by_user_id"),
+                "closed_at": item.get("closed_at"),
+                "closed_by_id": item.get("closed_by_user_id"),
+                "counted_amount": item.get("counted_amount"),
+                "closing_note": item.get("closing_note", ""),
+            },
+        )
+
+
+def _upsert_cash_movement(items, boutique_id):
+    from apps.cashier.models import CashMovement, CashSession
+
+    for item in items:
+        session_id = _existing_id(CashSession.objects, item.get("session_id"))
+        if session_id is None:
+            # Ne devrait jamais arriver : cash_sessions est tiré avant
+            # cash_movements dans PULL_RESOURCES, et un mouvement n'est
+            # poussé qu'après l'ouverture de sa session (voir outbox.py).
+            # Filet de sécurité défensif seulement — session FK non
+            # nullable, impossible de résoudre autrement qu'en ignorant.
+            continue
+        CashMovement.objects.update_or_create(
+            id=item["id"],
+            defaults={
+                "boutique_id": boutique_id,
+                "session_id": session_id,
+                "type": item["type"],
+                "amount": item["amount"],
+                "reason": item.get("reason", ""),
+                "created_by_id": item.get("created_by_user_id"),
+            },
+        )
+
+
 # Ordre de dépendance : tax_rates/categories/units/exchange_rates/users
 # n'ont besoin que du Compte/Boutique (déjà tirés par _pull_boutique) ;
 # memberships a besoin de users ; products a besoin de categories/units ;
@@ -394,6 +440,8 @@ PULL_RESOURCES = [
     ("stock_levels", "pull/stock/levels/", _upsert_stock_level, "boutique"),
     ("invoices", "pull/sales/invoices/", _upsert_invoice, "boutique"),
     ("sales", "pull/sales/sales/", _upsert_sale, "boutique"),
+    ("cash_sessions", "pull/cashier/sessions/", _upsert_cash_session, "boutique"),
+    ("cash_movements", "pull/cashier/movements/", _upsert_cash_movement, "boutique"),
 ]
 
 

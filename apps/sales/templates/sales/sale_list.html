@@ -8,24 +8,47 @@
         <div class="text-muted">{% trans "Ventes confirmées aujourd'hui" %} <a href="{% url 'sales:sale_list' %}" class="ms-1">{% trans "(voir toutes les ventes)" %}</a></div>
         {% elif period == "month" %}
         <div class="text-muted">{% trans "Ventes confirmées ce mois-ci" %} <a href="{% url 'sales:sale_list' %}" class="ms-1">{% trans "(voir toutes les ventes)" %}</a></div>
+        {% elif date_from or date_to %}
+        <div class="text-muted">{% trans "Ventes confirmées sur la période choisie" %} <a href="{% url 'sales:sale_list' %}" class="ms-1">{% trans "(voir toutes les ventes)" %}</a></div>
         {% endif %}
     </div>
     <a href="{% url 'sales:sale_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle vente" %}</a>
 </div>
 
-<form method="get" class="mb-3">
-    {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
-    <div class="d-flex gap-2" style="max-width: 420px;">
+{% if revenue_total is not None %}
+<div class="stat-card mb-3" style="max-width: 320px;">
+    <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+    <div>
+        <div class="stat-value">{{ revenue_total }} {{ request.boutique.devise }}</div>
+        <div class="stat-label">{% trans "Chiffre d'affaires de la période" %}</div>
+    </div>
+</div>
+{% endif %}
+
+<div class="d-flex flex-wrap gap-3 mb-3">
+    <form method="get" class="d-flex gap-2" style="max-width: 420px;">
+        {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
         <div class="position-relative flex-grow-1">
-            <i class="bi bi-search pos-search-icon"></i>
+            <i class="bi bi-search pos-search-icon" style="font-size: .75rem;"></i>
             <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une vente (numéro, client)...' %}">
         </div>
         <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
         {% if query %}
         <a href="{% url 'sales:sale_list' %}{% if period %}?period={{ period }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
         {% endif %}
-    </div>
-</form>
+    </form>
+
+    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
+        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+        <input type="date" name="date_from" value="{{ date_from }}" class="form-control" style="max-width: 160px;" title="{% trans 'Du' %}">
+        <span class="text-muted">{% trans "au" %}</span>
+        <input type="date" name="date_to" value="{{ date_to }}" class="form-control" style="max-width: 160px;" title="{% trans 'Du' %}">
+        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-calendar-range"></i> {% trans "Filtrer par période" %}</button>
+        {% if date_from or date_to %}
+        <a href="{% url 'sales:sale_list' %}{% if query %}?q={{ query }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </form>
+</div>
 
 <div class="table-app">
     <table class="table mb-0">
