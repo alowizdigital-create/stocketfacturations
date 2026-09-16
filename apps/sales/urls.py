@@ -22,6 +22,7 @@ urlpatterns = [
     path("devis/nouveau/", views.invoice_create, name="invoice_create"),
     path("devis/<uuid:invoice_id>/modifier/", views.devis_update, name="devis_update"),
     path("commandes/", views.commande_list, name="commande_list"),
+    path("commandes/rechercher/", views.commande_search, name="commande_search"),
     path("commandes/nouvelle/", views.commande_create, name="commande_create"),
     path("commandes/<uuid:invoice_id>/valider/", views.commande_generate_invoice, name="commande_generate_invoice"),
     path("commandes/<uuid:invoice_id>/livrer/", views.commande_mark_delivered, name="commande_mark_delivered"),

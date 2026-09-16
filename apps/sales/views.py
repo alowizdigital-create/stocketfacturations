@@ -650,6 +650,46 @@ def commande_list(request):
     )
 
 
+@login_required
+def commande_search(request):
+    """Recherche commande en direct sur la liste des commandes — même
+    principe que catalog:product_search / sales:client_search (au fil de
+    la frappe, sans recharger la page) : renvoie du JSON, filtré sur
+    l'onglet de livraison actif (voir commande_list) tout comme le rendu
+    serveur initial, pour que les deux restent cohérents."""
+    query = request.GET.get("q", "").strip()
+    delivery_filter = request.GET.get("livraison") or Invoice.EN_ATTENTE
+    if delivery_filter not in (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.LIVREE):
+        delivery_filter = Invoice.EN_ATTENTE
+
+    commandes = (
+        Invoice.objects.filter(
+            boutique=request.boutique, type=Invoice.COMMANDE, delivery_status=delivery_filter,
+        )
+        .exclude(status=Invoice.ANNULEE)
+        .select_related("client")
+    )
+    if query:
+        commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+    commandes = commandes.order_by("-issue_date", "-created_at")[:100]
+
+    results = [
+        {
+            "id": str(c.id),
+            "number": c.number,
+            "client": c.client.name if c.client else None,
+            "status": c.status,
+            "status_display": c.get_status_display(),
+            "date": c.issue_date.strftime("%d/%m/%Y"),
+            "total_ttc": float(c.total_ttc),
+            "currency": c.currency,
+            "url": reverse("sales:invoice_detail", args=[c.id]),
+        }
+        for c in commandes
+    ]
+    return JsonResponse({"results": results})
+
+
 def _preselected_products_for_formset(formset, compte):
     """Infos (nom/image/prix/...) des produits déjà associés aux lignes du
     formset, pour que le JS puisse redessiner la vignette de sélection sans

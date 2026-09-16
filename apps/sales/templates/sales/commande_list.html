@@ -21,24 +21,19 @@
     </a>
 </div>
 
-<form method="get" class="mb-3">
-    <input type="hidden" name="livraison" value="{{ delivery_filter }}">
-    <div class="d-flex gap-2" style="max-width: 420px;">
-        <div class="position-relative flex-grow-1">
-            <i class="bi bi-search pos-search-icon"></i>
-            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une commande (numéro, client)...' %}">
-        </div>
-        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
-        {% if query %}
-        <a href="?livraison={{ delivery_filter }}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
-        {% endif %}
-    </div>
-</form>
+<!-- Recherche en direct, au fil de la frappe — même principe que la
+     recherche produit de l'écran de vente (voir sale_form.html /
+     catalog:product_search) : pas de bouton, pas de rechargement de page,
+     le tableau se redessine depuis sales:commande_search. -->
+<div class="position-relative mb-3" style="max-width: 420px;">
+    <i class="bi bi-search pos-search-icon"></i>
+    <input type="text" id="commande-search" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une commande (numéro, client)...' %}" autocomplete="off">
+</div>
 
 <div class="table-app">
     <table class="table mb-0">
         <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
-        <tbody>
+        <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
                 <td><a href="{% url 'sales:invoice_detail' invoice.id %}" class="fw-semibold">{{ invoice.number }}</a></td>
@@ -61,4 +56,57 @@
         </tbody>
     </table>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function () {
+    const searchUrl = "{% url 'sales:commande_search' %}";
+    const deliveryFilter = "{{ delivery_filter }}";
+    const searchInput = document.getElementById("commande-search");
+    const tbody = document.getElementById("commandes-tbody");
+    let searchTimer = null;
+
+    function badgeClass(status) {
+        if (status === "PAYEE") return "badge-green";
+        if (status === "BROUILLON") return "badge-gray";
+        if (status === "ANNULEE") return "badge-red";
+        return "badge-orange";
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement("div");
+        div.textContent = str == null ? "" : str;
+        return div.innerHTML;
+    }
+
+    function renderRows(items) {
+        if (!items.length) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune commande trouvée." %}</td></tr>';
+            return;
+        }
+        tbody.innerHTML = items.map((c) => `
+            <tr>
+                <td><a href="${c.url}" class="fw-semibold">${escapeHtml(c.number)}</a></td>
+                <td>${c.client ? escapeHtml(c.client) : "—"}</td>
+                <td><span class="badge-status ${badgeClass(c.status)}">${escapeHtml(c.status_display)}</span></td>
+                <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
+                <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
+            </tr>`).join("");
+    }
+
+    async function runSearch(query) {
+        const url = searchUrl + "?livraison=" + encodeURIComponent(deliveryFilter) + "&q=" + encodeURIComponent(query);
+        const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        const data = await resp.json();
+        renderRows(data.results);
+    }
+
+    searchInput.addEventListener("input", () => {
+        clearTimeout(searchTimer);
+        const query = searchInput.value;
+        searchTimer = setTimeout(() => runSearch(query), 200);
+    });
+})();
+</script>
 {% endblock %}
