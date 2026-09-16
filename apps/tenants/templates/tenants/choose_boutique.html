@@ -1,26 +1,30 @@
 {% extends "base.html" %}
 {% load i18n %}
 {% block title %}{% trans "Choisir une boutique" %}{% endblock %}
+
+<!-- Deux blocs définis : base.html rend "content" (coquille app avec
+     sidebar) une fois qu'une boutique a été auto-résolue — le cas courant
+     quand on clique "Changer de boutique" depuis un compte déjà en cours
+     d'utilisation — et "auth_content" (écran centré sans sidebar) tant
+     qu'aucune ne l'est encore (juste après connexion, plusieurs boutiques
+     sans défaut clair). Avant ce correctif, seul auth_content existait :
+     la page restait vide dès qu'une boutique était déjà résolue. -->
+
+{% block content %}
+<div class="page-header"><div><h1>{% trans "Choisir une boutique" %}</h1></div></div>
+<div class="card-app" style="max-width: 480px;">
+    <div class="card-app-body">
+        {% include "tenants/_boutique_choices.html" %}
+    </div>
+</div>
+{% endblock %}
+
 {% block auth_content %}
 <div class="auth-shell">
     <div class="auth-card" style="max-width: 480px;">
         <div class="auth-brand"><i class="bi bi-boxes"></i> Zweey</div>
         <h1 class="h5 mb-3">{% trans "Choisir une boutique" %}</h1>
-        {% if not memberships %}
-        <p class="text-muted">{% trans "Vous n'êtes affecté à aucune boutique active." %}</p>
-        {% else %}
-        <div class="d-grid gap-2">
-            {% for m in memberships %}
-            <form method="post" action="{% url 'tenants:set_boutique' m.boutique.id %}">
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-secondary w-100 d-flex justify-content-between align-items-center py-2">
-                    <span><i class="bi bi-shop me-2"></i>{{ m.boutique.name }} <span class="text-muted">— {{ m.boutique.compte.name }}</span></span>
-                    <span class="badge-status badge-purple">{{ m.get_role_display }}</span>
-                </button>
-            </form>
-            {% endfor %}
-        </div>
-        {% endif %}
+        {% include "tenants/_boutique_choices.html" %}
     </div>
 </div>
 {% endblock %}

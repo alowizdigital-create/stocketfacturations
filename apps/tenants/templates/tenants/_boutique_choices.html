@@ -1,0 +1,16 @@
+{% load i18n %}
+{% if not memberships %}
+<p class="text-muted">{% trans "Vous n'êtes affecté à aucune boutique active." %}</p>
+{% else %}
+<div class="d-grid gap-2">
+    {% for m in memberships %}
+    <form method="post" action="{% url 'tenants:set_boutique' m.boutique.id %}">
+        {% csrf_token %}
+        <button type="submit" class="btn w-100 d-flex justify-content-between align-items-center py-2 {% if request.boutique.id == m.boutique_id %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+            <span><i class="bi bi-shop me-2"></i>{{ m.boutique.name }} <span class="{% if request.boutique.id == m.boutique_id %}text-white-50{% else %}text-muted{% endif %}">— {{ m.boutique.compte.name }}</span></span>
+            <span class="badge-status badge-purple">{{ m.get_role_display }}</span>
+        </button>
+    </form>
+    {% endfor %}
+</div>
+{% endif %}

@@ -25,28 +25,38 @@
 </div>
 {% endif %}
 
-<div class="d-flex flex-wrap gap-3 mb-3">
-    <form method="get" class="d-flex gap-2" style="max-width: 420px;">
+<!-- Un seul formulaire GET : la recherche, les trois périodes rapides
+     (liens simples, qui conservent la recherche en cours via ?q=) et la
+     période personnalisée (repliée par défaut, ouverte si déjà utilisée)
+     partagent maintenant le même bloc, plutôt que deux <form> séparés qui
+     s'effaçaient l'un l'autre au clic. -->
+<div class="filter-bar mb-3">
+    <form method="get" class="d-flex flex-wrap gap-2 align-items-center">
         {% if period %}<input type="hidden" name="period" value="{{ period }}">{% endif %}
-        <div class="position-relative flex-grow-1">
+        <div class="position-relative flex-grow-1" style="min-width: 220px; max-width: 360px;">
             <i class="bi bi-search pos-search-icon" style="font-size: .75rem;"></i>
             <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une vente (numéro, client)...' %}">
         </div>
-        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
-        {% if query %}
-        <a href="{% url 'sales:sale_list' %}{% if period %}?period={{ period }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
-        {% endif %}
-    </form>
 
-    <form method="get" class="d-flex gap-2 align-items-center flex-wrap">
-        {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
-        <input type="date" name="date_from" value="{{ date_from }}" class="form-control" style="max-width: 160px;" title="{% trans 'Du' %}">
-        <span class="text-muted">{% trans "au" %}</span>
-        <input type="date" name="date_to" value="{{ date_to }}" class="form-control" style="max-width: 160px;" title="{% trans 'Du' %}">
-        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-calendar-range"></i> {% trans "Filtrer par période" %}</button>
-        {% if date_from or date_to %}
-        <a href="{% url 'sales:sale_list' %}{% if query %}?q={{ query }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
-        {% endif %}
+        <div class="btn-group" role="group">
+            <a href="?{% if query %}q={{ query }}{% endif %}" class="btn btn-sm {% if not period and not date_from and not date_to %}btn-primary{% else %}btn-outline-secondary{% endif %}">{% trans "Toutes" %}</a>
+            <a href="?period=today{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if period == 'today' and not date_from and not date_to %}btn-primary{% else %}btn-outline-secondary{% endif %}">{% trans "Aujourd'hui" %}</a>
+            <a href="?period=month{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if period == 'month' and not date_from and not date_to %}btn-primary{% else %}btn-outline-secondary{% endif %}">{% trans "Ce mois" %}</a>
+        </div>
+
+        <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#custom-range">
+            <i class="bi bi-calendar-range"></i> {% trans "Période personnalisée" %}
+        </button>
+
+        <button type="submit" class="btn btn-sm btn-primary">{% trans "Appliquer" %}</button>
+
+        <div class="collapse {% if date_from or date_to %}show{% endif %} w-100" id="custom-range">
+            <div class="d-flex flex-wrap gap-2 align-items-center pt-2 mt-1 border-top">
+                <input type="date" name="date_from" value="{{ date_from }}" class="form-control form-control-sm" style="max-width: 160px;" title="{% trans 'Du' %}">
+                <span class="text-muted small">{% trans "au" %}</span>
+                <input type="date" name="date_to" value="{{ date_to }}" class="form-control form-control-sm" style="max-width: 160px;" title="{% trans 'Au' %}">
+            </div>
+        </div>
     </form>
 </div>
 

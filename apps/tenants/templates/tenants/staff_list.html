@@ -7,7 +7,10 @@
         <h1>{% trans "Équipe" %}</h1>
         <div class="text-muted">{% blocktrans trimmed with name=request.compte.name %}Employés de {{ name }}, toutes boutiques confondues{% endblocktrans %}</div>
     </div>
-    <a href="{% url 'tenants:staff_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> {% trans "Nouvel employé" %}</a>
+    <div class="d-flex gap-2">
+        <a href="{% url 'tenants:staff_attach_boutique' %}" class="btn btn-outline-secondary"><i class="bi bi-shop"></i> {% trans "Affecter à une autre boutique" %}</a>
+        <a href="{% url 'tenants:staff_create' %}" class="btn btn-primary"><i class="bi bi-person-plus"></i> {% trans "Nouvel employé" %}</a>
+    </div>
 </div>
 
 <form method="get" class="mb-3">

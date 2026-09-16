@@ -34,6 +34,31 @@
     </div>
 </div>
 
+{% if boutiques %}
+<div class="card-app mt-3" style="max-width: 520px;">
+    <div class="card-app-header d-flex justify-content-between align-items-center">
+        <span>{% trans "Boutiques de l'entreprise" %}</span>
+        <a href="{% url 'tenants:boutique_create' %}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle boutique" %}</a>
+    </div>
+    <div class="card-app-body">
+        <div class="d-flex flex-column gap-2">
+            {% for b in boutiques %}
+            <div class="d-flex justify-content-between align-items-center py-1 {% if not forloop.last %}border-bottom{% endif %}">
+                <div>
+                    <span class="fw-semibold">{{ b.name }}</span>
+                    <span class="text-muted small">— {{ b.code }} · {{ b.devise }}</span>
+                    {% if b.id == request.boutique.id %}<span class="badge-status badge-purple ms-1">{% trans "Courante" %}</span>{% endif %}
+                    {% if b.is_default %}<span class="badge-status badge-gray ms-1">{% trans "Par défaut" %}</span>{% endif %}
+                    {% if not b.is_active %}<span class="badge-status badge-red ms-1">{% trans "Désactivée" %}</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="text-muted small mt-2 mb-0">{% trans "Pour y affecter des employés, voir Équipe → Affecter à une autre boutique." %}</p>
+    </div>
+</div>
+{% endif %}
+
 {% if boutique_form %}
 <div class="card-app mt-3" style="max-width: 520px;">
     <div class="card-app-header">{% blocktrans trimmed with name=request.boutique.name %}Paramètres régionaux — {{ name }}{% endblocktrans %}</div>

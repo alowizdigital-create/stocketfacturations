@@ -89,6 +89,76 @@ class StaffCreateForm(BootstrapFormMixin, forms.Form):
         return cleaned
 
 
+class BoutiqueCreateForm(BootstrapFormMixin, forms.ModelForm):
+    """Ouvre une boutique supplémentaire pour l'entreprise — la première
+    est créée automatiquement à l'inscription (voir SignupForm/signup()),
+    ce formulaire sert à en ouvrir d'autres ensuite (voir
+    apps.tenants.views.boutique_create)."""
+
+    devise = forms.ChoiceField(label=_("Devise"), choices=CURRENCY_CHOICES)
+    country_calling_code = forms.ChoiceField(
+        label=_("Pays (indicatif téléphonique)"),
+        choices=[("", _("Non défini — numéros saisis tels quels"))] + AFRICAN_COUNTRIES,
+        required=False,
+    )
+
+    class Meta:
+        model = Boutique
+        fields = ["name", "code", "address", "phone", "devise", "country_calling_code"]
+        labels = {
+            "name": _("Nom de la boutique"),
+            "code": _("Code court"),
+            "address": _("Adresse"),
+            "phone": _("Téléphone"),
+        }
+        help_texts = {
+            "code": _("Préfixe utilisé pour numéroter les factures hors-ligne (ex: BTQ-001) — unique dans l'entreprise."),
+        }
+
+    def __init__(self, *args, compte=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.compte = compte
+
+    def clean_code(self):
+        code = self.cleaned_data["code"].strip().upper()
+        if self.compte is not None and Boutique.objects.filter(compte=self.compte, code=code).exists():
+            raise forms.ValidationError(_("Une boutique de cette entreprise utilise déjà ce code."))
+        return code
+
+
+class StaffAttachForm(BootstrapFormMixin, forms.Form):
+    """Donne à un employé qui a déjà accès à une boutique de l'entreprise
+    un accès à une boutique supplémentaire — pas de nouveau compte
+    utilisateur (contrairement à StaffCreateForm) : juste une Membership
+    de plus (voir Membership, unique par (user, boutique)), avec son
+    propre rôle indépendant de celui qu'il a ailleurs."""
+
+    user = forms.ModelChoiceField(queryset=User.objects.none(), label=_("Employé"))
+    boutique = forms.ModelChoiceField(queryset=Boutique.objects.none(), label=_("Boutique"))
+    role = forms.ChoiceField(choices=Membership.ROLE_CHOICES, label=_("Rôle"))
+
+    def __init__(self, *args, compte=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.compte = compte
+        if compte is not None:
+            self.fields["user"].queryset = (
+                User.objects.filter(memberships__boutique__compte=compte, memberships__is_active=True)
+                .distinct().order_by("email")
+            )
+            self.fields["boutique"].queryset = Boutique.objects.filter(compte=compte, is_active=True)
+
+    def clean(self):
+        cleaned = super().clean()
+        user = cleaned.get("user")
+        boutique = cleaned.get("boutique")
+        if user and boutique and Membership.objects.filter(user=user, boutique=boutique).exists():
+            raise forms.ValidationError(
+                _("Cet employé a déjà un accès (actif ou désactivé) à cette boutique — "
+                  "modifiez-le plutôt depuis l'équipe.")
+            )
+        return cleaned
+
+
 class StaffUpdateForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Membership

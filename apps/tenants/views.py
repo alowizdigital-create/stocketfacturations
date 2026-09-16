@@ -12,10 +12,12 @@ from apps.catalog.models import Unit
 from apps.core.permissions import block_when_offline, compte_admin_required
 
 from .forms import (
+    BoutiqueCreateForm,
     BoutiqueRegionalForm,
     CompteSettingsForm,
     ExchangeRateForm,
     SignupForm,
+    StaffAttachForm,
     StaffCreateForm,
     StaffUpdateForm,
     SubscriptionForm,
@@ -145,6 +147,38 @@ def staff_create(request):
 
 @login_required
 @compte_admin_required
+def staff_attach_boutique(request):
+    """Donne à un employé déjà présent dans l'entreprise un accès à une
+    boutique supplémentaire, avec son propre rôle — sans créer de nouveau
+    compte utilisateur (voir staff_create pour ça). C'est ce qui permet à
+    un utilisateur de gérer plusieurs boutiques et de passer de l'une à
+    l'autre depuis "Changer de boutique" (voir tenants:choose_boutique)."""
+    if request.method == "POST":
+        form = StaffAttachForm(request.POST, compte=request.compte)
+        if form.is_valid():
+            Membership.objects.create(
+                user=form.cleaned_data["user"],
+                boutique=form.cleaned_data["boutique"],
+                role=form.cleaned_data["role"],
+            )
+            messages.success(
+                request,
+                _("%(email)s a maintenant accès à %(boutique)s.") % {
+                    "email": form.cleaned_data["user"].email,
+                    "boutique": form.cleaned_data["boutique"].name,
+                },
+            )
+            return redirect("tenants:staff_list")
+    else:
+        form = StaffAttachForm(compte=request.compte)
+    return render(
+        request, "tenants/staff_form.html",
+        {"form": form, "title": _("Affecter un employé à une autre boutique")},
+    )
+
+
+@login_required
+@compte_admin_required
 def staff_update(request, membership_id):
     membership = get_object_or_404(
         Membership.objects.select_related("user", "boutique"),
@@ -170,6 +204,33 @@ def staff_update(request, membership_id):
         "tenants/staff_form.html",
         {"form": form, "title": _("Modifier l'accès de %(email)s") % {"email": membership.user.email}},
     )
+
+
+@login_required
+@compte_admin_required
+@block_when_offline("tenants:company_settings")
+def boutique_create(request):
+    """Ouvre une boutique supplémentaire pour l'entreprise (la première
+    est créée à l'inscription, voir signup()). L'admin qui la crée y est
+    automatiquement affecté (Membership ADMIN_COMPTE) — sans ça, il ne
+    pourrait ni basculer dessus (tenants:set_boutique exige une Membership
+    sur la boutique visée) ni y affecter d'autres employés ensuite."""
+    if request.method == "POST":
+        form = BoutiqueCreateForm(request.POST, compte=request.compte)
+        if form.is_valid():
+            with transaction.atomic():
+                boutique = form.save(commit=False)
+                boutique.compte = request.compte
+                boutique.save()
+                Membership.objects.get_or_create(
+                    user=request.user, boutique=boutique,
+                    defaults={"role": Membership.ADMIN_COMPTE},
+                )
+            messages.success(request, _("Boutique « %(name)s » créée.") % {"name": boutique.name})
+            return redirect("tenants:company_settings")
+    else:
+        form = BoutiqueCreateForm(compte=request.compte)
+    return render(request, "tenants/boutique_form.html", {"form": form, "title": _("Nouvelle boutique")})
 
 
 @login_required
@@ -216,7 +277,10 @@ def company_settings(request):
     return render(
         request,
         "tenants/company_settings.html",
-        {"form": form, "boutique_form": boutique_form},
+        {
+            "form": form, "boutique_form": boutique_form,
+            "boutiques": Boutique.objects.filter(compte=compte).order_by("name"),
+        },
     )
 
 
