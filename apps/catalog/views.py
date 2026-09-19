@@ -17,7 +17,7 @@ from apps.tenants.models import Membership
 
 from .forms import CategoryForm, ProductForm, UnitForm
 from .models import Category, Product, ProductImage, Unit
-from .services import get_effective_low_stock_threshold, get_effective_price
+from .services import expired_products_in_stock, get_effective_low_stock_threshold, get_effective_price
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
@@ -122,8 +122,15 @@ def product_list(request):
     from apps.stock.models import StockLevel
 
     query = request.GET.get("q", "").strip()
+    # expired=1 : lien direct depuis la carte "Produits périmés" du tableau
+    # de bord (apps.core.views.home) — même définition, voir
+    # catalog.services.expired_products_in_stock.
+    expired_only = request.GET.get("expired") == "1"
 
-    products = Product.objects.filter(compte=request.compte).select_related("category", "unit")
+    if expired_only:
+        products = expired_products_in_stock(request.compte, request.boutique).select_related("category", "unit")
+    else:
+        products = Product.objects.filter(compte=request.compte).select_related("category", "unit")
     if query:
         products = products.filter(
             Q(name__icontains=query) | Q(sku__icontains=query) | Q(barcode__icontains=query)
@@ -131,8 +138,9 @@ def product_list(request):
     products = products.order_by("-created_at")
     # Sans recherche : seulement les 10 plus récents — au-delà, la barre de
     # recherche est le moyen de retrouver un produit plus ancien (voir aussi
-    # category_list/unit_list/client_list/... même patron).
-    if not query:
+    # category_list/unit_list/client_list/... même patron). Le filtre
+    # "périmés" affiche tout, pour que la liste corresponde au nombre annoncé.
+    if not query and not expired_only:
         products = products[:6]
     products = list(products)
 
@@ -143,7 +151,10 @@ def product_list(request):
     for product in products:
         stock_qty = stock_by_product.get(product.id, 0)
         product.is_low_stock = stock_qty <= get_effective_low_stock_threshold(product, request.boutique)
-    return render(request, "catalog/product_list.html", {"products": products, "query": query})
+    return render(
+        request, "catalog/product_list.html",
+        {"products": products, "query": query, "expired_only": expired_only},
+    )
 
 
 @login_required

@@ -1,4 +1,5 @@
 from django.db import models
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.images import ensure_webp
@@ -54,6 +55,12 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         _("taux de TVA (%)"), max_digits=5, decimal_places=2, default=0
     )
     low_stock_threshold_default = models.PositiveIntegerField(_("seuil de stock bas"), default=5)
+    # Une seule date par produit (pas par lot) : le catalogue est partagé
+    # entre les boutiques, voir StockLevel pour les quantités par boutique.
+    expiry_date = models.DateField(
+        _("date de péremption"), null=True, blank=True,
+        help_text=_("Laisser vide pour un produit sans date de péremption."),
+    )
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -65,6 +72,10 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_expired(self):
+        return self.expiry_date is not None and self.expiry_date < timezone.localdate()
 
     def save(self, *args, **kwargs):
         ensure_webp(self.image)

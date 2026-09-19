@@ -72,6 +72,18 @@ class Boutique(UUIDModel, TimeStampedModel):
     momo_account_name = models.CharField(_("MTN MoMo — nom du compte"), max_length=100, blank=True)
     momo_number = models.CharField(_("MTN MoMo — numéro"), max_length=30, blank=True)
 
+    # Montant fixe déduit de la caisse individuelle du livreur à chaque
+    # commande marquée livrée (voir apps.cashier.services.charge_delivery_fee,
+    # appelé depuis apps.sales.services.mark_commande_delivered). Vide =
+    # aucune déduction automatique.
+    delivery_price = models.DecimalField(
+        _("prix de livraison"), max_digits=14, decimal_places=0, null=True, blank=True,
+        help_text=_(
+            "Déduit automatiquement de la caisse individuelle de la personne qui livre, à chaque "
+            "commande marquée « Livrée ». Laisser vide pour ne rien déduire."
+        ),
+    )
+
     class Meta:
         verbose_name = _("boutique")
         verbose_name_plural = _("boutiques")

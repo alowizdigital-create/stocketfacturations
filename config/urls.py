@@ -18,11 +18,7 @@ urlpatterns = [
     path("entreprises/", include("apps.tenants.urls")),
     path("catalogue/", include("apps.catalog.urls")),
     path("stock/", include("apps.stock.urls")),
-    # Module caisse désactivé pour le moment (à la demande de l'utilisateur) —
-    # app toujours dans INSTALLED_APPS (modèles/migrations/données conservés),
-    # juste aucune route accessible. Voir aussi le lien de nav commenté dans
-    # templates/base.html.
-    # path("caisse/", include("apps.cashier.urls")),
+    path("caisse/", include("apps.cashier.urls")),
     path("", include("apps.sales.urls")),
     path("", include("apps.core.urls")),
     path("api/v1/sync/", include("apps.sync.urls")),

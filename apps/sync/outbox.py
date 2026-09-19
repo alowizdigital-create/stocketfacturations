@@ -169,6 +169,7 @@ def _serialize_product(object_id):
         "default_sale_price": str(product.default_sale_price),
         "tva_rate": str(product.tva_rate),
         "low_stock_threshold_default": product.low_stock_threshold_default,
+        "expiry_date": product.expiry_date.isoformat() if product.expiry_date else None,
         "is_active": product.is_active,
     }
 

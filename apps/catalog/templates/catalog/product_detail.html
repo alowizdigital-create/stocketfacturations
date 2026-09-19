@@ -13,6 +13,9 @@
             {% if is_low_stock %}
             <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> {% trans "Rupture de stock" %}</span>
             {% endif %}
+            {% if product.is_expired %}
+            <span class="badge-status badge-red"><i class="bi bi-calendar-x"></i> {% trans "Périmé" %}</span>
+            {% endif %}
         </h1>
         {% trans "Sans catégorie" as sans_categorie %}
         <div class="text-muted">{{ product.category|default:sans_categorie }}</div>
@@ -72,6 +75,10 @@
                     <div class="col-md-6">
                         <div class="text-muted small">{% trans "Seuil de stock bas" %}</div>
                         <div class="fw-semibold">{{ product.low_stock_threshold_default }}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">{% trans "Date de péremption" %}</div>
+                        <div class="fw-semibold {% if product.is_expired %}text-danger{% endif %}">{{ product.expiry_date|date:"d/m/Y"|default:"—" }}</div>
                     </div>
                 </div>
             </div>

@@ -5,11 +5,11 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.catalog.services import get_effective_low_stock_threshold
+from apps.catalog.services import expired_products_in_stock, get_effective_low_stock_threshold
 from apps.sales.models import Invoice, Sale
 from apps.stock.models import StockLevel
 
-from .models import ShortLink
+from .models import Notification, ShortLink
 
 
 def service_worker(request):
@@ -81,11 +81,14 @@ def home(request):
         if level.quantity <= get_effective_low_stock_threshold(level.product, boutique)
     )
 
+    nb_produits_perimes = expired_products_in_stock(request.compte, boutique).count()
+
     dernieres_ventes = (
         Sale.objects.filter(boutique=boutique).select_related("client").order_by("-created_at")[:5]
     )
 
     context = {
+        "nb_produits_perimes": nb_produits_perimes,
         "ca_mois": ca_mois,
         "ca_jour": ca_jour,
         "nb_factures_impayees": nb_factures_impayees,
@@ -94,3 +97,17 @@ def home(request):
         "dernieres_ventes": dernieres_ventes,
     }
     return render(request, "core/home.html", context)
+
+
+@login_required
+def notification_open(request, notification_id):
+    """Clic sur une notification (voir la cloche dans templates/base.html) :
+    marque lue puis redirige vers sa cible (ex: sa caisse pour accepter un
+    transfert) — voir apps.core.notifications.notify. Repli sur l'accueil
+    si aucune cible n'a été renseignée."""
+    notification = get_object_or_404(Notification, id=notification_id, user=request.user)
+    if not notification.is_read:
+        notification.is_read = True
+        notification.read_at = timezone.now()
+        notification.save(update_fields=["is_read", "read_at"])
+    return redirect(notification.url or "core:home")

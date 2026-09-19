@@ -1,4 +1,20 @@
-from .models import ProductBoutiquePrice
+from django.utils import timezone
+
+from .models import Product, ProductBoutiquePrice
+
+
+def expired_products_in_stock(compte, boutique):
+    """Produits périmés dont la boutique a encore du stock — un produit
+    périmé sans stock dans cette boutique n'est pas un problème à signaler
+    ici. Source unique pour la carte du tableau de bord ET la liste
+    filtrée (catalog:product_list?expired=1), pour que le nombre affiché
+    corresponde toujours à ce qu'on voit en cliquant dessus."""
+    return Product.objects.filter(
+        compte=compte,
+        expiry_date__lt=timezone.localdate(),
+        stock_levels__boutique=boutique,
+        stock_levels__quantity__gt=0,
+    ).distinct()
 
 
 def get_effective_price(product, boutique):

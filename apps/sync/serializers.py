@@ -175,6 +175,7 @@ class ProductPushSerializer(serializers.Serializer):
         max_digits=5, decimal_places=2, required=False, default=Decimal("0")
     )
     low_stock_threshold_default = serializers.IntegerField(required=False, default=5)
+    expiry_date = serializers.DateField(required=False, allow_null=True, default=None)
     is_active = serializers.BooleanField(required=False, default=True)
 
 
@@ -296,7 +297,7 @@ class ProductPullSerializer(serializers.ModelSerializer):
         fields = [
             "id", "category_id", "name", "sku", "barcode", "image_url",
             "unit_id", "default_sale_price", "tva_rate",
-            "low_stock_threshold_default", "is_active", "updated_at",
+            "low_stock_threshold_default", "expiry_date", "is_active", "updated_at",
         ]
 
     def get_image_url(self, obj):

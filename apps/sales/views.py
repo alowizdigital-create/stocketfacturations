@@ -8,6 +8,7 @@ from decimal import Decimal, InvalidOperation
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.db import transaction
 from django.db.models import Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -25,7 +26,9 @@ from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from . import services
-from .forms import ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, PaymentForm, SaleForm
+from .forms import (
+    ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, InvoiceSettleForm, PaymentForm, SaleForm,
+)
 from .models import Client, Invoice, Payment, Sale
 from .pdf import render_invoice_pdf
 from .whatsapp import build_message, build_share_link, normalize_phone
@@ -928,6 +931,7 @@ def invoice_detail(request, invoice_id):
         boutique=request.boutique,
     )
     payment_form = PaymentForm()
+    settle_form = InvoiceSettleForm()
 
     whatsapp_url = None
     has_client_phone = bool(invoice.client and invoice.client.phone)
@@ -948,6 +952,7 @@ def invoice_detail(request, invoice_id):
         {
             "invoice": invoice,
             "payment_form": payment_form,
+            "settle_form": settle_form,
             "whatsapp_url": whatsapp_url,
             "whatsapp_api_configured": is_configured(),
             "has_client_phone": has_client_phone,
@@ -1166,6 +1171,57 @@ def payment_create(request, invoice_id):
             if settings.IS_OFFLINE:
                 outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
             messages.success(request, _("Paiement enregistré."))
+    return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def invoice_settle(request, invoice_id):
+    """Solde une facture non entièrement payée en encaissant d'un coup le
+    reste à payer. Le montant est TOUJOURS recalculé ici (balance_due),
+    jamais lu dans la requête : un formulaire périmé ou un double clic ne
+    peut pas encaisser un montant faux — et la facture est verrouillée le
+    temps du calcul pour que deux requêtes simultanées n'encaissent pas
+    deux fois le même solde."""
+    if request.method != "POST":
+        return redirect("sales:invoice_detail", invoice_id=invoice_id)
+
+    form = InvoiceSettleForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, _("Mode de paiement invalide."))
+        return redirect("sales:invoice_detail", invoice_id=invoice_id)
+
+    with transaction.atomic():
+        invoice = get_object_or_404(
+            Invoice.objects.select_for_update(), id=invoice_id, boutique=request.boutique,
+        )
+        if invoice.type != Invoice.FACTURE or invoice.status in (Invoice.ANNULEE, Invoice.BROUILLON):
+            messages.error(request, _("Cette facture ne peut pas être soldée."))
+            return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+        remaining = invoice.balance_due
+        if remaining <= 0:
+            messages.info(request, _("Cette facture est déjà soldée."))
+            return redirect("sales:invoice_detail", invoice_id=invoice.id)
+
+        payment_id = uuid.uuid4()
+        services.record_payment(
+            invoice,
+            amount=remaining,
+            method=form.cleaned_data["method"],
+            reference=form.cleaned_data["reference"],
+            created_by=request.user,
+            id=payment_id,
+        )
+        if settings.IS_OFFLINE:
+            outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
+
+    messages.success(
+        request,
+        _("%(invoice)s soldée : %(amount)s %(currency)s encaissés.") % {
+            "invoice": invoice.number, "amount": remaining, "currency": invoice.currency,
+        },
+    )
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 

@@ -346,12 +346,21 @@ def convert_commande_to_invoice(commande, created_by=None):
     return invoice
 
 
+@transaction.atomic
 def mark_commande_delivered(commande, delivered_by=None):
     """Marque une commande comme livrée — indépendant du statut
     facturation/paiement (voir Invoice.delivery_status) : le client a
     physiquement reçu sa commande, que celle-ci soit déjà convertie en
     facture ou non. Idempotent : ne fait rien si déjà livrée, pour ne pas
-    écraser delivered_at/delivered_by d'un premier marquage."""
+    écraser delivered_at/delivered_by d'un premier marquage, ni déduire
+    deux fois les frais de livraison.
+
+    Si un prix de livraison est configuré sur la boutique, le déduit de la
+    caisse individuelle de delivered_by (voir
+    apps.cashier.services.charge_delivery_fee) — dans la même transaction
+    que le marquage, pour ne jamais avoir l'un sans l'autre."""
+
+    from apps.cashier.services import charge_delivery_fee
 
     if commande.type != Invoice.COMMANDE:
         raise ValueError("Seule une commande peut être marquée comme livrée.")
@@ -362,6 +371,7 @@ def mark_commande_delivered(commande, delivered_by=None):
     commande.delivered_at = timezone.now()
     commande.delivered_by = delivered_by
     commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
+    charge_delivery_fee(commande, delivered_by=delivered_by)
     return commande
 
 

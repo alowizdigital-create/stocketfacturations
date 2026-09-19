@@ -85,16 +85,10 @@
                 <i class="bi bi-receipt"></i> {% trans "Factures" %}
             </a>
 
-            {% comment %}
-            Module caisse désactivé pour le moment (voir config/urls.py) —
-            {% url %} n'est pas évalué à l'intérieur de {% comment %}, contrairement
-            à un simple commentaire HTML <!-- --> qui aurait quand même levé
-            NoReverseMatch puisque le tag est exécuté avant d'être rendu en texte.
             <div class="sidebar-section">{% trans "Caisse" %}</div>
-            <a class="nav-link {% if '/caisse' in request.path %}active{% endif %}" href="{% url 'cashier:current' %}">
-                <i class="bi bi-cash-coin"></i> {% trans "Caisse" %}
+            <a class="nav-link {% if '/caisse/perso' in request.path %}active{% endif %}" href="{% url 'cashier:my_cash' %}">
+                <i class="bi bi-wallet2"></i> {% trans "Ma caisse" %}
             </a>
-            {% endcomment %}
 
             <div class="sidebar-section">{% trans "Catalogue" %}</div>
             <a class="nav-link {% if '/catalogue/produits' in request.path %}active{% endif %}" href="{% url 'catalog:product_list' %}">
@@ -120,6 +114,9 @@
             <div class="sidebar-section">{% trans "Administration" %}</div>
             <a class="nav-link {% if '/entreprises/equipe' in request.path %}active{% endif %}" href="{% url 'tenants:staff_list' %}">
                 <i class="bi bi-person-badge"></i> {% trans "Équipe" %}
+            </a>
+            <a class="nav-link {% if '/caisse/entreprise' in request.path %}active{% endif %}" href="{% url 'cashier:entreprise_overview' %}">
+                <i class="bi bi-safe2"></i> {% trans "Caisse de l'entreprise" %}
             </a>
             <a class="nav-link {% if '/entreprises/parametres' in request.path %}active{% endif %}" href="{% url 'tenants:company_settings' %}">
                 <i class="bi bi-gear"></i> {% trans "Paramètres" %}
@@ -155,6 +152,28 @@
             <button type="button" id="pwa-install-btn" class="btn btn-brand btn-sm d-lg-none pwa-install-btn" style="display:none;">
                 <i class="bi bi-download"></i> {% trans "Installer" %}
             </button>
+
+            <div class="dropdown ms-auto">
+                <button type="button" class="btn btn-outline-secondary position-relative" data-bs-toggle="dropdown" aria-expanded="false" title="{% trans 'Notifications' %}">
+                    <i class="bi bi-bell"></i>
+                    {% if unread_notifications_count %}
+                    <span class="badge-status badge-red position-absolute top-0 start-100 translate-middle rounded-pill" style="font-size:.65rem; padding:.2em .45em;">{{ unread_notifications_count }}</span>
+                    {% endif %}
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" style="min-width:300px; max-height:360px; overflow-y:auto;">
+                    {% for n in unread_notifications %}
+                    <li>
+                        <a class="dropdown-item" href="{% url 'core:notification_open' n.id %}">
+                            <div class="small">{{ n.message }}</div>
+                            <div class="text-muted" style="font-size:.7rem;">{{ n.created_at|date:"d/m/Y H:i" }}</div>
+                        </a>
+                    </li>
+                    {% empty %}
+                    <li><span class="dropdown-item-text text-muted small">{% trans "Aucune notification." %}</span></li>
+                    {% endfor %}
+                </ul>
+            </div>
+
             <span class="text-muted small topbar-email">{{ user.first_name }}</span>
         </header>
 

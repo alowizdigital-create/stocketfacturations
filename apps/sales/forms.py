@@ -179,3 +179,14 @@ class PaymentForm(BootstrapFormMixin, forms.Form):
     amount = forms.DecimalField(max_digits=14, decimal_places=0, min_value=Decimal("1"))
     method = forms.ChoiceField(choices=Payment.METHOD_CHOICES, initial=Payment.ESPECES)
     reference = forms.CharField(max_length=100, required=False)
+
+
+class InvoiceSettleForm(BootstrapFormMixin, forms.Form):
+    """Solde d'une facture : pas de champ montant — il est toujours
+    recalculé côté serveur (Invoice.balance_due), jamais fourni par le
+    navigateur (voir views.invoice_settle)."""
+
+    method = forms.ChoiceField(
+        label=_("Mode de paiement"), choices=Payment.METHOD_CHOICES, initial=Payment.ESPECES,
+    )
+    reference = forms.CharField(label=_("Référence (optionnel)"), max_length=100, required=False)

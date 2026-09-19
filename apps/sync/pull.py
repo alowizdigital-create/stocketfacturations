@@ -200,6 +200,7 @@ def _upsert_product(items, compte_id):
                 "default_sale_price": item["default_sale_price"],
                 "tva_rate": item.get("tva_rate", 0),
                 "low_stock_threshold_default": item.get("low_stock_threshold_default", 5),
+                "expiry_date": item.get("expiry_date"),
                 "is_active": item.get("is_active", True),
             },
         )

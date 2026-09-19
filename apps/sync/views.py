@@ -249,6 +249,7 @@ class PushProductsView(BasePushView):
                 "sku": data.get("sku", ""), "barcode": data.get("barcode", ""), "unit": unit,
                 "default_sale_price": data["default_sale_price"], "tva_rate": data.get("tva_rate", 0),
                 "low_stock_threshold_default": data.get("low_stock_threshold_default", 5),
+                "expiry_date": data.get("expiry_date"),
                 "is_active": data.get("is_active", True),
             },
         )

@@ -1,6 +1,7 @@
 import secrets
 import uuid
 
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
@@ -103,3 +104,29 @@ class ShortLink(models.Model):
             if created:
                 return obj
         raise RuntimeError("Impossible de générer un code court unique.")
+
+
+class Notification(UUIDModel, TimeStampedModel):
+    """Notification en app pour un utilisateur — générique (pas propre à
+    la caisse), même si les transferts entre caisses individuelles sont
+    aujourd'hui le seul déclencheur (voir apps.cashier.services). Pas de
+    push/websocket : une simple liste consultée à chaque navigation (voir
+    apps.core.context_processors.notifications) — cohérent avec le reste
+    de l'app, qui n'a pas d'infrastructure temps réel. `url` : chemin vers
+    lequel rediriger au clic (ex: sa caisse pour accepter un transfert)."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
+    )
+    message = models.CharField(max_length=255)
+    url = models.CharField(max_length=500, blank=True)
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = _("notification")
+        verbose_name_plural = _("notifications")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return self.message

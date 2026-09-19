@@ -132,3 +132,100 @@ class CashMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.get_type_display()} {self.amount} — {self.reason}"
+
+
+class PersonalCashMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
+    """Mouvement sur la caisse individuelle d'un employé — distincte de la
+    session de caisse partagée par boutique ci-dessus (CashSession) : ici
+    chacun a son propre solde. Le solde n'est jamais stocké, toujours
+    recalculé (voir services.personal_cash_balance) : crédits = ventes en
+    espèces encaissées personnellement (dérivées de Payment.created_by,
+    même principe que CashSession.expected_amount()) + transferts reçus ;
+    débits = transferts envoyés + frais de livraison. Un transfert crée
+    deux lignes liées (DEBIT chez l'un, CREDIT chez l'autre, même
+    transfer_id) plutôt qu'un modèle de transfert séparé, pour que le
+    solde de chacun reste une simple somme sur ce seul modèle."""
+
+    CREDIT = "CREDIT"
+    DEBIT = "DEBIT"
+    TYPE_CHOICES = [(CREDIT, _("Crédit")), (DEBIT, _("Débit"))]
+
+    TRANSFERT = "TRANSFERT"
+    LIVRAISON = "LIVRAISON"
+    KIND_CHOICES = [
+        (TRANSFERT, _("Transfert entre collaborateurs")),
+        (LIVRAISON, _("Frais de livraison")),
+    ]
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="personal_cash_movements"
+    )
+    type = models.CharField(max_length=10, choices=TYPE_CHOICES)
+    kind = models.CharField(max_length=20, choices=KIND_CHOICES)
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    reason = models.CharField(_("motif"), max_length=255, blank=True)
+    # Autre partie d'un transfert (qui a reçu/envoyé) — non renseigné pour
+    # un débit "frais de livraison".
+    counterparty = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    # Lie les deux lignes (DEBIT + CREDIT) d'un même transfert — permet de
+    # les retrouver/afficher ensemble sans dépendre de l'ordre de création.
+    transfer_id = models.UUIDField(null=True, blank=True)
+    commande = models.ForeignKey(
+        "sales.Invoice", on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+        help_text=_("Commande à l'origine du débit, pour un mouvement de type « Frais de livraison »."),
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="personal_cash_movements_created"
+    )
+
+    class Meta:
+        verbose_name = _("mouvement de caisse individuelle")
+        verbose_name_plural = _("mouvements de caisse individuelle")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.get_type_display()} {self.amount} — {self.user} ({self.get_kind_display()})"
+
+
+class CashTransfer(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
+    """Demande de transfert entre deux caisses individuelles — tant qu'elle
+    n'est pas acceptée par le destinataire, aucun PersonalCashMovement
+    n'existe encore : l'argent reste dans la caisse de l'expéditeur (voir
+    services.request_transfer/accept_transfer/reject_transfer). Les deux
+    PersonalCashMovement (DEBIT + CREDIT) ne sont créés qu'à l'acceptation."""
+
+    EN_ATTENTE = "EN_ATTENTE"
+    ACCEPTE = "ACCEPTE"
+    REFUSE = "REFUSE"
+    STATUS_CHOICES = [
+        (EN_ATTENTE, _("En attente")),
+        (ACCEPTE, _("Accepté")),
+        (REFUSE, _("Refusé")),
+    ]
+
+    from_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cash_transfers_sent"
+    )
+    to_user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="cash_transfers_received"
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    reason = models.CharField(_("motif"), max_length=255, blank=True)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=EN_ATTENTE)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
+    )
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="cash_transfers_created"
+    )
+
+    class Meta:
+        verbose_name = _("transfert de caisse")
+        verbose_name_plural = _("transferts de caisse")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.from_user} → {self.to_user} : {self.amount} ({self.get_status_display()})"

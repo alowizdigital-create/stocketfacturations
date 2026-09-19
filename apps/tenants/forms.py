@@ -201,6 +201,7 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
         fields = [
             "devise",
             "country_calling_code",
+            "delivery_price",
             "om_account_name",
             "om_number",
             "momo_account_name",
@@ -208,6 +209,7 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
         ]
         labels = {
             "devise": _("Devise"),
+            "delivery_price": _("Prix de livraison"),
             "om_account_name": _("Orange Money — nom du compte"),
             "om_number": _("Orange Money — numéro"),
             "momo_account_name": _("MTN MoMo — nom du compte"),

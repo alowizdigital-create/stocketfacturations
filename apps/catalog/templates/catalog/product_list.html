@@ -9,7 +9,12 @@
     <a href="{% url 'catalog:product_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau produit" %}</a>
 </div>
 
+{% if expired_only %}
+<div class="text-muted mb-2">{% trans "Produits périmés encore en stock dans cette boutique" %} <a href="{% url 'catalog:product_list' %}" class="ms-1">{% trans "(voir tous les produits)" %}</a></div>
+{% endif %}
+
 <form method="get" class="mb-3">
+    {% if expired_only %}<input type="hidden" name="expired" value="1">{% endif %}
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
@@ -50,6 +55,11 @@
                     {% endif %}
                     {% if product.is_low_stock %}
                     <span class="badge-status badge-red"><i class="bi bi-exclamation-triangle"></i> {% trans "Rupture" %}</span>
+                    {% endif %}
+                    {% if product.is_expired %}
+                    <span class="badge-status badge-red"><i class="bi bi-calendar-x"></i> {% trans "Périmé" %}</span>
+                    {% elif product.expiry_date %}
+                    <span class="text-muted small d-block">{% trans "Exp." %} {{ product.expiry_date|date:"d/m/Y" }}</span>
                     {% endif %}
                 </td>
                 <td class="text-end">

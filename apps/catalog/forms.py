@@ -56,6 +56,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "default_sale_price",
             # "tva_rate",
             # "low_stock_threshold_default",
+            "expiry_date",
             "is_active",
         ]
         labels = {
@@ -64,6 +65,9 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "category": _("Catégorie"),
             "unit": _("Unité"),
             "is_active": _("Actif"),
+        }
+        widgets = {
+            "expiry_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
         }
 
     def __init__(self, *args, compte=None, include_quantity=False, **kwargs):
@@ -79,7 +83,8 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             del self.fields["initial_quantity"]
         else:
             self.order_fields(
-                ["name", "image", "category", "unit", "default_sale_price", "initial_quantity", "is_active"]
+                ["name", "image", "category", "unit", "default_sale_price", "initial_quantity",
+                 "expiry_date", "is_active"]
             )
 
     def clean_initial_quantity(self):

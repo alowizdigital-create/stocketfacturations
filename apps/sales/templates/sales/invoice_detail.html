@@ -53,6 +53,11 @@
             <i class="bi bi-whatsapp"></i> {% trans "WhatsApp (pas de téléphone)" %}
         </span>
         {% endif %}
+        {% if invoice.type == "FACTURE" and invoice.balance_due > 0 and invoice.status != "ANNULEE" and invoice.status != "BROUILLON" %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoice-settle-modal">
+            <i class="bi bi-cash-coin"></i> {% blocktrans trimmed with amount=invoice.balance_due currency=invoice.currency %}Solder ({{ amount }} {{ currency }}){% endblocktrans %}
+        </button>
+        {% endif %}
         {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
         <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#commande-payment-modal">
             <i class="bi bi-check2-circle"></i> {% trans "Valider la commande" %}
@@ -274,6 +279,43 @@
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
                 <button type="button" class="btn btn-primary" id="devis-payment-confirm">{% trans "Confirmer et générer la facture" %}</button>
             </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if invoice.type == "FACTURE" and invoice.balance_due > 0 and invoice.status != "ANNULEE" and invoice.status != "BROUILLON" %}
+<!-- Solde d'une facture non entièrement payée : le montant affiché n'est
+     qu'informatif, la vue (sales:invoice_settle) recalcule le reste à
+     payer elle-même au moment de l'encaissement. -->
+<div class="modal fade" id="invoice-settle-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'sales:invoice_settle' invoice.id %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Solder la facture" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                        <span class="text-muted">{% trans "Reste à payer" %}</span>
+                        <span class="fw-bold fs-5">{{ invoice.balance_due }} {{ invoice.currency }}</span>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ settle_form.method.label }}</label>
+                        {{ settle_form.method }}
+                    </div>
+                    <div>
+                        <label class="form-label">{{ settle_form.reference.label }}</label>
+                        {{ settle_form.reference }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                    <button type="submit" class="btn btn-success">{% trans "Encaisser et solder" %}</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>

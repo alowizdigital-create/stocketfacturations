@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Ma caisse" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Ma caisse" %}</h1>
+        <div class="text-muted">{% trans "Votre solde individuel — distinct de la caisse partagée de la boutique." %}</div>
+    </div>
+    <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#cash-transfer-modal" title="{% trans 'Transférer' %}" aria-label="{% trans 'Transférer' %}">
+        <i class="bi bi-arrow-left-right"></i>
+    </button>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-md-4">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+            <div>
+                <div class="stat-value">{{ balance }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Solde actuel" %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if pending_received %}
+<div class="card-app mb-3">
+    <div class="card-app-header">{% trans "Transferts en attente de votre acceptation" %}</div>
+    <div class="card-app-body d-flex flex-column gap-2">
+        {% for t in pending_received %}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 py-1 border-bottom">
+            <div>
+                <div>{% blocktrans trimmed with name=t.from_user.get_full_name|default:t.from_user.email amount=t.amount currency=request.boutique.devise %}<strong>{{ amount }} {{ currency }}</strong> de {{ name }}{% endblocktrans %}</div>
+                {% if t.reason %}<div class="text-muted small">{{ t.reason }}</div>{% endif %}
+            </div>
+            <div class="d-flex gap-2">
+                <form method="post" action="{% url 'cashier:transfer_accept' t.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-success btn-sm" title="{% trans 'Accepter' %}" aria-label="{% trans 'Accepter' %}"><i class="bi bi-check-lg"></i></button>
+                </form>
+                <form method="post" action="{% url 'cashier:transfer_reject' t.id %}">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-outline-danger btn-sm" title="{% trans 'Refuser' %}" aria-label="{% trans 'Refuser' %}"><i class="bi bi-x-lg"></i></button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% if pending_sent %}
+<div class="card-app mb-3">
+    <div class="card-app-header">{% trans "Transferts envoyés, en attente d'acceptation" %}</div>
+    <div class="card-app-body d-flex flex-column gap-2">
+        {% for t in pending_sent %}
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 py-1 border-bottom">
+            <div class="text-muted">
+                {% blocktrans trimmed with name=t.to_user.get_full_name|default:t.to_user.email amount=t.amount currency=request.boutique.devise %}<strong>{{ amount }} {{ currency }}</strong> vers {{ name }}{% endblocktrans %}
+            </div>
+            <form method="post" action="{% url 'cashier:transfer_reject' t.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-link btn-sm p-0 text-muted">{% trans "Annuler" %}</button>
+            </form>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<div class="card-app">
+    <div class="card-app-header">{% trans "Mouvements récents" %}</div>
+    <div class="table-app" style="border:none; box-shadow:none;">
+        <table class="table mb-0">
+            <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Type" %}</th><th>{% trans "Montant" %}</th><th>{% trans "Détail" %}</th></tr></thead>
+            <tbody>
+                {% for m in movements %}
+                <tr>
+                    <td class="text-muted">{{ m.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <span class="badge-status {% if m.type == 'CREDIT' %}badge-green{% else %}badge-red{% endif %}">
+                            {{ m.get_type_display }}
+                        </span>
+                    </td>
+                    <td>{{ m.amount }} {{ request.boutique.devise }}</td>
+                    <td class="text-muted">
+                        {% if m.kind == 'TRANSFERT' %}
+                            {% if m.type == 'DEBIT' %}
+                                {% blocktrans trimmed with name=m.counterparty.get_full_name|default:m.counterparty.email %}Envoyé à {{ name }}{% endblocktrans %}
+                            {% else %}
+                                {% blocktrans trimmed with name=m.counterparty.get_full_name|default:m.counterparty.email %}Reçu de {{ name }}{% endblocktrans %}
+                            {% endif %}
+                            {% if m.reason %} — {{ m.reason }}{% endif %}
+                        {% else %}
+                            {% trans "Frais de livraison" %}{% if m.commande %} — {{ m.commande.number }}{% endif %}
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="text-muted text-center py-4">{% trans "Aucun mouvement pour le moment." %}</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="cash-transfer-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{% url 'cashier:transfer_create' %}">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Transférer de l'argent" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted small">{% blocktrans trimmed with balance=balance currency=request.boutique.devise %}Solde disponible : <strong>{{ balance }} {{ currency }}</strong>{% endblocktrans %}</p>
+                    {{ transfer_form.non_field_errors }}
+                    <div class="mb-3">
+                        <label class="form-label">{{ transfer_form.to_user.label }}</label>
+                        {{ transfer_form.to_user }}
+                        {{ transfer_form.to_user.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ transfer_form.amount.label }}</label>
+                        {{ transfer_form.amount }}
+                        {{ transfer_form.amount.errors }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ transfer_form.reason.label }}</label>
+                        {{ transfer_form.reason }}
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
+                    <button type="submit" class="btn btn-primary">{% trans "Transférer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
