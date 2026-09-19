@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Plateforme — Utilisateurs" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Utilisateurs" %}</h1>
+        <div class="text-muted">{% blocktrans trimmed with n=total %}{{ n }} utilisateur(s) sur l'ensemble de la plateforme.{% endblocktrans %}</div>
+    </div>
+    <a href="{% url 'platform_admin:dashboard' %}" class="btn btn-outline-secondary"><i class="bi bi-buildings"></i> {% trans "Entreprises" %}</a>
+</div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher (nom, e-mail)...' %}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+        {% if query %}<a href="{% url 'platform_admin:user_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>{% endif %}
+    </div>
+</form>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr>
+            <th>{% trans "Utilisateur" %}</th>
+            <th class="d-none d-md-table-cell">{% trans "Entreprise(s)" %}</th>
+            <th>{% trans "Statut" %}</th>
+            <th class="d-none d-lg-table-cell">{% trans "Dernière connexion" %}</th>
+            <th></th>
+        </tr></thead>
+        <tbody>
+            {% for u in page %}
+            <tr>
+                <td>
+                    <div class="fw-semibold">{{ u.get_full_name|default:u.email }}{% if u.is_superuser %} <span class="badge-status badge-purple">{% trans "Plateforme" %}</span>{% endif %}</div>
+                    <div class="text-muted small">{{ u.email }}</div>
+                </td>
+                <td class="d-none d-md-table-cell text-muted small">{{ u.company_names|join:", "|default:"—" }}</td>
+                <td>
+                    {% if u.is_active %}<span class="badge-status badge-green">{% trans "Actif" %}</span>{% else %}<span class="badge-status badge-gray">{% trans "Désactivé" %}</span>{% endif %}
+                </td>
+                <td class="d-none d-lg-table-cell text-muted">{{ u.last_login|date:"d/m/Y H:i"|default:"—" }}</td>
+                <td class="text-end"><a href="{% url 'platform_admin:user_edit' u.pk %}"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucun utilisateur." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "tenants/platform/_pagination.html" %}
+{% endblock %}

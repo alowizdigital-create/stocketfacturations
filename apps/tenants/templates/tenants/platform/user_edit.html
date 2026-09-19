@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ target.get_full_name|default:target.email }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ target.get_full_name|default:target.email }}</h1>
+        <div class="text-muted">{% blocktrans trimmed with d=target.date_joined|date:"d/m/Y" %}Inscrit le {{ d }}{% endblocktrans %}</div>
+    </div>
+    <a href="{% url 'platform_admin:user_list' %}" class="btn btn-outline-secondary">{% trans "Retour" %}</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="card-app">
+            <div class="card-app-header">{% trans "Informations" %}</div>
+            <div class="card-app-body">
+                <form method="post">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_name" value="info">
+                    {{ info_form.non_field_errors }}
+                    {% for field in info_form %}
+                    <div class="mb-3">
+                        {% if field.name == "is_active" %}
+                        <div class="form-check">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                        {% else %}
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {% endif %}
+                        {{ field.errors }}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card-app mb-3">
+            <div class="card-app-header">{% trans "Changer le mot de passe" %}</div>
+            <div class="card-app-body">
+                <p class="text-muted small">{% trans "L'ancien mot de passe n'est jamais visible. En le remplaçant, toutes les sessions ouvertes de cet utilisateur sont déconnectées." %}</p>
+                <form method="post" autocomplete="off">
+                    {% csrf_token %}
+                    <input type="hidden" name="form_name" value="password">
+                    {{ password_form.non_field_errors }}
+                    {% for field in password_form %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ field.label }}</label>
+                        {{ field }}
+                        {{ field.errors }}
+                    </div>
+                    {% endfor %}
+                    <button type="submit" class="btn btn-warning">{% trans "Définir le mot de passe" %}</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card-app">
+            <div class="card-app-header">{% trans "Accès aux entreprises" %}</div>
+            <div class="table-app" style="border:none; box-shadow:none;">
+                <table class="table mb-0">
+                    <tbody>
+                        {% for m in memberships %}
+                        <tr>
+                            <td><div class="fw-semibold">{{ m.boutique.compte.name }}</div><div class="text-muted small">{{ m.boutique.name }}</div></td>
+                            <td><span class="badge-status badge-purple">{{ m.get_role_display }}</span></td>
+                            <td>{% if m.is_active %}<span class="badge-status badge-green">{% trans "Actif" %}</span>{% else %}<span class="badge-status badge-gray">{% trans "Désactivé" %}</span>{% endif %}</td>
+                        </tr>
+                        {% empty %}
+                        <tr><td class="text-muted text-center py-3">{% trans "Aucun accès à une entreprise." %}</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% load i18n %}
+{% if page.paginator.num_pages > 1 %}
+<nav class="d-flex justify-content-between align-items-center mt-3">
+    <span class="text-muted small">{% blocktrans trimmed with n=page.number total=page.paginator.num_pages %}Page {{ n }} sur {{ total }}{% endblocktrans %}</span>
+    <div class="btn-group btn-group-sm">
+        {% if page.has_previous %}<a class="btn btn-outline-secondary" href="?page={{ page.previous_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-left"></i></a>{% endif %}
+        {% if page.has_next %}<a class="btn btn-outline-secondary" href="?page={{ page.next_page_number }}{% if query %}&q={{ query|urlencode }}{% endif %}"><i class="bi bi-chevron-right"></i></a>{% endif %}
+    </div>
+</nav>
+{% endif %}

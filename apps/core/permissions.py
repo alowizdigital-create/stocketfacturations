@@ -83,3 +83,25 @@ def compte_admin_required(view_func):
         return view_func(request, *args, **kwargs)
 
     return wrapped
+
+
+def platform_admin_required(view_func):
+    """Réservé au super-administrateur de la PLATEFORME (is_superuser) —
+    à ne pas confondre avec compte_admin_required, qui vise
+    l'administrateur d'UNE entreprise. Donne accès à toutes les
+    entreprises et à tous les utilisateurs de l'application. Hors-ligne
+    (poste local d'une seule boutique), ce module n'a pas de sens : ses
+    modifications ne seraient jamais synchronisées."""
+
+    @wraps(view_func)
+    def wrapped(request, *args, **kwargs):
+        if not request.user.is_superuser:
+            messages.error(request, _("Cette section est réservée à l'administrateur de la plateforme."))
+            return redirect("core:home")
+        if settings.IS_OFFLINE:
+            messages.error(request, _("L'administration de la plateforme se fait uniquement depuis le serveur en ligne."))
+            return redirect("core:home")
+        return view_func(request, *args, **kwargs)
+
+    return wrapped
+

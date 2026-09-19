@@ -32,6 +32,10 @@ def short_link_redirect(request, code):
 @login_required
 def home(request):
     if request.boutique is None:
+        # Un super-administrateur de la plateforme n'a souvent aucune
+        # boutique : son point d'entrée est l'administration plateforme.
+        if request.user.is_superuser and not settings.IS_OFFLINE:
+            return redirect("platform_admin:dashboard")
         return redirect("tenants:choose_boutique")
 
     boutique = request.boutique

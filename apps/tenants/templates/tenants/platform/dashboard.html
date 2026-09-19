@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Plateforme — Entreprises" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Plateforme" %}</h1>
+        <div class="text-muted">{% trans "Vue d'ensemble de toutes les entreprises et de tous les utilisateurs de l'application." %}</div>
+    </div>
+    <a href="{% url 'platform_admin:user_list' %}" class="btn btn-outline-secondary"><i class="bi bi-people"></i> {% trans "Utilisateurs" %}</a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'platform_admin:user_list' %}" class="stat-card text-decoration-none text-reset">
+            <div class="stat-icon"><i class="bi bi-people"></i></div>
+            <div>
+                <div class="stat-value">{{ stats.nb_users }}</div>
+                <div class="stat-label">{% trans "Utilisateurs" %}</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-person-check"></i></div>
+            <div>
+                <div class="stat-value">{{ stats.nb_users_actifs }}</div>
+                <div class="stat-label">{% trans "Utilisateurs actifs" %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-buildings"></i></div>
+            <div>
+                <div class="stat-value">{{ stats.nb_entreprises }}</div>
+                <div class="stat-label">{% trans "Entreprises" %}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="stat-card">
+            <div class="stat-icon"><i class="bi bi-shop"></i></div>
+            <div>
+                <div class="stat-value">{{ stats.nb_boutiques }}</div>
+                <div class="stat-label">{% trans "Boutiques" %}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une entreprise (nom, e-mail)...' %}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+        {% if query %}<a href="{% url 'platform_admin:dashboard' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>{% endif %}
+    </div>
+</form>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr>
+            <th>{% trans "Entreprise" %}</th>
+            <th class="d-none d-md-table-cell">{% trans "Administrateur(s)" %}</th>
+            <th>{% trans "Boutiques" %}</th>
+            <th>{% trans "Employés" %}</th>
+            <th class="d-none d-md-table-cell">{% trans "Offre" %}</th>
+            <th class="d-none d-lg-table-cell">{% trans "Créée le" %}</th>
+        </tr></thead>
+        <tbody>
+            {% for company in page %}
+            <tr>
+                <td class="fw-semibold">{{ company.name }}</td>
+                <td class="d-none d-md-table-cell text-muted small">
+                    {% for email in company.admin_emails %}<div>{{ email }}</div>{% empty %}—{% endfor %}
+                </td>
+                <td>{{ company.nb_boutiques }}</td>
+                <td>{{ company.nb_employes }}</td>
+                <td class="d-none d-md-table-cell">{{ company.subscription.plan.name|default:"—" }}</td>
+                <td class="d-none d-lg-table-cell text-muted">{{ company.created_at|date:"d/m/Y" }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune entreprise." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% include "tenants/platform/_pagination.html" %}
+{% endblock %}
