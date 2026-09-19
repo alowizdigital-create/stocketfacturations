@@ -54,8 +54,8 @@
         </span>
         {% endif %}
         {% if invoice.type == "FACTURE" and invoice.balance_due > 0 and invoice.status != "ANNULEE" and invoice.status != "BROUILLON" %}
-        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoice-settle-modal">
-            <i class="bi bi-cash-coin"></i> {% blocktrans trimmed with amount=invoice.balance_due currency=invoice.currency %}Solder ({{ amount }} {{ currency }}){% endblocktrans %}
+        <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoice-pay-modal">
+            <i class="bi bi-cash-coin"></i> {% blocktrans trimmed with amount=invoice.balance_due currency=invoice.currency %}Encaisser (reste {{ amount }} {{ currency }}){% endblocktrans %}
         </button>
         {% endif %}
         {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
@@ -285,16 +285,18 @@
 {% endif %}
 
 {% if invoice.type == "FACTURE" and invoice.balance_due > 0 and invoice.status != "ANNULEE" and invoice.status != "BROUILLON" %}
-<!-- Solde d'une facture non entièrement payée : le montant affiché n'est
-     qu'informatif, la vue (sales:invoice_settle) recalcule le reste à
-     payer elle-même au moment de l'encaissement. -->
-<div class="modal fade" id="invoice-settle-modal" tabindex="-1" aria-hidden="true">
+<!-- Versement sur une facture non entièrement payée : le montant est libre
+     (un client peut simplement réduire sa dette, la facture reste alors
+     « partiellement payée ») mais plafonné au reste à payer. Le plafond
+     ci-dessous n'est qu'une aide de saisie : la vue (sales:invoice_pay) le
+     revérifie sur la facture verrouillée. -->
+<div class="modal fade" id="invoice-pay-modal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form method="post" action="{% url 'sales:invoice_settle' invoice.id %}">
+            <form method="post" action="{% url 'sales:invoice_pay' invoice.id %}">
                 {% csrf_token %}
                 <div class="modal-header">
-                    <h5 class="modal-title">{% trans "Solder la facture" %}</h5>
+                    <h5 class="modal-title">{% trans "Encaisser un versement" %}</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
                 </div>
                 <div class="modal-body">
@@ -303,22 +305,57 @@
                         <span class="fw-bold fs-5">{{ invoice.balance_due }} {{ invoice.currency }}</span>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">{{ settle_form.method.label }}</label>
-                        {{ settle_form.method }}
+                        <div class="d-flex justify-content-between align-items-center">
+                            <label class="form-label mb-1" for="pay-amount">{% trans "Montant du versement" %} ({{ invoice.currency }})</label>
+                            <button type="button" class="btn btn-link btn-sm p-0" id="pay-fill-all">{% trans "Tout le reste" %}</button>
+                        </div>
+                        <input type="number" name="amount" id="pay-amount" class="form-control form-control-lg" min="1" max="{{ invoice.balance_due|stringformat:'d' }}" step="1" value="{{ invoice.balance_due|stringformat:'d' }}" required>
+                        <div class="form-text" id="pay-left-line"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">{{ pay_form.method.label }}</label>
+                        {{ pay_form.method }}
                     </div>
                     <div>
-                        <label class="form-label">{{ settle_form.reference.label }}</label>
-                        {{ settle_form.reference }}
+                        <label class="form-label">{{ pay_form.reference.label }}</label>
+                        {{ pay_form.reference }}
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
-                    <button type="submit" class="btn btn-success">{% trans "Encaisser et solder" %}</button>
+                    <button type="submit" class="btn btn-success">{% trans "Encaisser" %}</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+<script>
+(function () {
+    var remaining = {{ invoice.balance_due|stringformat:"d" }};
+    var input = document.getElementById("pay-amount");
+    var line = document.getElementById("pay-left-line");
+    var currency = "{{ invoice.currency|escapejs }}";
+    function refresh() {
+        var value = parseInt(input.value, 10);
+        if (isNaN(value) || value < 1) { line.textContent = ""; return; }
+        if (value > remaining) {
+            line.textContent = "{% trans 'Le montant dépasse le reste à payer.' %}";
+            line.className = "form-text text-danger";
+        } else if (value === remaining) {
+            line.textContent = "{% trans 'La facture sera soldée.' %}";
+            line.className = "form-text text-success";
+        } else {
+            line.textContent = "{% trans 'Reste à payer après ce versement :' %} " + (remaining - value) + " " + currency;
+            line.className = "form-text";
+        }
+    }
+    input.addEventListener("input", refresh);
+    document.getElementById("pay-fill-all").addEventListener("click", function () {
+        input.value = remaining; refresh();
+    });
+    refresh();
+})();
+</script>
 {% endif %}
 
 {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}

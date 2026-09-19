@@ -56,6 +56,15 @@
         </a>
     </div>
     <div class="col-6 col-lg-3">
+        <a href="{% url 'catalog:product_list' %}?expiring=1" class="stat-card text-decoration-none text-reset {% if nb_produits_bientot_perimes %}stat-warn{% endif %}">
+            <div class="stat-icon"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-value">{{ nb_produits_bientot_perimes }}</div>
+                <div class="stat-label">{% blocktrans trimmed with days=expiry_alert_days %}Périment sous {{ days }} jours{% endblocktrans %}</div>
+            </div>
+        </a>
+    </div>
+    <div class="col-6 col-lg-3">
         <a href="{% url 'sales:commande_list' %}?livraison=EN_ATTENTE" class="stat-card text-decoration-none text-reset {% if nb_commandes_non_livrees %}stat-warn{% endif %}">
             <div class="stat-icon"><i class="bi bi-box-seam"></i></div>
             <div>

@@ -5,7 +5,10 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 
-from apps.catalog.services import expired_products_in_stock, get_effective_low_stock_threshold
+from apps.catalog.models import EXPIRY_ALERT_DAYS
+from apps.catalog.services import (
+    expired_products_in_stock, expiring_soon_products_in_stock, get_effective_low_stock_threshold,
+)
 from apps.sales.models import Invoice, Sale
 from apps.stock.models import StockLevel
 
@@ -86,6 +89,7 @@ def home(request):
     )
 
     nb_produits_perimes = expired_products_in_stock(request.compte, boutique).count()
+    nb_produits_bientot_perimes = expiring_soon_products_in_stock(request.compte, boutique).count()
 
     dernieres_ventes = (
         Sale.objects.filter(boutique=boutique).select_related("client").order_by("-created_at")[:5]
@@ -93,6 +97,8 @@ def home(request):
 
     context = {
         "nb_produits_perimes": nb_produits_perimes,
+        "nb_produits_bientot_perimes": nb_produits_bientot_perimes,
+        "expiry_alert_days": EXPIRY_ALERT_DAYS,
         "ca_mois": ca_mois,
         "ca_jour": ca_jour,
         "nb_factures_impayees": nb_factures_impayees,

@@ -16,8 +16,11 @@ from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
 from .forms import CategoryForm, ProductForm, UnitForm
-from .models import Category, Product, ProductImage, Unit
-from .services import expired_products_in_stock, get_effective_low_stock_threshold, get_effective_price
+from .models import EXPIRY_ALERT_DAYS, Category, Product, ProductImage, Unit
+from .services import (
+    expired_products_in_stock, expiring_soon_products_in_stock, get_effective_low_stock_threshold,
+    get_effective_price,
+)
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
 
@@ -126,9 +129,13 @@ def product_list(request):
     # de bord (apps.core.views.home) — même définition, voir
     # catalog.services.expired_products_in_stock.
     expired_only = request.GET.get("expired") == "1"
+    # expiring=1 : "bientôt périmés" (30 jours), même principe.
+    expiring_only = request.GET.get("expiring") == "1" and not expired_only
 
     if expired_only:
         products = expired_products_in_stock(request.compte, request.boutique).select_related("category", "unit")
+    elif expiring_only:
+        products = expiring_soon_products_in_stock(request.compte, request.boutique).select_related("category", "unit")
     else:
         products = Product.objects.filter(compte=request.compte).select_related("category", "unit")
     if query:
@@ -140,7 +147,7 @@ def product_list(request):
     # recherche est le moyen de retrouver un produit plus ancien (voir aussi
     # category_list/unit_list/client_list/... même patron). Le filtre
     # "périmés" affiche tout, pour que la liste corresponde au nombre annoncé.
-    if not query and not expired_only:
+    if not query and not expired_only and not expiring_only:
         products = products[:6]
     products = list(products)
 
@@ -153,7 +160,8 @@ def product_list(request):
         product.is_low_stock = stock_qty <= get_effective_low_stock_threshold(product, request.boutique)
     return render(
         request, "catalog/product_list.html",
-        {"products": products, "query": query, "expired_only": expired_only},
+        {"products": products, "query": query, "expired_only": expired_only, "expiring_only": expiring_only,
+         "expiry_alert_days": EXPIRY_ALERT_DAYS},
     )
 
 

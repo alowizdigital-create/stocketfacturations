@@ -181,11 +181,16 @@ class PaymentForm(BootstrapFormMixin, forms.Form):
     reference = forms.CharField(max_length=100, required=False)
 
 
-class InvoiceSettleForm(BootstrapFormMixin, forms.Form):
-    """Solde d'une facture : pas de champ montant — il est toujours
-    recalculé côté serveur (Invoice.balance_due), jamais fourni par le
-    navigateur (voir views.invoice_settle)."""
+class InvoicePaymentForm(BootstrapFormMixin, forms.Form):
+    """Versement sur une facture : montant libre, de 1 jusqu'au reste à
+    payer. La borne haute dépend de l'état RÉEL de la facture au moment de
+    l'encaissement, elle est donc vérifiée dans la vue (views.invoice_pay),
+    pas ici. Un versement inférieur au reste laisse la facture
+    « partiellement payée » ; égal au reste, il la solde."""
 
+    amount = forms.DecimalField(
+        label=_("Montant du versement"), max_digits=14, decimal_places=0, min_value=Decimal("1"),
+    )
     method = forms.ChoiceField(
         label=_("Mode de paiement"), choices=Payment.METHOD_CHOICES, initial=Payment.ESPECES,
     )

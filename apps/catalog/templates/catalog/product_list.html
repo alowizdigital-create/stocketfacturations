@@ -11,10 +11,13 @@
 
 {% if expired_only %}
 <div class="text-muted mb-2">{% trans "Produits périmés encore en stock dans cette boutique" %} <a href="{% url 'catalog:product_list' %}" class="ms-1">{% trans "(voir tous les produits)" %}</a></div>
+{% elif expiring_only %}
+<div class="text-muted mb-2">{% blocktrans trimmed with days=expiry_alert_days %}Produits qui périment dans les {{ days }} prochains jours, encore en stock dans cette boutique{% endblocktrans %} <a href="{% url 'catalog:product_list' %}" class="ms-1">{% trans "(voir tous les produits)" %}</a></div>
 {% endif %}
 
 <form method="get" class="mb-3">
     {% if expired_only %}<input type="hidden" name="expired" value="1">{% endif %}
+    {% if expiring_only %}<input type="hidden" name="expiring" value="1">{% endif %}
     <div class="d-flex gap-2" style="max-width: 420px;">
         <div class="position-relative flex-grow-1">
             <i class="bi bi-search pos-search-icon"></i>
@@ -58,6 +61,8 @@
                     {% endif %}
                     {% if product.is_expired %}
                     <span class="badge-status badge-red"><i class="bi bi-calendar-x"></i> {% trans "Périmé" %}</span>
+                    {% elif product.is_expiring_soon %}
+                    <span class="badge-status badge-orange"><i class="bi bi-hourglass-split"></i> {% blocktrans trimmed with n=product.days_until_expiry %}Expire dans {{ n }} j{% endblocktrans %}</span>
                     {% elif product.expiry_date %}
                     <span class="text-muted small d-block">{% trans "Exp." %} {{ product.expiry_date|date:"d/m/Y" }}</span>
                     {% endif %}

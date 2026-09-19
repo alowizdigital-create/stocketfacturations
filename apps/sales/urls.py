@@ -31,7 +31,7 @@ urlpatterns = [
     path("factures/<uuid:invoice_id>/valider/", views.invoice_validate, name="invoice_validate"),
     path("devis/<uuid:invoice_id>/facturer/", views.devis_generate_invoice, name="devis_generate_invoice"),
     path("factures/<uuid:invoice_id>/paiement/", views.payment_create, name="payment_create"),
-    path("factures/<uuid:invoice_id>/solder/", views.invoice_settle, name="invoice_settle"),
+    path("factures/<uuid:invoice_id>/encaisser/", views.invoice_pay, name="invoice_pay"),
     path("factures/<uuid:invoice_id>/pdf/", views.invoice_pdf, name="invoice_pdf"),
     path("factures/<uuid:invoice_id>/whatsapp/", views.invoice_send_whatsapp, name="invoice_send_whatsapp"),
 

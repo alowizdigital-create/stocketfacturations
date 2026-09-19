@@ -7,6 +7,11 @@ from apps.core.models import CompteScopedModel, TimeStampedModel, UUIDModel
 from apps.tenants.models import Boutique
 
 
+# Fenêtre d'alerte "bientôt périmé" (jours avant la date de péremption) —
+# utilisée par la carte du tableau de bord, la liste filtrée et les badges.
+EXPIRY_ALERT_DAYS = 30
+
+
 class Category(UUIDModel, CompteScopedModel, TimeStampedModel):
     name = models.CharField(max_length=255)
     parent = models.ForeignKey(
@@ -76,6 +81,21 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
     @property
     def is_expired(self):
         return self.expiry_date is not None and self.expiry_date < timezone.localdate()
+
+    @property
+    def days_until_expiry(self):
+        """Jours restants avant la péremption (0 = expire aujourd'hui,
+        négatif = déjà périmé), None si aucune date."""
+        if self.expiry_date is None:
+            return None
+        return (self.expiry_date - timezone.localdate()).days
+
+    @property
+    def is_expiring_soon(self):
+        """Pas encore périmé mais à moins de EXPIRY_ALERT_DAYS jours
+        (aujourd'hui compris : un produit est périmé à partir de demain)."""
+        days = self.days_until_expiry
+        return days is not None and 0 <= days <= EXPIRY_ALERT_DAYS
 
     def save(self, *args, **kwargs):
         ensure_webp(self.image)

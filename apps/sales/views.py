@@ -27,7 +27,7 @@ from apps.tenants.models import Membership
 
 from . import services
 from .forms import (
-    ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, InvoiceSettleForm, PaymentForm, SaleForm,
+    ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, InvoicePaymentForm, PaymentForm, SaleForm,
 )
 from .models import Client, Invoice, Payment, Sale
 from .pdf import render_invoice_pdf
@@ -931,7 +931,7 @@ def invoice_detail(request, invoice_id):
         boutique=request.boutique,
     )
     payment_form = PaymentForm()
-    settle_form = InvoiceSettleForm()
+    pay_form = InvoicePaymentForm()
 
     whatsapp_url = None
     has_client_phone = bool(invoice.client and invoice.client.phone)
@@ -952,7 +952,7 @@ def invoice_detail(request, invoice_id):
         {
             "invoice": invoice,
             "payment_form": payment_form,
-            "settle_form": settle_form,
+            "pay_form": pay_form,
             "whatsapp_url": whatsapp_url,
             "whatsapp_api_configured": is_configured(),
             "has_client_phone": has_client_phone,
@@ -1176,38 +1176,48 @@ def payment_create(request, invoice_id):
 
 @login_required
 @boutique_role_required(*MANAGE_ROLES)
-def invoice_settle(request, invoice_id):
-    """Solde une facture non entièrement payée en encaissant d'un coup le
-    reste à payer. Le montant est TOUJOURS recalculé ici (balance_due),
-    jamais lu dans la requête : un formulaire périmé ou un double clic ne
-    peut pas encaisser un montant faux — et la facture est verrouillée le
-    temps du calcul pour que deux requêtes simultanées n'encaissent pas
-    deux fois le même solde."""
+def invoice_pay(request, invoice_id):
+    """Encaisse un versement sur une facture non entièrement payée. Le
+    montant est libre (un client peut simplement réduire sa dette) mais ne
+    peut jamais dépasser le reste à payer, recalculé ici sur la facture
+    verrouillée — pas sur ce que le navigateur affichait : un formulaire
+    périmé ou un double clic ne peut donc pas encaisser plus que dû. Un
+    versement partiel laisse la facture « partiellement payée » ; celui qui
+    couvre le reste la solde (voir services.record_payment)."""
     if request.method != "POST":
         return redirect("sales:invoice_detail", invoice_id=invoice_id)
 
-    form = InvoiceSettleForm(request.POST)
+    form = InvoicePaymentForm(request.POST)
     if not form.is_valid():
-        messages.error(request, _("Mode de paiement invalide."))
+        messages.error(request, _("Versement invalide — vérifiez le montant et le mode de paiement."))
         return redirect("sales:invoice_detail", invoice_id=invoice_id)
+    amount = form.cleaned_data["amount"]
 
     with transaction.atomic():
         invoice = get_object_or_404(
             Invoice.objects.select_for_update(), id=invoice_id, boutique=request.boutique,
         )
         if invoice.type != Invoice.FACTURE or invoice.status in (Invoice.ANNULEE, Invoice.BROUILLON):
-            messages.error(request, _("Cette facture ne peut pas être soldée."))
+            messages.error(request, _("Cette facture n'accepte pas de paiement."))
             return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
         remaining = invoice.balance_due
         if remaining <= 0:
             messages.info(request, _("Cette facture est déjà soldée."))
             return redirect("sales:invoice_detail", invoice_id=invoice.id)
+        if amount > remaining:
+            messages.error(
+                request,
+                _("Le versement (%(amount)s) dépasse le reste à payer (%(remaining)s %(currency)s).") % {
+                    "amount": amount, "remaining": remaining, "currency": invoice.currency,
+                },
+            )
+            return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
         payment_id = uuid.uuid4()
         services.record_payment(
             invoice,
-            amount=remaining,
+            amount=amount,
             method=form.cleaned_data["method"],
             reference=form.cleaned_data["reference"],
             created_by=request.user,
@@ -1216,12 +1226,21 @@ def invoice_settle(request, invoice_id):
         if settings.IS_OFFLINE:
             outbox.enqueue(OutboxEntry.PAYMENT, payment_id)
 
-    messages.success(
-        request,
-        _("%(invoice)s soldée : %(amount)s %(currency)s encaissés.") % {
-            "invoice": invoice.number, "amount": remaining, "currency": invoice.currency,
-        },
-    )
+    left = remaining - amount
+    if left <= 0:
+        messages.success(
+            request,
+            _("%(invoice)s soldée : %(amount)s %(currency)s encaissés.") % {
+                "invoice": invoice.number, "amount": amount, "currency": invoice.currency,
+            },
+        )
+    else:
+        messages.success(
+            request,
+            _("Versement de %(amount)s %(currency)s enregistré — reste à payer : %(left)s %(currency)s.") % {
+                "amount": amount, "currency": invoice.currency, "left": left,
+            },
+        )
     return redirect("sales:invoice_detail", invoice_id=invoice.id)
 
 
