@@ -228,6 +228,34 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     def balance_due(self):
         return max(self.total_ttc - self.amount_paid, Decimal("0"))
 
+    @property
+    def payment_history(self):
+        """Versements dans l'ordre chronologique (le plus ancien d'abord),
+        chacun avec le cumul payé et le reste à payer APRÈS lui. `settles`
+        marque le versement qui ramène le reste à zéro — le « solde » de la
+        facture. Source unique pour la fiche facture, le PDF et la page
+        publique, pour que les trois montrent exactement les mêmes dates.
+        Trié en Python (pas order_by) pour réutiliser un prefetch éventuel
+        de `payments`."""
+        history = []
+        paid = Decimal("0")
+        settled = False
+        for payment in sorted(self.payments.all(), key=lambda p: (p.paid_at, p.created_at)):
+            paid += payment.amount
+            remaining = max(self.total_ttc - paid, Decimal("0"))
+            settles = remaining == 0 and not settled
+            settled = settled or settles
+            history.append(
+                {"payment": payment, "paid_total": paid, "remaining": remaining, "settles": settles}
+            )
+        return history
+
+    @property
+    def settled_at(self):
+        """Date/heure du versement qui a soldé la facture, None tant qu'il
+        reste un montant à payer."""
+        return next((h["payment"].paid_at for h in self.payment_history if h["settles"]), None)
+
 
 class InvoiceLine(UUIDModel):
     invoice = models.ForeignKey(Invoice, on_delete=models.CASCADE, related_name="lines")

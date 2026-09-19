@@ -8,6 +8,7 @@ lignes)."""
 import io
 import logging
 
+from django.utils import timezone
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -39,6 +40,13 @@ LINE_HEIGHT = 3.6 * mm
 TITLE_HEIGHT = 5.5 * mm
 SEPARATOR_HEIGHT = 3 * mm
 TOP_BOTTOM_PADDING = 6 * mm
+
+
+def _local(moment, fmt):
+    """Date/heure d'un DateTimeField (stocké en UTC) dans le fuseau de
+    l'application — sans ça, un versement fait tard le soir afficherait la
+    date du lendemain ou de la veille selon l'écart avec UTC."""
+    return timezone.localtime(moment).strftime(fmt)
 
 
 def _fmt(value):
@@ -133,6 +141,8 @@ def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, 
     if payments:
         separator_count += 1
         n += len(payments) + 2  # une ligne par paiement + payé + reste à payer
+        if invoice.settled_at:
+            n += 1  # "Soldée le ..."
     if payment_methods:
         separator_count += 1
         n += 1 + len(payment_methods) * 2  # titre + 2 lignes par moyen de paiement
@@ -216,10 +226,16 @@ def _render_invoice_pdf_80mm(invoice):
 
     if payments:
         w.separator()
-        for payment in payments:
-            w.two_columns(payment.get_method_display(), f"{_fmt(payment.amount)} {invoice.currency}")
+        for entry in invoice.payment_history:
+            payment = entry["payment"]
+            w.two_columns(
+                f"{_local(payment.paid_at, '%d/%m/%y')} {payment.get_method_display()}",
+                f"{_fmt(payment.amount)} {invoice.currency}",
+            )
         w.two_columns("Payé", f"{_fmt(invoice.amount_paid)} {invoice.currency}")
         w.two_columns("Reste à payer", f"{_fmt(invoice.balance_due)} {invoice.currency}", font=FONT_BOLD)
+        if invoice.settled_at:
+            w.two_columns("Soldée le", _local(invoice.settled_at, "%d/%m/%Y"), font=FONT_BOLD)
 
     if payment_methods:
         w.separator()
@@ -372,17 +388,37 @@ def _render_invoice_pdf_a4(invoice):
     if payments:
         story.append(Spacer(1, 6 * mm))
         story.append(Paragraph("<b>Paiements</b>", _STYLE_NORMAL))
-        payment_rows = [
-            (payment.get_method_display(), f"{_fmt(payment.amount)} {invoice.currency}")
-            for payment in payments
+        history_rows = [[
+            Paragraph("<b>Date</b>", _STYLE_NORMAL), Paragraph("<b>Mode</b>", _STYLE_NORMAL),
+            Paragraph("<b>Versement</b>", _STYLE_NORMAL), Paragraph("<b>Reste après</b>", _STYLE_NORMAL),
+        ]]
+        for entry in invoice.payment_history:
+            payment = entry["payment"]
+            history_rows.append([
+                Paragraph(_local(payment.paid_at, "%d/%m/%Y"), _STYLE_NORMAL),
+                Paragraph(payment.get_method_display(), _STYLE_NORMAL),
+                Paragraph(f"{_fmt(payment.amount)} {invoice.currency}", _STYLE_NORMAL),
+                Paragraph(f"{_fmt(entry['remaining'])} {invoice.currency}", _STYLE_NORMAL),
+            ])
+        history_table = Table(history_rows, colWidths=[28 * mm, 34 * mm, 34 * mm, 34 * mm], hAlign="RIGHT")
+        history_table.setStyle(TableStyle([
+            ("ALIGN", (2, 0), (3, -1), "RIGHT"),
+            ("LINEBELOW", (0, 0), (-1, 0), 0.5, colors.grey),
+        ]))
+        story.append(history_table)
+
+        summary_rows = [
+            ("Payé", f"{_fmt(invoice.amount_paid)} {invoice.currency}"),
+            ("Reste à payer", f"{_fmt(invoice.balance_due)} {invoice.currency}"),
         ]
-        payment_rows.append(("Payé", f"{_fmt(invoice.amount_paid)} {invoice.currency}"))
-        payment_rows.append(("Reste à payer", f"{_fmt(invoice.balance_due)} {invoice.currency}"))
+        if invoice.settled_at:
+            summary_rows.append(("<b>Soldée le</b>", f"<b>{_local(invoice.settled_at, '%d/%m/%Y')}</b>"))
         payments_table = Table(
-            [[Paragraph(label, _STYLE_NORMAL), Paragraph(value, _STYLE_NORMAL)] for label, value in payment_rows],
+            [[Paragraph(label, _STYLE_NORMAL), Paragraph(value, _STYLE_NORMAL)] for label, value in summary_rows],
             colWidths=[40 * mm, 40 * mm], hAlign="RIGHT",
         )
         payments_table.setStyle(TableStyle([("ALIGN", (1, 0), (1, -1), "RIGHT")]))
+        story.append(Spacer(1, 2 * mm))
         story.append(payments_table)
 
     # --- Moyens de paiement mobile money

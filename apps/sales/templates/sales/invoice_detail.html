@@ -179,20 +179,32 @@
         </div>
         {% else %}
         <div class="card-app">
-            <div class="card-app-header">{% trans "Paiements" %}</div>
+            <div class="card-app-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <span>{% trans "Paiements" %}</span>
+                {% if invoice.settled_at %}
+                <span class="badge-status badge-green"><i class="bi bi-check2-circle"></i> {% blocktrans trimmed with d=invoice.settled_at|date:"d/m/Y" %}Soldée le {{ d }}{% endblocktrans %}</span>
+                {% endif %}
+            </div>
             <div class="table-app" style="border:none; box-shadow:none;">
                 <table class="table mb-0">
-                    <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Montant" %}</th><th>{% trans "Méthode" %}</th><th>{% trans "Référence" %}</th></tr></thead>
+                    <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Versement" %}</th><th>{% trans "Méthode" %}</th><th class="d-none d-sm-table-cell">{% trans "Référence" %}</th><th>{% trans "Reste après" %}</th></tr></thead>
                     <tbody>
-                        {% for payment in invoice.payments.all %}
+                        {% for entry in invoice.payment_history %}
                         <tr>
-                            <td class="text-muted">{{ payment.paid_at|date:"d/m/Y H:i" }}</td>
-                            <td>{{ payment.amount }} {{ invoice.currency }}</td>
-                            <td>{{ payment.get_method_display }}</td>
-                            <td>{{ payment.reference|default:"—" }}</td>
+                            <td class="text-muted">{{ entry.payment.paid_at|date:"d/m/Y H:i" }}</td>
+                            <td>{{ entry.payment.amount }} {{ invoice.currency }}</td>
+                            <td>{{ entry.payment.get_method_display }}</td>
+                            <td class="d-none d-sm-table-cell">{{ entry.payment.reference|default:"—" }}</td>
+                            <td>
+                                {% if entry.settles %}
+                                <span class="badge-status badge-green">{% trans "Soldée" %}</span>
+                                {% else %}
+                                {{ entry.remaining }} {{ invoice.currency }}
+                                {% endif %}
+                            </td>
                         </tr>
                         {% empty %}
-                        <tr><td colspan="4" class="text-muted text-center py-3">{% trans "Aucun paiement enregistré." %}</td></tr>
+                        <tr><td colspan="5" class="text-muted text-center py-3">{% trans "Aucun paiement enregistré." %}</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>

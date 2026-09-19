@@ -104,6 +104,23 @@
         {% endif %}
     </div>
 
+    {% with history=invoice.payment_history %}
+    {% if history %}
+    <div class="card">
+        <div class="card-title">Versements</div>
+        {% for entry in history %}
+        <div class="recap-row">
+            <span>{{ entry.payment.paid_at|date:"d/m/Y" }} — {{ entry.payment.get_method_display }}</span>
+            <span>{{ entry.payment.amount }} {{ invoice.currency }}</span>
+        </div>
+        {% endfor %}
+        {% if invoice.settled_at %}
+        <div class="recap-row total"><span>Soldée le</span><span>{{ invoice.settled_at|date:"d/m/Y" }}</span></div>
+        {% endif %}
+    </div>
+    {% endif %}
+    {% endwith %}
+
     {% if invoice.boutique.payment_methods %}
     <div class="card">
         <div class="card-title">Paiement Mobile Money</div>
