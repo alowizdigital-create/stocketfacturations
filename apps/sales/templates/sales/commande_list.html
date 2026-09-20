@@ -32,7 +32,7 @@
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
+        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th><th class="text-end">{% trans "Action" %}</th></tr></thead>
         <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
@@ -49,9 +49,23 @@
                 </td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
+                <td class="text-end">
+                    {% if invoice.next_action %}
+                    <form method="post" action="{% url 'sales:commande_advance' invoice.id %}" class="d-inline"{% if invoice.next_action.confirm %} data-confirm="{{ invoice.next_action.confirm }}"{% endif %}>
+                        {% csrf_token %}
+                        <input type="hidden" name="from" value="{{ invoice.next_action.current }}">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                        <button type="submit" class="btn btn-sm {{ invoice.next_action.btn }}" title="{{ invoice.next_action.title }}" aria-label="{{ invoice.next_action.title }}">
+                            <i class="bi {{ invoice.next_action.icon }}"></i><span class="d-none d-md-inline ms-1">{{ invoice.next_action.label }}</span>
+                        </button>
+                    </form>
+                    {% else %}
+                    <span class="text-muted small">{% trans "Terminée" %}</span>
+                    {% endif %}
+                </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune commande dans cette catégorie." %}</td></tr>
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune commande dans cette catégorie." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -80,9 +94,28 @@
         return div.innerHTML;
     }
 
+    const csrfToken = "{{ csrf_token }}";
+
+    // Même colonne « Action » que le rendu serveur (voir plus haut) : le
+    // bouton doit rester disponible après une recherche en direct.
+    function actionCell(c) {
+        const a = c.action;
+        if (!a) return '<span class="text-muted small">{% trans "Terminée" %}</span>';
+        const next = window.location.pathname + window.location.search;
+        return `
+            <form method="post" action="${escapeHtml(a.url)}" class="d-inline"${a.confirm ? ` data-confirm="${escapeHtml(a.confirm)}"` : ""}>
+                <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(csrfToken)}">
+                <input type="hidden" name="from" value="${escapeHtml(a.current)}">
+                <input type="hidden" name="next" value="${escapeHtml(next)}">
+                <button type="submit" class="btn btn-sm ${escapeHtml(a.btn)}" title="${escapeHtml(a.title)}" aria-label="${escapeHtml(a.title)}">
+                    <i class="bi ${escapeHtml(a.icon)}"></i><span class="d-none d-md-inline ms-1">${escapeHtml(a.label)}</span>
+                </button>
+            </form>`;
+    }
+
     function renderRows(items) {
         if (!items.length) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune commande trouvée." %}</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune commande trouvée." %}</td></tr>';
             return;
         }
         tbody.innerHTML = items.map((c) => `
@@ -92,6 +125,7 @@
                 <td><span class="badge-status ${badgeClass(c.status)}">${escapeHtml(c.status_display)}</span></td>
                 <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
                 <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
+                <td class="text-end">${actionCell(c)}</td>
             </tr>`).join("");
     }
 
@@ -101,6 +135,13 @@
         const data = await resp.json();
         renderRows(data.results);
     }
+
+    // Confirmation avant une étape sensible (livraison) — délégué sur le
+    // tableau pour couvrir aussi les lignes redessinées par la recherche.
+    tbody.addEventListener("submit", (e) => {
+        const form = e.target.closest("form[data-confirm]");
+        if (form && !window.confirm(form.dataset.confirm)) e.preventDefault();
+    });
 
     searchInput.addEventListener("input", () => {
         clearTimeout(searchTimer);

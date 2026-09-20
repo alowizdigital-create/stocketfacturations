@@ -375,6 +375,31 @@ def mark_commande_delivered(commande, delivered_by=None):
     return commande
 
 
+@transaction.atomic
+def deliver_commande(commande, delivered_by=None):
+    """Livrer une commande la VALIDE aussi : si elle ne l'est pas déjà, elle
+    est convertie en facture (stock déduit, vente enregistrée dans le
+    chiffre d'affaires, acomptes déjà versés reportés — voir
+    convert_commande_to_invoice), puis marquée livrée. Le tout dans une seule
+    transaction : pas de commande livrée mais non validée, ni l'inverse.
+
+    Aucun paiement n'est enregistré ici : on ne sait pas ce que le livreur a
+    réellement encaissé. La facture reflète donc le vrai reste à payer, à
+    solder ensuite par un versement (bouton « Encaisser » de la facture).
+    Renvoie la facture créée, ou None si la commande était déjà validée."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être livrée.")
+    if commande.status == Invoice.ANNULEE:
+        raise ValueError("Une commande annulée ne peut pas être livrée.")
+
+    invoice = None
+    if commande.status != Invoice.CONVERTIE:
+        invoice = convert_commande_to_invoice(commande, created_by=delivered_by)
+    mark_commande_delivered(commande, delivered_by=delivered_by)
+    return invoice
+
+
 def mark_commande_en_cours(commande):
     """Fait passer la commande en préparation : soit départ depuis
     EN_ATTENTE (on commence à la préparer), soit annulation d'un marquage
