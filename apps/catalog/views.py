@@ -103,21 +103,98 @@ def product_search(request):
         )
     }
 
+    include_cost = request.GET.get("include_cost") == "1" and _can_see_costs(request)
     results = [
-        {
-            "id": str(product.id),
-            "name": product.name,
-            "sku": product.sku,
-            "unit": str(product.unit),
-            "price": float(get_effective_price(product, request.boutique)),
-            "tva_rate": float(product.tva_rate),
-            "image_url": product.image.url if product.image else None,
-            "stock_qty": float(stock_by_product.get(product.id, 0)),
-        }
+        _pos_payload(product, request.boutique, stock_by_product.get(product.id, 0), include_cost)
         for product in products
     ]
 
     return JsonResponse({"results": results})
+
+
+def _can_see_costs(request):
+    """Le prix d'achat ne quitte jamais le serveur pour un caissier : il
+    n'est joint aux réponses que pour les rôles autorisés à le gérer."""
+    return request.boutique_role in MANAGE_ROLES
+
+
+def _pos_payload(product, boutique, stock_qty, include_cost=False):
+    """Représentation d'un produit pour les écrans de vente (recherche en
+    direct ET scan de code-barres) : même forme des deux côtés, pour que le
+    panier JS traite indifféremment un produit trouvé par l'une ou l'autre.
+    `include_cost` ajoute le prix d'achat (écran de réception uniquement)."""
+    payload = {
+        "id": str(product.id),
+        "name": product.name,
+        "sku": product.sku,
+        "barcode": product.barcode,
+        "unit": str(product.unit),
+        "price": float(get_effective_price(product, boutique)),
+        "tva_rate": float(product.tva_rate),
+        "image_url": product.image.url if product.image else None,
+        "stock_qty": float(stock_qty),
+    }
+    if include_cost:
+        payload["purchase_price"] = float(product.purchase_price) if product.purchase_price is not None else None
+    return payload
+
+
+@login_required
+def product_by_barcode(request):
+    """Recherche EXACTE d'un produit par son code-barres, pour le scan à la
+    caisse (lecteur USB/Bluetooth ou caméra). Distincte de product_search,
+    qui cherche par fragment de nom/référence/code et ne renvoie que trois
+    résultats : un scan doit retomber sur un produit précis ou dire
+    clairement pourquoi il n'y en a pas. `status` :
+    - found : produit actif avec du stock dans cette boutique (`product`) ;
+    - out_of_stock : il existe mais le stock est épuisé ici ;
+    - inactive : il existe mais est désactivé ;
+    - ambiguous : plusieurs produits partagent ce code (données antérieures
+      au contrôle d'unicité) — `results` à départager à la main ;
+    - unknown : aucun produit avec ce code."""
+    from apps.stock.models import StockLevel
+
+    code = request.GET.get("code", "").strip()
+    # include_out_of_stock=1 : écran de réception, où un produit à zéro est
+    # justement le cas d'usage (même principe que product_search).
+    include_out_of_stock = request.GET.get("include_out_of_stock") == "1"
+    include_cost = request.GET.get("include_cost") == "1" and _can_see_costs(request)
+    if not code:
+        return JsonResponse({"status": "unknown", "code": code})
+
+    products = list(
+        Product.objects.filter(compte=request.compte, barcode__iexact=code).select_related("unit")
+    )
+    if not products:
+        return JsonResponse({"status": "unknown", "code": code})
+
+    stock_by_product = {
+        level.product_id: level.quantity
+        for level in StockLevel.objects.filter(boutique=request.boutique, product__in=products)
+    }
+
+    sellable = [
+        p for p in products
+        if p.is_active and (include_out_of_stock or stock_by_product.get(p.id, 0) > 0)
+    ]
+    if len(sellable) == 1 and len(products) == 1:
+        return JsonResponse({
+            "status": "found", "code": code,
+            "product": _pos_payload(
+                sellable[0], request.boutique, stock_by_product.get(sellable[0].id, 0), include_cost
+            ),
+        })
+    if len(products) > 1:
+        return JsonResponse({
+            "status": "ambiguous", "code": code,
+            "results": [
+                _pos_payload(p, request.boutique, stock_by_product.get(p.id, 0), include_cost) for p in sellable
+            ],
+        })
+    product = products[0]
+    if not product.is_active:
+        return JsonResponse({"status": "inactive", "code": code, "name": product.name})
+    return JsonResponse({"status": "out_of_stock", "code": code, "name": product.name})
 
 
 @login_required
@@ -179,6 +256,7 @@ def product_detail(request, product_id):
     )
     stock_level = StockLevel.objects.filter(boutique=request.boutique, product=product).first()
     stock_qty = stock_level.quantity if stock_level else 0
+    effective_price = get_effective_price(product, request.boutique)
     return render(
         request,
         "catalog/product_detail.html",
@@ -186,9 +264,23 @@ def product_detail(request, product_id):
             "product": product,
             "stock_qty": stock_qty,
             "is_low_stock": stock_qty <= get_effective_low_stock_threshold(product, request.boutique),
-            "effective_price": get_effective_price(product, request.boutique),
+            "effective_price": effective_price,
+            **_margin_context(request, product, effective_price),
         },
     )
+
+
+def _margin_context(request, product, sale_price):
+    """Prix d'achat et marge unitaire, pour les administrateurs/gérants
+    seulement (jamais dans la réponse à un caissier)."""
+    if not _can_see_costs(request):
+        return {"can_see_costs": False}
+    context = {"can_see_costs": True, "purchase_price": product.purchase_price}
+    if product.purchase_price is not None and sale_price:
+        margin = sale_price - product.purchase_price
+        context["unit_margin"] = margin
+        context["margin_percent"] = round(margin * 100 / sale_price, 1)
+    return context
 
 
 def _save_extra_images(product, files):
@@ -226,6 +318,7 @@ def product_create(request):
                     product=product,
                     type=StockMovement.ENTREE,
                     quantity=initial_quantity,
+                    unit_cost=product.purchase_price,
                     reason="Stock initial",
                     created_by=request.user,
                 )

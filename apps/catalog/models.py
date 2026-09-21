@@ -60,6 +60,15 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         _("taux de TVA (%)"), max_digits=5, decimal_places=2, default=0
     )
     low_stock_threshold_default = models.PositiveIntegerField(_("seuil de stock bas"), default=5)
+    # Prix d'achat unitaire de référence : sert à calculer la marge. Mis à
+    # jour automatiquement à chaque réception de marchandises (prix moyen
+    # pondéré, voir apps.purchasing.services), modifiable à la main. Vide =
+    # coût inconnu — jamais assimilé à 0, sinon la marge serait gonflée.
+    # Volontairement absent de la synchro hors-ligne : information réservée
+    # aux administrateurs/gérants, à ne pas répliquer sur chaque poste de caisse.
+    purchase_price = models.DecimalField(
+        _("prix d'achat"), max_digits=12, decimal_places=0, null=True, blank=True,
+    )
     # Une seule date par produit (pas par lot) : le catalogue est partagé
     # entre les boutiques, voir StockLevel pour les quantités par boutique.
     expiry_date = models.DateField(

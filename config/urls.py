@@ -19,6 +19,7 @@ urlpatterns = [
     path("plateforme/", include("apps.tenants.platform_urls")),
     path("catalogue/", include("apps.catalog.urls")),
     path("stock/", include("apps.stock.urls")),
+    path("achats/", include("apps.purchasing.urls")),
     path("caisse/", include("apps.cashier.urls")),
     path("", include("apps.sales.urls")),
     path("", include("apps.core.urls")),

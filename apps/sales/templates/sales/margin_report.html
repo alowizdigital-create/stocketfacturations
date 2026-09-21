@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Marge et bénéfice" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Marge et bénéfice" %}</h1>
+        <div class="text-muted">{% trans "Ventes confirmées, montants hors taxes. Bénéfice net = marge sur les marchandises vendues − dépenses de fonctionnement. Les achats de marchandises ne sont pas comptés comme dépenses : ils sont déjà dans le coût des ventes." %}</div>
+    </div>
+</div>
+
+<form method="get" class="card-app mb-3">
+    <div class="card-app-body d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label small mb-1" for="report-from">{% trans "Du" %}</label>
+            <input type="date" name="from" id="report-from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="report-to">{% trans "Au" %}</label>
+            <input type="date" name="to" id="report-to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> {% trans "Afficher" %}</button>
+        <div class="d-flex flex-wrap gap-1 ms-md-3">
+            {% for label, start, end in presets %}
+            <a href="?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary {% if start == date_from and end == date_to %}active{% endif %}">{{ label }}</a>
+            {% endfor %}
+        </div>
+    </div>
+</form>
+
+<div class="row row-cols-2 row-cols-lg-5 g-3 mb-3">
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Ventes (HT)" %}</div>
+            <div class="stat-value">{{ totals.revenue }}</div>
+        </div></div>
+    </div>
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Coût des marchandises" %}</div>
+            <div class="stat-value">{{ totals.cost }}</div>
+        </div></div>
+    </div>
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Marge brute" %}{% if totals.margin_percent is not None %} · {{ totals.margin_percent }} %{% endif %}</div>
+            <div class="stat-value {% if totals.margin < 0 %}text-danger{% endif %}">{{ totals.margin }}</div>
+        </div></div>
+    </div>
+    <div class="col">
+        <a href="{% url 'purchasing:expense_list' %}?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}" class="card-app h-100 d-block text-decoration-none text-reset"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Dépenses" %}{% if totals.delivery_fees %} <span title="{% trans 'dont frais de livraison' %}">({% trans "dont livraisons" %} {{ totals.delivery_fees }})</span>{% endif %}</div>
+            <div class="stat-value">{{ totals.expenses_total }}</div>
+        </div></a>
+    </div>
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Bénéfice net" %}</div>
+            <div class="stat-value {% if totals.net_profit < 0 %}text-danger{% else %}text-success{% endif %}">{{ totals.net_profit }}</div>
+        </div></div>
+    </div>
+</div>
+
+{% if totals.revenue_unknown_cost %}
+<div class="alert alert-warning">
+    <i class="bi bi-exclamation-triangle"></i>
+    {% blocktrans trimmed with amount=totals.revenue_unknown_cost devise=request.boutique.devise %}
+    {{ amount }} {{ devise }} de ventes concernent des produits dont le prix d'achat n'était pas connu : elles sont exclues de la marge et du bénéfice net ci-dessous. Renseignez le prix d'achat des produits (ou enregistrez une réception) pour les prendre en compte à l'avenir.
+    {% endblocktrans %}
+</div>
+{% endif %}
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead>
+            <tr>
+                <th>{% trans "Produit" %}</th>
+                <th class="text-end">{% trans "Qté vendue" %}</th>
+                <th class="text-end">{% trans "Ventes (HT)" %}</th>
+                <th class="text-end">{% trans "Coût" %}</th>
+                <th class="text-end">{% trans "Bénéfice" %}</th>
+                <th class="text-end">{% trans "Marge" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td class="fw-semibold">
+                    {% if row.product_id %}<a href="{% url 'catalog:product_detail' row.product_id %}">{{ row.name }}</a>{% else %}{{ row.name }}{% endif %}
+                </td>
+                <td class="text-end">{{ row.quantity|floatformat:"-3" }}</td>
+                <td class="text-end">{{ row.revenue }}</td>
+                {% if row.margin_percent is None %}
+                <td class="text-end text-muted" colspan="3">{% trans "Prix d'achat inconnu" %}</td>
+                {% else %}
+                <td class="text-end">{{ row.cost }}</td>
+                <td class="text-end fw-semibold {% if row.margin < 0 %}text-danger{% endif %}">{{ row.margin }}</td>
+                <td class="text-end {% if row.margin < 0 %}text-danger{% endif %}">{{ row.margin_percent }} %</td>
+                {% endif %}
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune vente confirmée sur cette période." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% if expenses_by_category %}
+<div class="card-app mt-3">
+    <div class="card-app-header d-flex justify-content-between align-items-center">
+        <span>{% trans "Dépenses de la période" %}</span>
+        <a href="{% url 'purchasing:expense_list' %}?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}" class="small">{% trans "Voir le détail" %}</a>
+    </div>
+    <div class="card-app-body">
+        {% for label, amount in expenses_by_category %}
+        <div class="d-flex justify-content-between py-1"><span>{{ label }}</span><span class="fw-semibold">{{ amount }} {{ request.boutique.devise }}</span></div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+<p class="text-muted small mt-2">{% trans "Les commandes et devis convertis en facture ne sont pas encore comptés ici : seules les ventes du point de vente le sont." %}</p>
+{% endblock %}

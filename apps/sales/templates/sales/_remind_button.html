@@ -1,0 +1,11 @@
+{% load i18n %}
+{# Bouton « Relancer » (POST) : url, last (datetime de la dernière relance ou None), next (page de retour), compact #}
+<form method="post" action="{{ url }}" class="d-inline"{% if not whatsapp_api_configured %} target="_blank"{% endif %}
+      data-last="{{ last|date:'c' }}"
+      onsubmit="var d=this.dataset.last; return !d || (Date.now() - Date.parse(d) > 86400000) || confirm('{% trans "Ce client a déjà été relancé il y a moins de 24 h. Relancer quand même ?" %}');">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <button type="submit" class="btn {% if compact %}btn-sm{% endif %} btn-whatsapp" title="{% if last %}{% blocktrans trimmed with ago=last|timesince %}Dernière relance il y a {{ ago }}{% endblocktrans %}{% else %}{% trans 'Relancer par WhatsApp' %}{% endif %}">
+        <i class="bi bi-whatsapp"></i> {% trans "Relancer" %}
+    </button>
+</form>

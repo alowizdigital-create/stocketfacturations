@@ -10,7 +10,9 @@ from apps.catalog.services import (
     expired_products_in_stock, expiring_soon_products_in_stock, get_effective_low_stock_threshold,
 )
 from apps.sales.models import Invoice, Sale
+from apps.sales.reports import margin_report
 from apps.stock.models import StockLevel
+from apps.tenants.models import Membership
 
 from .models import Notification, ShortLink
 
@@ -95,7 +97,18 @@ def home(request):
         Sale.objects.filter(boutique=boutique).select_related("client").order_by("-created_at")[:5]
     )
 
+    # Bénéfice du mois : révèle les prix d'achat, donc pas pour un caissier.
+    margin_mois = margin_mois_percent = None
+    if request.boutique_role in (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE):
+        totals = margin_report(boutique, month_start, today)["totals"]
+        if totals["revenue_known"] > 0 or totals["expenses_total"] > 0:
+            # Bénéfice net : marge sur les ventes moins les dépenses du mois.
+            margin_mois = totals["net_profit"]
+            margin_mois_percent = totals["margin_percent"] if not totals["expenses_total"] else None
+
     context = {
+        "margin_mois": margin_mois,
+        "margin_mois_percent": margin_mois_percent,
         "nb_produits_perimes": nb_produits_perimes,
         "nb_produits_bientot_perimes": nb_produits_bientot_perimes,
         "expiry_alert_days": EXPIRY_ALERT_DAYS,

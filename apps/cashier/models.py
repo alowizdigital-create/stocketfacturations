@@ -152,9 +152,11 @@ class PersonalCashMovement(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
 
     TRANSFERT = "TRANSFERT"
     LIVRAISON = "LIVRAISON"
+    DEPENSE = "DEPENSE"
     KIND_CHOICES = [
         (TRANSFERT, _("Transfert entre collaborateurs")),
         (LIVRAISON, _("Frais de livraison")),
+        (DEPENSE, _("Dépense")),
     ]
 
     user = models.ForeignKey(

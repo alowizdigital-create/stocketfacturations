@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block title %}{% trans "Nouvelle vente" %}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -40,8 +40,15 @@
                 <div class="card-app-body">
                     <div class="position-relative mb-3">
                         <i class="bi bi-search pos-search-icon"></i>
-                        <input type="text" id="pos-search" class="form-control ps-5" placeholder="{% trans 'Nom, référence ou code-barres...' %}" autocomplete="off">
+                        <input type="text" id="pos-search" class="form-control ps-5 pe-5" placeholder="{% trans 'Nom, référence ou code-barres...' %}" autocomplete="off">
+                        <!-- Caché tant que le navigateur ne sait pas lire les codes avec la caméra
+                             (voir BarcodeScanner.cameraSupported) ; un lecteur USB/Bluetooth,
+                             lui, fonctionne partout et n'a pas besoin de ce bouton. -->
+                        <button type="button" id="pos-scan-camera" class="btn btn-sm btn-outline-secondary position-absolute top-50 end-0 translate-middle-y me-2 d-none" title="{% trans 'Scanner avec la caméra' %}" aria-label="{% trans 'Scanner avec la caméra' %}">
+                            <i class="bi bi-upc-scan"></i>
+                        </button>
                     </div>
+                    <div id="pos-scan-feedback" class="small mb-2 d-none" aria-live="polite"></div>
                     <div id="pos-stock-warning" class="text-danger small mb-2 d-none"></div>
                     <div id="pos-results" class="pos-results"></div>
                 </div>
@@ -117,9 +124,11 @@
 {% endblock %}
 
 {% block extra_js %}
+<script src="{% static 'js/barcode-scanner.js' %}?v=2"></script>
 <script>
 (function () {
     const searchUrl = "{% url 'catalog:product_search' %}";
+    const barcodeUrl = "{% url 'catalog:product_by_barcode' %}";
     const searchInput = document.getElementById("pos-search");
     const resultsEl = document.getElementById("pos-results");
     const cartEl = document.getElementById("pos-cart");
@@ -139,6 +148,12 @@
     // Django disponible pour ces valeurs, connues seulement à l'exécution).
     const T_STOCK_EXHAUSTED = "{% trans 'Stock épuisé pour « {name} » ({stock} disponible(s), déjà {cart} dans le panier).' %}";
     const T_QTY_LIMITED = "{% trans 'Quantité limitée à {stock} pour « {name} » (stock disponible).' %}";
+    const T_SCAN_ADDED = "{% trans '✓ {name} ajouté — {qty} dans le panier' %}";
+    const T_SCAN_UNKNOWN = "{% trans 'Code-barres inconnu : {code}' %}";
+    const T_SCAN_OUT_OF_STOCK = "{% trans '« {name} » : stock épuisé dans cette boutique.' %}";
+    const T_SCAN_INACTIVE = "{% trans '« {name} » est désactivé.' %}";
+    const T_SCAN_AMBIGUOUS = "{% trans 'Plusieurs produits ont ce code-barres — choisissez dans la liste.' %}";
+    const T_SCAN_NETWORK = "{% trans 'Connexion impossible — le produit n’a pas été ajouté.' %}";
     function fmtTemplate(template, values) {
         return template.replace(/\{(\w+)\}/g, (_, key) => values[key]);
     }
@@ -182,10 +197,16 @@
         }).join("");
     }
 
+    // Numéro de la dernière recherche lancée : une réponse plus lente qui
+    // arrive après une recherche plus récente (ou après un scan qui a vidé le
+    // champ) ne doit pas réécraser la liste affichée.
+    let searchSeq = 0;
     async function runSearch(query) {
+        const seq = ++searchSeq;
         const url = searchUrl + "?q=" + encodeURIComponent(query);
         const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
         const data = await resp.json();
+        if (seq !== searchSeq) return;
         renderResults(data.results);
     }
 
@@ -227,7 +248,7 @@
         const maxAddable = Math.max(0, stockQty - alreadyInCart);
         if (maxAddable <= 0) {
             showStockWarning(fmtTemplate(T_STOCK_EXHAUSTED, {name: product.name, stock: stockQty, cart: alreadyInCart}));
-            return;
+            return 0;
         }
         if (qty > maxAddable) {
             showStockWarning(fmtTemplate(T_QTY_LIMITED, {stock: stockQty, name: product.name}));
@@ -249,6 +270,7 @@
             });
         }
         renderCart();
+        return qty;   // quantité réellement ajoutée (le stock a pu la plafonner)
     }
 
     function removeFromCart(productId) {
@@ -471,6 +493,103 @@
             clientResultsEl.style.display = "none";
         }
     });
+
+    // --- Scan de code-barres (lecteur USB/Bluetooth ou caméra) -------------
+    // Un code scanné est cherché EXACTEMENT (catalog:product_by_barcode) puis
+    // ajouté au panier avec les mêmes contrôles de stock qu'un clic manuel.
+    const scanFeedbackEl = document.getElementById("pos-scan-feedback");
+    let scanFeedbackTimer = null;
+
+    function announce(result) {
+        BarcodeScanner.beep(result.ok ? "ok" : "error");
+        scanFeedbackEl.textContent = result.message;
+        scanFeedbackEl.className = "small mb-2 " + (result.ok ? "text-success fw-semibold" : "text-danger");
+        clearTimeout(scanFeedbackTimer);
+        scanFeedbackTimer = setTimeout(() => scanFeedbackEl.classList.add("d-none"), 3500);
+    }
+
+    // Renvoie {ok, message, status}. Ne fait aucun bruit ni affichage : le
+    // lecteur clavier (announce) et la fenêtre caméra (son + message dans la
+    // fenêtre) s'en chargent chacun à leur façon.
+    async function handleScannedCode(rawCode) {
+        const code = (rawCode || "").trim();
+        let data;
+        try {
+            const resp = await fetch(barcodeUrl + "?code=" + encodeURIComponent(code), {headers: {"X-Requested-With": "XMLHttpRequest"}});
+            data = await resp.json();
+        } catch (error) {
+            return {ok: false, status: "network", message: T_SCAN_NETWORK};
+        }
+        if (data.status === "found") {
+            const added = addToCart(data.product, 1);
+            if (!added) {
+                return {ok: false, status: "found", message: fmtTemplate(T_SCAN_OUT_OF_STOCK, {name: data.product.name})};
+            }
+            const line = cart.find((l) => l.product_id === data.product.id);
+            return {ok: true, status: "found", message: fmtTemplate(T_SCAN_ADDED, {name: data.product.name, qty: line.quantity})};
+        }
+        if (data.status === "out_of_stock") return {ok: false, status: data.status, message: fmtTemplate(T_SCAN_OUT_OF_STOCK, {name: data.name})};
+        if (data.status === "inactive") return {ok: false, status: data.status, message: fmtTemplate(T_SCAN_INACTIVE, {name: data.name})};
+        if (data.status === "ambiguous") {
+            renderResults(data.results);
+            return {ok: false, status: data.status, message: T_SCAN_AMBIGUOUS};
+        }
+        return {ok: false, status: "unknown", message: fmtTemplate(T_SCAN_UNKNOWN, {code: code})};
+    }
+
+    // Lecteur qui « tape » dans le champ de recherche : Entrée = fin du code.
+    // Ce même champ sert aussi à chercher par nom : un texte qui ne
+    // ressemble pas à un code-barres (chiffres seulement) n'est donc PAS
+    // signalé « inconnu » — la liste de résultats déjà affichée suffit.
+    searchInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();
+        BarcodeScanner.ensureAudio();
+        const code = searchInput.value.trim();
+        if (!code) return;
+        clearTimeout(searchTimer);
+        const result = await handleScannedCode(code);
+        if (result.status === "unknown" && !/^\d{6,}$/.test(code)) return;
+        announce(result);
+        // Champ vidé dans tous les cas où le texte a été pris pour un code
+        // (succès OU erreur) : sinon le scan suivant s'y ajouterait et
+        // donnerait un code faux. Sauf « ambigu » : la liste à départager
+        // vient d'être affichée, la relancer la remplacerait.
+        searchInput.value = "";
+        if (result.status !== "ambiguous") runSearch("");
+    });
+
+    // Lecteur qui écrit alors qu'aucun champ n'a le focus (caissier qui vient
+    // de cliquer ailleurs) : il est capté par écoute globale du clavier.
+    BarcodeScanner.listenHardware({
+        onCode: async (code) => announce(await handleScannedCode(code)),
+    });
+
+    // Caméra : fenêtre qui reste ouverte et enchaîne les scans.
+    const scanCameraBtn = document.getElementById("pos-scan-camera");
+    if (BarcodeScanner.cameraSupported()) {
+        scanCameraBtn.classList.remove("d-none");
+        scanCameraBtn.addEventListener("click", () => {
+            BarcodeScanner.openCamera({
+                continuous: true,
+                onCode: handleScannedCode,
+                labels: {
+                    title: "{% trans 'Scanner les produits' %}",
+                    close: "{% trans 'Fermer' %}",
+                    hint: "{% trans 'Présentez le code-barres devant la caméra.' %}",
+                    unsupported: "{% trans 'Ce navigateur ne sait pas lire les codes-barres avec la caméra. Utilisez un lecteur, ou Chrome sur Android.' %}",
+                    insecure: "{% trans 'La caméra exige une connexion sécurisée (https).' %}",
+                    denied: "{% trans 'Accès à la caméra refusé. Autorisez-le dans les réglages du navigateur.' %}",
+                    noCamera: "{% trans 'Aucune caméra disponible sur cet appareil.' %}",
+                    error: "{% trans 'Erreur — réessayez.' %}",
+                },
+            });
+        });
+    }
+
+    // Ordinateur de caisse (souris) : focus prêt pour un lecteur. Pas sur
+    // téléphone/tablette, où cela ouvrirait le clavier à l'écran.
+    if (window.matchMedia("(pointer: fine)").matches) searchInput.focus();
 })();
 </script>
 {% endblock %}

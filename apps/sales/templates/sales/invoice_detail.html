@@ -54,6 +54,10 @@
         </span>
         {% endif %}
         {% if invoice.type == "FACTURE" and invoice.balance_due > 0 and invoice.status != "ANNULEE" and invoice.status != "BROUILLON" %}
+        {% if has_client_phone and not IS_OFFLINE %}
+        {% url 'sales:invoice_remind' invoice.id as remind_url %}
+        {% include "sales/_remind_button.html" with url=remind_url last=last_reminder next=request.path %}
+        {% endif %}
         <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#invoice-pay-modal">
             <i class="bi bi-cash-coin"></i> {% blocktrans trimmed with amount=invoice.balance_due currency=invoice.currency %}Encaisser (reste {{ amount }} {{ currency }}){% endblocktrans %}
         </button>

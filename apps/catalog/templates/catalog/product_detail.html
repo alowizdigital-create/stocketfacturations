@@ -58,6 +58,18 @@
                         <div class="text-muted small">{% trans "Prix de vente" %}</div>
                         <div class="fw-semibold">{{ effective_price }} {{ request.boutique.devise }}</div>
                     </div>
+                    {% if can_see_costs %}
+                    <div class="col-md-6">
+                        <div class="text-muted small">{% trans "Prix d'achat" %}</div>
+                        <div class="fw-semibold">{% if purchase_price is not None %}{{ purchase_price }} {{ request.boutique.devise }}{% else %}—{% endif %}</div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-muted small">{% trans "Marge unitaire" %}</div>
+                        <div class="fw-semibold {% if unit_margin is not None and unit_margin < 0 %}text-danger{% endif %}">
+                            {% if unit_margin is not None %}{{ unit_margin }} {{ request.boutique.devise }} ({{ margin_percent }} %){% else %}—{% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
                     <div class="col-md-6">
                         <div class="text-muted small">{% trans "Taux de TVA" %}</div>
                         <div class="fw-semibold">{{ product.tva_rate }}%</div>

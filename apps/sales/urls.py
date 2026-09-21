@@ -10,12 +10,17 @@ urlpatterns = [
     path("clients/nouveau/", views.client_create, name="client_create"),
     path("clients/creation-rapide/", views.client_quick_create, name="client_quick_create"),
     path("clients/importer/", views.client_import, name="client_import"),
+    path("clients/<uuid:client_id>/releve/", views.client_statement, name="client_statement"),
+    path("clients/<uuid:client_id>/relancer/", views.client_remind, name="client_remind"),
+    path("relances/", views.debtor_list, name="debtor_list"),
 
     path("ventes/", views.sale_list, name="sale_list"),
     path("ventes/nouvelle/", views.sale_create, name="sale_create"),
     path("ventes/<uuid:sale_id>/", views.sale_detail, name="sale_detail"),
     path("ventes/<uuid:sale_id>/confirmer/", views.sale_confirm, name="sale_confirm"),
     path("ventes/<uuid:sale_id>/facturer/", views.sale_generate_invoice, name="sale_generate_invoice"),
+
+    path("rapports/marge/", views.margin_report, name="margin_report"),
 
     path("factures/", views.invoice_list, name="invoice_list"),
     path("devis/", views.devis_list, name="devis_list"),
@@ -32,6 +37,7 @@ urlpatterns = [
     path("factures/<uuid:invoice_id>/valider/", views.invoice_validate, name="invoice_validate"),
     path("devis/<uuid:invoice_id>/facturer/", views.devis_generate_invoice, name="devis_generate_invoice"),
     path("factures/<uuid:invoice_id>/paiement/", views.payment_create, name="payment_create"),
+    path("factures/<uuid:invoice_id>/relancer/", views.invoice_remind, name="invoice_remind"),
     path("factures/<uuid:invoice_id>/encaisser/", views.invoice_pay, name="invoice_pay"),
     path("factures/<uuid:invoice_id>/pdf/", views.invoice_pdf, name="invoice_pdf"),
     path("factures/<uuid:invoice_id>/whatsapp/", views.invoice_send_whatsapp, name="invoice_send_whatsapp"),

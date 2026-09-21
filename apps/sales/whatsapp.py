@@ -64,3 +64,12 @@ def build_share_link(*, phone, invoice, view_url):
         return None
     message = build_message(invoice, view_link=view_url)
     return f"{WA_ME_BASE}{number}?text={quote(message)}"
+
+
+def build_link_for_message(*, phone, message, country_calling_code=None):
+    """Lien wa.me pré-rempli avec un texte quelconque (relance, relevé) —
+    même mécanique que build_share_link, sans être lié à une facture."""
+    number = normalize_phone(phone, country_calling_code=country_calling_code)
+    if number is None:
+        return None
+    return f"{WA_ME_BASE}{number}?text={quote(message)}"

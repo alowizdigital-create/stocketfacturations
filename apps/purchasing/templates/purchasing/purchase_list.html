@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Réceptions de marchandises" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>{% trans "Réceptions de marchandises" %}</h1></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'purchasing:supplier_list' %}" class="btn btn-outline-secondary"><i class="bi bi-truck"></i> {% trans "Fournisseurs" %}</a>
+        {% if not IS_OFFLINE %}
+        <a href="{% url 'purchasing:purchase_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle réception" %}</a>
+        {% endif %}
+    </div>
+</div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'N°, référence, fournisseur...' %}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+        {% if query %}
+        <a href="{% url 'purchasing:purchase_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Date" %}</th><th>{% trans "Fournisseur" %}</th><th class="text-end">{% trans "Produits" %}</th><th class="text-end">{% trans "Total" %}</th></tr></thead>
+        <tbody>
+            {% for purchase in purchases %}
+            <tr>
+                <td class="fw-semibold"><a href="{% url 'purchasing:purchase_detail' purchase.id %}">{{ purchase.number }}</a></td>
+                <td>{{ purchase.received_date|date:"d/m/Y" }}</td>
+                <td>{{ purchase.supplier|default:"—" }}</td>
+                <td class="text-end">{{ purchase.nb_lines }}</td>
+                <td class="text-end">{{ purchase.total_cost }} {{ request.boutique.devise }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune réception pour le moment." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

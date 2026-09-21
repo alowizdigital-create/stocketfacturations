@@ -92,8 +92,10 @@
                                 {% blocktrans trimmed with name=m.counterparty.get_full_name|default:m.counterparty.email %}Reçu de {{ name }}{% endblocktrans %}
                             {% endif %}
                             {% if m.reason %} — {{ m.reason }}{% endif %}
+                        {% elif m.kind == 'DEPENSE' %}
+                            {% if m.type == "CREDIT" %}{% trans "Dépense annulée — remboursée" %}{% else %}{% trans "Dépense" %}{% endif %}{% if m.reason %} — {{ m.reason }}{% endif %}
                         {% else %}
-                            {% trans "Frais de livraison" %}{% if m.commande %} — {{ m.commande.number }}{% endif %}
+                            {% if m.type == "CREDIT" %}{% trans "Frais de livraison remboursés (livraison annulée)" %}{% else %}{% trans "Frais de livraison" %}{% endif %}{% if m.commande %} — {{ m.commande.number }}{% endif %}
                         {% endif %}
                     </td>
                 </tr>

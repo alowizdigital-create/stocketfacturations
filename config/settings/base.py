@@ -31,6 +31,7 @@ INSTALLED_APPS = [
     "apps.stock",
     "apps.sales",
     "apps.cashier",
+    "apps.purchasing",
     "apps.sync",
 ]
 

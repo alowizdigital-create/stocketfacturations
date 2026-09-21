@@ -258,6 +258,7 @@ def _upsert_invoice(items, boutique_id):
                         "boutique_id": boutique_id,
                         "client_id": _existing_id(Client.objects, item.get("client_id")),
                         "number": item["number"],
+                        "commande_seq": item.get("commande_seq"),
                         "type": item["type"],
                         "status": item["status"],
                         "issue_date": item["issue_date"],

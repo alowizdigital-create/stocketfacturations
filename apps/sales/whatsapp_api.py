@@ -33,7 +33,7 @@ def is_configured():
     return bool(settings.TECHSOFT_API_KEY)
 
 
-def send_document(*, to, message, document_url, filename=None):
+def send_document(*, to, message, document_url=None, filename=None):
     """Envoie un message WhatsApp avec un document en pièce jointe.
 
     `to` : numéro déjà normalisé (chiffres uniquement, voir
@@ -50,8 +50,10 @@ def send_document(*, to, message, document_url, filename=None):
         "api_key": settings.TECHSOFT_API_KEY,
         "to": to,
         "message": message,
-        "document_url": document_url,
     }
+    # Sans document_url : message texte seul (relevé client).
+    if document_url:
+        params["document_url"] = document_url
     if filename:
         params["filename"] = filename
     if settings.TECHSOFT_WHATSAPP_SENDER:

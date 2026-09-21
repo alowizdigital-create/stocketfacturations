@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% blocktrans with name=client.name %}Relevé — {{ name }}{% endblocktrans %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% blocktrans with name=client.name %}Relevé — {{ name }}{% endblocktrans %}</h1>
+        <div class="text-muted">{% if client.phone %}{{ client.phone }}{% else %}{% trans "Pas de téléphone" %}{% endif %}</div>
+    </div>
+    <div class="d-flex gap-2">
+        {% if invoices and client.phone and not IS_OFFLINE %}
+        {% url 'sales:client_remind' client.id as remind_url %}
+        {% include "sales/_remind_button.html" with url=remind_url last=last_reminder next=request.path %}
+        {% endif %}
+        <a href="{% url 'sales:debtor_list' %}" class="btn btn-outline-secondary">{% trans "Retour" %}</a>
+    </div>
+</div>
+
+<div class="card-app mb-3">
+    <div class="card-app-body">
+        <div class="text-muted small">{% trans "Total dû" %}</div>
+        {% for currency, amount in totals %}<div class="stat-value">{{ amount }} {{ currency }}</div>{% empty %}<div class="text-success fw-semibold"><i class="bi bi-check-circle"></i> {% trans "Rien à régler." %}</div>{% endfor %}
+    </div>
+</div>
+
+<div class="table-app mb-3">
+    <table class="table align-middle mb-0">
+        <thead><tr><th>{% trans "Facture" %}</th><th>{% trans "Date" %}</th><th>{% trans "Échéance" %}</th><th class="text-end">{% trans "Total" %}</th><th class="text-end">{% trans "Payé" %}</th><th class="text-end">{% trans "Reste" %}</th><th></th></tr></thead>
+        <tbody>
+            {% for invoice in invoices %}
+            <tr>
+                <td><a href="{% url 'sales:invoice_detail' invoice.id %}" class="fw-semibold">{{ invoice.number }}</a></td>
+                <td class="text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
+                <td>{% if invoice.due_date %}<span {% if invoice.due_date < today %}class="text-danger fw-semibold"{% endif %}>{{ invoice.due_date|date:"d/m/Y" }}</span>{% else %}—{% endif %}</td>
+                <td class="text-end">{{ invoice.total_ttc }}</td>
+                <td class="text-end">{{ invoice.paid }}</td>
+                <td class="text-end fw-semibold">{{ invoice.due }} {{ invoice.currency }}</td>
+                <td class="text-end">
+                    {% if client.phone and not IS_OFFLINE %}
+                    {% url 'sales:invoice_remind' invoice.id as remind_url %}
+                    {% include "sales/_remind_button.html" with url=remind_url last=None next=request.path compact=True %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="7" class="text-muted text-center py-4">{% trans "Aucune facture impayée." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if reminder_history %}
+<div class="card-app">
+    <div class="card-app-header">{% trans "Relances envoyées" %}</div>
+    <div class="card-app-body">
+        {% for reminder in reminder_history %}
+        <div class="d-flex justify-content-between py-1 small">
+            <span>{{ reminder.created_at|date:"d/m/Y H:i" }} — {% if reminder.invoice %}{{ reminder.invoice.number }}{% else %}{% trans "Relevé complet" %}{% endif %} ({{ reminder.amount }} {{ reminder.currency }})</span>
+            <span class="text-muted">{% if reminder.sent_by %}{{ reminder.sent_by.get_full_name|default:reminder.sent_by.email }}{% endif %}</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+{% endblock %}

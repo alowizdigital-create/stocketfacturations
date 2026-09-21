@@ -32,7 +32,7 @@
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>{% trans "Numéro" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th></tr></thead>
+        <thead><tr><th>{% trans "Numéro" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th>{% if unpaid_only %}<th>{% trans "Reste" %}</th><th></th>{% endif %}</tr></thead>
         <tbody>
             {% for invoice in invoices %}
             <tr>
@@ -49,9 +49,18 @@
                 </td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
+                {% if unpaid_only %}
+                <td class="fw-semibold">{{ invoice.due }} {{ invoice.currency }}</td>
+                <td class="text-end">
+                    {% if invoice.client.phone and not IS_OFFLINE %}
+                    {% url 'sales:invoice_remind' invoice.id as remind_url %}
+                    {% include "sales/_remind_button.html" with url=remind_url last=None next=request.get_full_path compact=True %}
+                    {% endif %}
+                </td>
+                {% endif %}
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucune facture pour le moment." %}</td></tr>
+            <tr><td colspan="{% if unpaid_only %}7{% else %}5{% endif %}" class="text-muted text-center py-4">{% trans "Aucune facture pour le moment." %}</td></tr>
             {% endfor %}
         </tbody>
     </table>

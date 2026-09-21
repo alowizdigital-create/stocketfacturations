@@ -85,6 +85,9 @@
             <a class="nav-link {% if request.path == '/factures/' %}active{% endif %}" href="{% url 'sales:invoice_list' %}">
                 <i class="bi bi-receipt"></i> {% trans "Factures" %}
             </a>
+            <a class="nav-link {% if '/relances' in request.path or '/releve' in request.path %}active{% endif %}" href="{% url 'sales:debtor_list' %}">
+                <i class="bi bi-bell"></i> {% trans "Relances" %}
+            </a>
 
             <div class="sidebar-section">{% trans "Caisse" %}</div>
             <a class="nav-link {% if '/caisse/perso' in request.path %}active{% endif %}" href="{% url 'cashier:my_cash' %}">
@@ -109,6 +112,20 @@
             <a class="nav-link {% if '/stock/mouvements' in request.path %}active{% endif %}" href="{% url 'stock:movement_history' %}">
                 <i class="bi bi-arrow-left-right"></i> {% trans "Mouvements" %}
             </a>
+            {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
+            <a class="nav-link {% if '/achats' in request.path and '/fournisseurs' not in request.path and '/depenses' not in request.path %}active{% endif %}" href="{% url 'purchasing:purchase_list' %}">
+                <i class="bi bi-box-arrow-in-down"></i> {% trans "Réceptions" %}
+            </a>
+            <a class="nav-link {% if '/achats/fournisseurs' in request.path %}active{% endif %}" href="{% url 'purchasing:supplier_list' %}">
+                <i class="bi bi-truck"></i> {% trans "Fournisseurs" %}
+            </a>
+            <a class="nav-link {% if '/achats/depenses' in request.path %}active{% endif %}" href="{% url 'purchasing:expense_list' %}">
+                <i class="bi bi-wallet"></i> {% trans "Dépenses" %}
+            </a>
+            <a class="nav-link {% if '/rapports/marge' in request.path %}active{% endif %}" href="{% url 'sales:margin_report' %}">
+                <i class="bi bi-graph-up-arrow"></i> {% trans "Marge et bénéfice" %}
+            </a>
+            {% endif %}
 
             
             {% if request.is_compte_admin %}

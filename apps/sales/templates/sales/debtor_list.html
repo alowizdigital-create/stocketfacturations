@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Relances" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Relances" %}</h1>
+        <div class="text-muted">{% trans "Clients qui ont des factures impayées. « Relancer » envoie par WhatsApp le montant restant et le lien de la facture." %}</div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Total à recevoir" %}</div>
+            {% for currency, amount in totals %}<div class="stat-value">{{ amount }} {{ currency }}</div>{% empty %}<div class="stat-value">0</div>{% endfor %}
+        </div></div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Clients concernés" %}</div>
+            <div class="stat-value">{{ rows|length }}</div>
+        </div></div>
+    </div>
+</div>
+
+<div class="table-app">
+    <table class="table align-middle mb-0">
+        <thead>
+            <tr>
+                <th>{% trans "Client" %}</th>
+                <th class="text-end">{% trans "Doit" %}</th>
+                <th class="d-none d-md-table-cell text-end">{% trans "Factures" %}</th>
+                <th class="d-none d-md-table-cell">{% trans "Plus ancienne" %}</th>
+                <th class="d-none d-lg-table-cell">{% trans "Dernière relance" %}</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in rows %}
+            <tr>
+                <td>
+                    <a href="{% url 'sales:client_statement' row.client.id %}" class="fw-semibold">{{ row.client.name }}</a>
+                    <div class="small text-muted">{% if row.client.phone %}{{ row.client.phone }}{% else %}{% trans "Pas de téléphone" %}{% endif %}</div>
+                </td>
+                <td class="text-end fw-semibold">
+                    {% for currency, amount in row.balances %}<div>{{ amount }} {{ currency }}</div>{% endfor %}
+                </td>
+                <td class="d-none d-md-table-cell text-end">
+                    {{ row.count }}
+                    {% if row.overdue %}<span class="badge-status badge-red" title="{% trans 'Échéance dépassée' %}">{{ row.overdue }} {% trans "en retard" %}</span>{% endif %}
+                </td>
+                <td class="d-none d-md-table-cell text-muted">{{ row.oldest|date:"d/m/Y" }}</td>
+                <td class="d-none d-lg-table-cell text-muted">{% if row.last_reminder %}{% blocktrans trimmed with ago=row.last_reminder|timesince %}il y a {{ ago }}{% endblocktrans %}{% else %}—{% endif %}</td>
+                <td class="text-end">
+                    {% if row.client.phone and not IS_OFFLINE %}
+                    {% url 'sales:client_remind' row.client.id as remind_url %}
+                    {% include "sales/_remind_button.html" with url=remind_url last=row.last_reminder next=request.path compact=True %}
+                    {% elif not row.client.phone %}
+                    <span class="text-muted small">{% trans "Ajoutez un numéro" %}</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune facture impayée : personne à relancer." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

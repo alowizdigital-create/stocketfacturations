@@ -3,13 +3,15 @@ import io
 import json
 import quopri
 import uuid
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.db import transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum, Value
+from django.db.models.functions import Coalesce
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -27,13 +29,13 @@ from apps.sync import outbox
 from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
-from . import services
+from . import reminders, reports, services
 from .forms import (
     ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, InvoicePaymentForm, PaymentForm, SaleForm,
 )
-from .models import Client, Invoice, Payment, Sale
+from .models import Client, Invoice, Payment, PaymentReminder, Sale
 from .pdf import render_invoice_pdf
-from .whatsapp import build_message, build_share_link, normalize_phone
+from .whatsapp import build_link_for_message, build_message, build_share_link, normalize_phone
 from .whatsapp_api import WhatsAppSendError, is_configured, send_document
 
 MANAGE_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE, Membership.CAISSIER)
@@ -593,7 +595,9 @@ def invoice_list(request):
         .select_related("client")
     )
     if unpaid_only:
-        invoices = invoices.filter(status__in=[Invoice.VALIDEE, Invoice.PARTIELLEMENT_PAYEE])
+        invoices = invoices.filter(status__in=[Invoice.VALIDEE, Invoice.PARTIELLEMENT_PAYEE]).annotate(
+            due=F("total_ttc") - Coalesce(Sum("payments__amount"), Value(Decimal("0")))
+        )
     if query:
         invoices = invoices.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
     if not query and not unpaid_only:
@@ -616,6 +620,16 @@ def devis_list(request):
     if not query:
         devis = devis[:10]
     return render(request, "sales/devis_list.html", {"devis": devis, "query": query})
+
+
+def _commande_query(query):
+    """Recherche d'une commande : par son numéro simple (« 12 »), par son
+    numéro de document long ou par le nom du client."""
+    # Des chiffres seuls désignent le numéro simple : ne pas les chercher dans
+    # le numéro long, dont la date (20260921) ferait ressortir presque tout.
+    if query.isdigit() and len(query) < 9:
+        return Q(commande_seq=int(query)) | Q(client__name__icontains=query)
+    return Q(number__icontains=query) | Q(client__name__icontains=query)
 
 
 # Onglet affiché à l'ouverture de la liste des commandes — partagé par la
@@ -691,10 +705,10 @@ def _commande_next_action(commande):
             # celui qui clique, et valide la commande (facture, stock) tant
             # qu'elle ne l'est pas : on confirme pour éviter un clic malheureux.
             "confirm": (
-                _("Marquer %(number)s comme livrée ?")
+                _("Marquer la commande %(number)s comme livrée ?")
                 if commande.status == Invoice.CONVERTIE
-                else _("Marquer %(number)s comme livrée et la valider (facture générée, stock déduit) ?")
-            ) % {"number": commande.number},
+                else _("Marquer la commande %(number)s comme livrée et la valider (facture générée, stock déduit) ?")
+            ) % {"number": commande.commande_seq if commande.commande_seq is not None else commande.number},
         }
     return None
 
@@ -724,7 +738,7 @@ def commande_list(request):
 
     commandes = base.filter(delivery_status=delivery_filter)
     if query:
-        commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+        commandes = commandes.filter(_commande_query(query))
     if not query:
         commandes = commandes[:100]
     commandes = list(commandes)
@@ -759,13 +773,13 @@ def commande_search(request):
         .select_related("client")
     )
     if query:
-        commandes = commandes.filter(Q(number__icontains=query) | Q(client__name__icontains=query))
+        commandes = commandes.filter(_commande_query(query))
     commandes = commandes.order_by("-issue_date", "-created_at")[:100]
 
     results = [
         {
             "id": str(c.id),
-            "number": c.number,
+            "number": c.commande_seq if c.commande_seq is not None else c.number,
             "client": c.client.name if c.client else None,
             "status": c.status,
             "status_display": c.get_status_display(),
@@ -1050,6 +1064,7 @@ def invoice_detail(request, invoice_id):
             "whatsapp_url": whatsapp_url,
             "whatsapp_api_configured": is_configured(),
             "has_client_phone": has_client_phone,
+            "last_reminder": reminders.last_reminder_at(invoice=invoice) if invoice.type == Invoice.FACTURE else None,
             "converted_invoice": converted_invoice,
         },
     )
@@ -1239,7 +1254,7 @@ def commande_mark_en_cours(request, invoice_id):
                 _("Seul un administrateur de l'entreprise peut annuler une commande marquée comme livrée."),
             )
             return redirect("sales:invoice_detail", invoice_id=commande.id)
-        services.mark_commande_en_cours(commande)
+        services.mark_commande_en_cours(commande, undone_by=request.user)
         messages.success(request, _("%(commande)s remise en cours de préparation.") % {"commande": commande.number})
     return redirect("sales:invoice_detail", invoice_id=commande.id)
 
@@ -1445,3 +1460,159 @@ def invoice_public_gallery(request, invoice_id):
     return render(
         request, "sales/invoice_public_gallery.html", {"invoice": invoice, "products": products}
     )
+
+
+# --- Rapport de marge -----------------------------------------------------
+
+MARGIN_REPORT_ROLES = (Membership.ADMIN_COMPTE, Membership.GERANT_BOUTIQUE)
+
+
+@login_required
+@boutique_role_required(*MARGIN_REPORT_ROLES)
+def margin_report(request):
+    """Bénéfice par produit sur une période (par défaut : le mois en cours).
+    Réservé aux administrateurs et gérants : il révèle les prix d'achat."""
+    today = timezone.localdate()
+    date_from = parse_date(request.GET.get("from", "") or "") or today.replace(day=1)
+    date_to = parse_date(request.GET.get("to", "") or "") or today
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+
+    last_month_end = today.replace(day=1) - timedelta(days=1)
+    presets = [
+        (_("Aujourd'hui"), today, today),
+        (_("7 derniers jours"), today - timedelta(days=6), today),
+        (_("Ce mois"), today.replace(day=1), today),
+        (_("Mois dernier"), last_month_end.replace(day=1), last_month_end),
+    ]
+    report = reports.margin_report(request.boutique, date_from, date_to)
+    return render(request, "sales/margin_report.html", {
+        "date_from": date_from, "date_to": date_to, "presets": presets,
+        "rows": report["rows"], "totals": report["totals"],
+        "expenses_by_category": report["expenses_by_category"],
+    })
+
+
+# --- Relances de paiement (WhatsApp) --------------------------------------
+
+def _reminder_redirect(request, fallback):
+    """Retour à la page d'où vient la demande (`next`), si elle est sûre."""
+    target = request.POST.get("next", "")
+    if target and url_has_allowed_host_and_scheme(target, allowed_hosts={request.get_host()}):
+        return redirect(target)
+    return redirect(fallback)
+
+
+def _dispatch_reminder(request, *, client, message, invoice=None, amount, currency, fallback, document_url=None,
+                       filename=None):
+    """Envoie la relance : par l'API WhatsApp si elle est configurée (avec le
+    PDF pour une facture), sinon ouvre WhatsApp avec le texte pré-rempli.
+    Dans les deux cas la relance est notée (dernière relance affichée). Avec
+    le lien wa.me, on ne sait pas si le message part vraiment : on note qu'il
+    a été *ouvert*, ce qui suffit à ne pas relancer deux fois de suite."""
+    boutique = request.boutique
+    phone = normalize_phone(client.phone, country_calling_code=boutique.country_calling_code)
+    if not phone:
+        messages.error(request, _("Ce client n'a pas de numéro de téléphone."))
+        return _reminder_redirect(request, fallback)
+    if settings.IS_OFFLINE:
+        # Les liens envoyés (PDF de la facture) pointeraient vers le poste
+        # local, injoignable pour le client.
+        messages.error(request, _("Les relances s'envoient depuis le poste en ligne."))
+        return _reminder_redirect(request, fallback)
+
+    def record(channel):
+        PaymentReminder.objects.create(
+            boutique=boutique, client=client, invoice=invoice, amount=amount, currency=currency,
+            channel=channel, sent_by=request.user,
+        )
+
+    if is_configured():
+        try:
+            send_document(to=phone, message=message, document_url=document_url, filename=filename)
+        except WhatsAppSendError as exc:
+            messages.error(request, _("Échec de l'envoi WhatsApp : %(error)s") % {"error": exc})
+        else:
+            record(PaymentReminder.API)
+            messages.success(request, _("Relance envoyée à %(client)s.") % {"client": client.name})
+        return _reminder_redirect(request, fallback)
+
+    link = build_link_for_message(
+        phone=client.phone, message=message, country_calling_code=boutique.country_calling_code,
+    )
+    record(PaymentReminder.LINK)
+    return redirect(link)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+@require_POST
+def invoice_remind(request, invoice_id):
+    """Relance pour une facture : montant restant + lien vers la facture."""
+    invoice = reminders.unpaid_invoices(request.boutique).filter(id=invoice_id).first()
+    if invoice is None:
+        messages.error(request, _("Cette facture n'a rien à relancer (soldée, annulée ou sans client)."))
+        return _reminder_redirect(request, reverse("sales:debtor_list"))
+    message = reminders.build_invoice_reminder(
+        invoice, due=invoice.due, view_link=_public_view_url(request, invoice),
+    )
+    return _dispatch_reminder(
+        request, client=invoice.client, message=message, invoice=invoice, amount=invoice.due,
+        currency=invoice.currency, fallback=reverse("sales:invoice_detail", args=[invoice.id]),
+        document_url=_public_pdf_url(request, invoice), filename=f"{invoice.number}.pdf",
+    )
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+@require_POST
+def client_remind(request, client_id):
+    """Relance d'un client pour l'ensemble de ses factures impayées (relevé)."""
+    client = get_object_or_404(Client, id=client_id, boutique=request.boutique)
+    invoices = list(reminders.unpaid_invoices(request.boutique, client=client))
+    fallback = reverse("sales:client_statement", args=[client.id])
+    if not invoices:
+        messages.info(request, _("Ce client n'a aucune facture impayée."))
+        return _reminder_redirect(request, fallback)
+    message = reminders.build_statement(
+        client, invoices, boutique=request.boutique, link_for=lambda invoice: _public_view_url(request, invoice),
+    )
+    return _dispatch_reminder(
+        request, client=client, message=message, amount=sum(i.due for i in invoices),
+        currency=invoices[0].currency, fallback=fallback,
+    )
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def debtor_list(request):
+    """Clients qui nous doivent de l'argent, du plus gros débiteur au plus
+    petit, avec de quoi les relancer en un clic."""
+    rows = reminders.debtors(request.boutique)
+    totals = {}
+    for row in rows:
+        for currency, amount in row["balances"]:
+            totals[currency] = totals.get(currency, 0) + amount
+    return render(request, "sales/debtor_list.html", {
+        "rows": rows, "totals": sorted(totals.items()), "now": timezone.now(),
+        "whatsapp_api_configured": is_configured(),
+    })
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def client_statement(request, client_id):
+    """Relevé d'un client : ses factures impayées, ce qu'il doit, l'historique
+    des relances."""
+    client = get_object_or_404(Client, id=client_id, boutique=request.boutique)
+    invoices = list(reminders.unpaid_invoices(request.boutique, client=client))
+    totals = {}
+    for invoice in invoices:
+        totals[invoice.currency] = totals.get(invoice.currency, 0) + invoice.due
+    return render(request, "sales/client_statement.html", {
+        "client": client, "invoices": invoices, "totals": sorted(totals.items()),
+        "reminder_history": client.reminders.select_related("sent_by", "invoice")[:10],
+        "last_reminder": reminders.last_reminder_at(client=client),
+        "today": timezone.localdate(), "now": timezone.now(),
+        "whatsapp_api_configured": is_configured(),
+    })

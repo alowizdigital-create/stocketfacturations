@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+{% load i18n static %}
+{% block title %}{% trans "Nouvelle réception" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Nouvelle réception de marchandises" %}</h1>
+        <div class="text-muted">{% blocktrans trimmed with name=request.boutique.name %}Les produits reçus sont ajoutés au stock de « {{ name }} » et leur prix d'achat est mis à jour (prix moyen pondéré).{% endblocktrans %}</div>
+    </div>
+</div>
+
+<form method="post" id="purchase-form">
+    {% csrf_token %}
+    <input type="hidden" name="lines_json" id="lines-json">
+    {{ form.non_field_errors }}
+
+    <div class="card-app mb-3">
+        <div class="card-app-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">{{ form.supplier.label }}</label>
+                    <div class="d-flex gap-2 align-items-start">
+                        <div class="flex-grow-1">{{ form.supplier }}</div>
+                        <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-supplier-modal" title="{% trans 'Nouveau fournisseur' %}"><i class="bi bi-plus-lg"></i></button>
+                    </div>
+                    {{ form.supplier.errors }}
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">{{ form.received_date.label }}</label>
+                    {{ form.received_date }}
+                    {{ form.received_date.errors }}
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">{{ form.reference.label }}</label>
+                    {{ form.reference }}
+                    {{ form.reference.errors }}
+                </div>
+                <div class="col-12">
+                    <label class="form-label">{{ form.note.label }}</label>
+                    {{ form.note }}
+                    {{ form.note.errors }}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card-app mb-3">
+        <div class="card-app-header">{% trans "Produits reçus" %}</div>
+        <div class="card-app-body">
+            <div class="d-flex gap-2 mb-1">
+                <div class="position-relative flex-grow-1">
+                    <i class="bi bi-search pos-search-icon"></i>
+                    <input type="text" id="purchase-product-search" class="form-control ps-5" placeholder="{% trans 'Rechercher un produit (nom, référence, code-barres)...' %}" autocomplete="off">
+                </div>
+                <button type="button" id="purchase-scan-camera" class="btn btn-outline-secondary d-none" title="{% trans 'Scanner avec la caméra' %}" aria-label="{% trans 'Scanner avec la caméra' %}"><i class="bi bi-upc-scan"></i></button>
+            </div>
+            <div id="purchase-scan-feedback" class="small mb-2 d-none"></div>
+
+            <div class="table-responsive mt-3">
+                <table class="table align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>{% trans "Produit" %}</th>
+                            <th style="width:130px;">{% trans "Quantité" %}</th>
+                            <th style="width:170px;">{% trans "Coût unitaire" %}</th>
+                            <th class="text-end" style="width:140px;">{% trans "Total" %}</th>
+                            <th style="width:40px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="lines-body"></tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end fw-semibold">{% trans "Total de la réception" %}</td>
+                            <td class="text-end fw-semibold" id="grand-total">0</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div id="lines-empty" class="text-muted text-center py-3">{% trans "Aucun produit ajouté pour le moment." %}</div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg"></i> {% trans "Enregistrer la réception" %}</button>
+        <a href="{% url 'purchasing:purchase_list' %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
+    </div>
+</form>
+
+<div id="product-search-results" class="pos-results product-search-floating"></div>
+
+<div class="modal fade" id="quick-supplier-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form id="quick-supplier-form">
+                <div class="modal-header">
+                    <h5 class="modal-title">{% trans "Nouveau fournisseur" %}</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label" for="qs-name">{% trans "Nom du fournisseur" %}</label>
+                        <input type="text" name="name" id="qs-name" class="form-control" maxlength="255" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label" for="qs-phone">{% trans "Téléphone" %}</label>
+                        <input type="text" name="phone" id="qs-phone" class="form-control" maxlength="30">
+                    </div>
+                    <div id="qs-error" class="text-danger small d-none"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="submit" class="btn btn-primary">{% trans "Créer" %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/barcode-scanner.js' %}?v=2"></script>
+{{ posted_lines|json_script:"posted-lines" }}
+<script>
+(function () {
+    const searchUrl = "{% url 'catalog:product_search' %}";
+    const barcodeUrl = "{% url 'catalog:product_by_barcode' %}";
+    const supplierCreateUrl = "{% url 'purchasing:supplier_quick_create' %}";
+    const csrfToken = document.querySelector("#purchase-form input[name=csrfmiddlewaretoken]").value;
+    const extra = "include_out_of_stock=1&include_cost=1";
+
+    const T_ADDED = "{% trans 'Ajouté : %(name)s' %}";
+    const T_INACTIVE = "{% trans '« %(name)s » est désactivé.' %}";
+    const T_UNKNOWN = "{% trans 'Code %(code)s inconnu.' %}";
+    const T_AMBIGUOUS = "{% trans 'Plusieurs produits portent ce code : choisissez dans la liste.' %}";
+    const T_NETWORK = "{% trans 'Erreur réseau — réessayez.' %}";
+    const T_NO_LINES = "{% trans 'Ajoutez au moins un produit.' %}";
+    const T_BAD_LINE = "{% trans 'Renseignez une quantité entière et un coût pour chaque produit.' %}";
+
+    const resultsEl = document.getElementById("product-search-results");
+    const searchInput = document.getElementById("purchase-product-search");
+    const bodyEl = document.getElementById("lines-body");
+    const emptyEl = document.getElementById("lines-empty");
+    const totalEl = document.getElementById("grand-total");
+    const linesInput = document.getElementById("lines-json");
+    const form = document.getElementById("purchase-form");
+    const feedbackEl = document.getElementById("purchase-scan-feedback");
+    let searchTimer = null;
+    let feedbackTimer = null;
+    let lines = [];   // {product_id, name, unit, quantity, unit_cost}
+
+    function fmt(n) { return Number(n || 0).toLocaleString("fr-FR"); }
+    function template(text, values) {
+        return text.replace(/%\((\w+)\)s/g, (m, key) => values[key]);
+    }
+
+    function lineTotal(line) {
+        const q = parseInt(line.quantity, 10), c = parseInt(line.unit_cost, 10);
+        return (q > 0 && c >= 0) ? q * c : 0;
+    }
+
+    function refreshTotals() {
+        totalEl.textContent = fmt(lines.reduce((sum, l) => sum + lineTotal(l), 0));
+        emptyEl.classList.toggle("d-none", lines.length > 0);
+        bodyEl.querySelectorAll("tr").forEach((tr, i) => {
+            tr.querySelector(".line-total").textContent = fmt(lineTotal(lines[i]));
+        });
+    }
+
+    function render() {
+        bodyEl.innerHTML = "";
+        lines.forEach((line, index) => {
+            const tr = document.createElement("tr");
+
+            const tdName = document.createElement("td");
+            const nameEl = document.createElement("div");
+            nameEl.className = "fw-semibold";
+            nameEl.textContent = line.name;
+            const unitEl = document.createElement("div");
+            unitEl.className = "text-muted small";
+            unitEl.textContent = line.unit;
+            tdName.append(nameEl, unitEl);
+
+            function numberCell(field, min) {
+                const td = document.createElement("td");
+                const input = document.createElement("input");
+                input.type = "number"; input.min = min; input.step = "1"; input.inputMode = "numeric";
+                input.className = "form-control"; input.value = line[field];
+                input.addEventListener("input", () => { line[field] = input.value; refreshTotals(); });
+                td.appendChild(input);
+                return td;
+            }
+
+            const tdTotal = document.createElement("td");
+            tdTotal.className = "text-end line-total";
+
+            const tdRemove = document.createElement("td");
+            const removeBtn = document.createElement("button");
+            removeBtn.type = "button"; removeBtn.className = "btn btn-link text-danger p-0";
+            removeBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+            removeBtn.addEventListener("click", () => { lines.splice(index, 1); render(); });
+            tdRemove.appendChild(removeBtn);
+
+            tr.append(tdName, numberCell("quantity", 1), numberCell("unit_cost", 0), tdTotal, tdRemove);
+            bodyEl.appendChild(tr);
+        });
+        refreshTotals();
+    }
+
+    function addProduct(p) {
+        const existing = lines.find((l) => l.product_id === p.id);
+        if (existing) {
+            existing.quantity = (parseInt(existing.quantity, 10) || 0) + 1;
+        } else {
+            lines.push({
+                product_id: p.id, name: p.name, unit: p.unit, quantity: 1,
+                unit_cost: p.purchase_price != null ? p.purchase_price : "",
+            });
+        }
+        render();
+        return existing ? existing : lines[lines.length - 1];
+    }
+
+    // --- Recherche produit ---------------------------------------------
+    function hideResults() { resultsEl.style.display = "none"; }
+
+    function positionResults() {
+        const rect = searchInput.getBoundingClientRect();
+        resultsEl.style.top = (rect.bottom + 4) + "px";
+        resultsEl.style.left = rect.left + "px";
+        resultsEl.style.width = Math.max(rect.width, 280) + "px";
+    }
+
+    function renderResults(items) {
+        resultsEl.innerHTML = "";
+        if (!items.length) {
+            const empty = document.createElement("div");
+            empty.className = "text-muted text-center py-3 small";
+            empty.textContent = "{% trans 'Aucun produit trouvé' %}";
+            resultsEl.appendChild(empty);
+        }
+        items.forEach((p) => {
+            const item = document.createElement("div");
+            item.className = "pos-item";
+            const info = document.createElement("div");
+            info.className = "pos-item-info";
+            const name = document.createElement("div");
+            name.className = "pos-item-name";
+            name.textContent = p.name;
+            const meta = document.createElement("div");
+            meta.className = "text-muted small";
+            meta.textContent = [p.sku, p.unit, p.stock_qty + " {% trans 'en stock' %}"].filter(Boolean).join(" · ");
+            info.append(name, meta);
+            item.appendChild(info);
+            item.addEventListener("click", () => {
+                addProduct(p);
+                searchInput.value = "";
+                hideResults();
+            });
+            resultsEl.appendChild(item);
+        });
+        resultsEl.style.display = "block";
+    }
+
+    async function runSearch(query) {
+        const resp = await fetch(searchUrl + "?" + extra + "&q=" + encodeURIComponent(query), {headers: {"X-Requested-With": "XMLHttpRequest"}});
+        renderResults((await resp.json()).results);
+    }
+
+    searchInput.addEventListener("input", () => {
+        positionResults();
+        clearTimeout(searchTimer);
+        const query = searchInput.value;
+        searchTimer = setTimeout(() => runSearch(query), 200);
+    });
+    searchInput.addEventListener("focus", () => { positionResults(); runSearch(searchInput.value); });
+    document.addEventListener("click", (e) => {
+        if (!e.target.closest("#purchase-product-search") && !e.target.closest("#product-search-results")) hideResults();
+    });
+    window.addEventListener("scroll", hideResults, true);
+
+    // --- Scan de code-barres -------------------------------------------
+    function announce(result) {
+        BarcodeScanner.beep(result.ok ? "ok" : "error");
+        feedbackEl.textContent = result.message;
+        feedbackEl.className = "small mb-2 " + (result.ok ? "text-success fw-semibold" : "text-danger");
+        clearTimeout(feedbackTimer);
+        feedbackTimer = setTimeout(() => feedbackEl.classList.add("d-none"), 3500);
+    }
+
+    async function handleScannedCode(rawCode) {
+        const code = (rawCode || "").trim();
+        let data;
+        try {
+            const resp = await fetch(barcodeUrl + "?" + extra + "&code=" + encodeURIComponent(code), {headers: {"X-Requested-With": "XMLHttpRequest"}});
+            data = await resp.json();
+        } catch (error) {
+            return {ok: false, status: "network", message: T_NETWORK};
+        }
+        if (data.status === "found") {
+            addProduct(data.product);
+            return {ok: true, status: "found", message: template(T_ADDED, {name: data.product.name})};
+        }
+        if (data.status === "inactive") return {ok: false, status: data.status, message: template(T_INACTIVE, {name: data.name})};
+        if (data.status === "ambiguous") {
+            renderResults(data.results);
+            return {ok: false, status: data.status, message: T_AMBIGUOUS};
+        }
+        return {ok: false, status: "unknown", message: template(T_UNKNOWN, {code: code})};
+    }
+
+    searchInput.addEventListener("keydown", async (e) => {
+        if (e.key !== "Enter") return;
+        e.preventDefault();   // Entrée ne doit jamais soumettre la réception
+        BarcodeScanner.ensureAudio();
+        const code = searchInput.value.trim();
+        if (!code) return;
+        clearTimeout(searchTimer);
+        const result = await handleScannedCode(code);
+        if (result.status === "unknown" && !/^\d{6,}$/.test(code)) return;
+        announce(result);
+        searchInput.value = "";
+        if (result.status !== "ambiguous") runSearch("");
+    });
+
+    BarcodeScanner.listenHardware({onCode: async (code) => announce(await handleScannedCode(code))});
+
+    const cameraBtn = document.getElementById("purchase-scan-camera");
+    if (BarcodeScanner.cameraSupported()) {
+        cameraBtn.classList.remove("d-none");
+        cameraBtn.addEventListener("click", () => {
+            BarcodeScanner.openCamera({
+                continuous: true,
+                onCode: handleScannedCode,
+                labels: {
+                    title: "{% trans 'Scanner les produits' %}",
+                    close: "{% trans 'Fermer' %}",
+                    hint: "{% trans 'Présentez le code-barres devant la caméra.' %}",
+                    unsupported: "{% trans 'Ce navigateur ne sait pas lire les codes-barres avec la caméra. Utilisez un lecteur, ou Chrome sur Android.' %}",
+                    insecure: "{% trans 'La caméra exige une connexion sécurisée (https).' %}",
+                    denied: "{% trans 'Accès à la caméra refusé. Autorisez-le dans les réglages du navigateur.' %}",
+                    noCamera: "{% trans 'Aucune caméra disponible sur cet appareil.' %}",
+                    error: "{% trans 'Erreur — réessayez.' %}",
+                },
+            });
+        });
+    }
+
+    // --- Envoi -----------------------------------------------------------
+    form.addEventListener("submit", (e) => {
+        const payload = [];
+        for (const l of lines) {
+            const q = Number(l.quantity), c = Number(l.unit_cost);
+            if (l.unit_cost === "" || !Number.isInteger(q) || q <= 0 || !Number.isInteger(c) || c < 0) {
+                e.preventDefault();
+                alert(T_BAD_LINE);
+                return;
+            }
+            payload.push({product_id: l.product_id, quantity: q, unit_cost: c});
+        }
+        if (!payload.length) {
+            e.preventDefault();
+            alert(T_NO_LINES);
+            return;
+        }
+        linesInput.value = JSON.stringify(payload);
+    });
+
+    // Réaffichage après une erreur serveur : on remet les lignes saisies.
+    lines = JSON.parse(document.getElementById("posted-lines").textContent) || [];
+
+    // --- Fournisseur : création rapide -----------------------------------
+    const supplierSelect = document.getElementById("id_supplier");
+    const qsForm = document.getElementById("quick-supplier-form");
+    const qsError = document.getElementById("qs-error");
+    const qsModalEl = document.getElementById("quick-supplier-modal");
+
+    qsForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        qsError.classList.add("d-none");
+        const resp = await fetch(supplierCreateUrl, {
+            method: "POST",
+            headers: {"X-CSRFToken": csrfToken, "X-Requested-With": "XMLHttpRequest"},
+            body: new FormData(qsForm),
+        });
+        const data = await resp.json();
+        if (!resp.ok) {
+            const messages = data.errors ? Object.values(data.errors).flat().join(" ") : (data.detail || "");
+            qsError.textContent = messages;
+            qsError.classList.remove("d-none");
+            return;
+        }
+        const option = new Option(data.name, data.id, true, true);
+        supplierSelect.add(option);
+        supplierSelect.value = data.id;
+        qsForm.reset();
+        bootstrap.Modal.getInstance(qsModalEl).hide();
+    });
+
+    render();
+})();
+</script>
+{% endblock %}

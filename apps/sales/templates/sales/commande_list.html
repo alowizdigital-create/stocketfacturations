@@ -27,7 +27,7 @@
      le tableau se redessine depuis sales:commande_search. -->
 <div class="position-relative mb-3" style="max-width: 420px;">
     <i class="bi bi-search pos-search-icon"></i>
-    <input type="text" id="commande-search" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une commande (numéro, client)...' %}" autocomplete="off">
+    <input type="text" id="commande-search" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une commande (n°, client)...' %}" autocomplete="off">
 </div>
 
 <div class="table-app">
@@ -36,7 +36,7 @@
         <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
-                <td><a href="{% url 'sales:invoice_detail' invoice.id %}" class="fw-semibold">{{ invoice.number }}</a></td>
+                <td class="fw-semibold">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}</td>
                 <td>{{ invoice.client|default:"—" }}</td>
                 <td>
                     <span class="badge-status
@@ -49,7 +49,8 @@
                 </td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
-                <td class="text-end">
+                <td class="text-end text-nowrap">
+                    <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
                     {% if invoice.next_action %}
                     <form method="post" action="{% url 'sales:commande_advance' invoice.id %}" class="d-inline"{% if invoice.next_action.confirm %} data-confirm="{{ invoice.next_action.confirm }}"{% endif %}>
                         {% csrf_token %}
@@ -120,12 +121,15 @@
         }
         tbody.innerHTML = items.map((c) => `
             <tr>
-                <td><a href="${c.url}" class="fw-semibold">${escapeHtml(c.number)}</a></td>
+                <td class="fw-semibold">${escapeHtml(c.number)}</td>
                 <td>${c.client ? escapeHtml(c.client) : "—"}</td>
                 <td><span class="badge-status ${badgeClass(c.status)}">${escapeHtml(c.status_display)}</span></td>
                 <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
                 <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
-                <td class="text-end">${actionCell(c)}</td>
+                <td class="text-end text-nowrap">
+                    <a href="${c.url}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
+                    ${actionCell(c)}
+                </td>
             </tr>`).join("");
     }
 

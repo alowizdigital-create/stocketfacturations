@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Fournisseurs" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div><h1>{% trans "Fournisseurs" %}</h1></div>
+    <div class="d-flex gap-2">
+        <a href="{% url 'purchasing:purchase_list' %}" class="btn btn-outline-secondary"><i class="bi bi-box-arrow-in-down"></i> {% trans "Réceptions" %}</a>
+        <a href="{% url 'purchasing:supplier_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouveau fournisseur" %}</a>
+    </div>
+</div>
+
+<form method="get" class="mb-3">
+    <div class="d-flex gap-2" style="max-width: 420px;">
+        <div class="position-relative flex-grow-1">
+            <i class="bi bi-search pos-search-icon"></i>
+            <input type="text" name="q" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher un fournisseur...' %}">
+        </div>
+        <button type="submit" class="btn btn-outline-secondary" title="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+        {% if query %}
+        <a href="{% url 'purchasing:supplier_list' %}" class="btn btn-outline-secondary" title="{% trans 'Effacer' %}"><i class="bi bi-x-lg"></i></a>
+        {% endif %}
+    </div>
+</form>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>{% trans "Nom" %}</th><th>{% trans "Téléphone" %}</th><th>Email</th><th class="text-end">{% trans "Réceptions" %}</th><th></th></tr></thead>
+        <tbody>
+            {% for supplier in suppliers %}
+            <tr>
+                <td class="fw-semibold">
+                    {{ supplier.name }}
+                    {% if not supplier.is_active %}<span class="badge-status badge-gray">{% trans "Inactif" %}</span>{% endif %}
+                </td>
+                <td>{{ supplier.phone|default:"—" }}</td>
+                <td>{{ supplier.email|default:"—" }}</td>
+                <td class="text-end">{{ supplier.nb_purchases }}</td>
+                <td class="text-end"><a href="{% url 'purchasing:supplier_update' supplier.id %}"><i class="bi bi-pencil"></i></a></td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="text-muted text-center py-4">{% trans "Aucun fournisseur pour le moment." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

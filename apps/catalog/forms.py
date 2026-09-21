@@ -51,9 +51,10 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "image",
             "category",
             # "sku",
-            # "barcode",
+            "barcode",
             "unit",
             "default_sale_price",
+            "purchase_price",
             # "tva_rate",
             # "low_stock_threshold_default",
             "expiry_date",
@@ -63,8 +64,17 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "name": _("Nom"),
             "image": _("Photo principale"),
             "category": _("Catégorie"),
+            "barcode": _("Code-barres"),
             "unit": _("Unité"),
+            "purchase_price": _("Prix d'achat (FCFA)"),
             "is_active": _("Actif"),
+        }
+        help_texts = {
+            "purchase_price": _(
+                "Sert à calculer votre marge. Mis à jour automatiquement à chaque réception de "
+                "marchandises (prix moyen pondéré) ; vous pouvez le corriger ici. Laisser vide si inconnu."
+            ),
+            "barcode": _("Scannez le code imprimé sur le produit (ou saisissez-le). Laisser vide s'il n'en a pas."),
         }
         widgets = {
             "expiry_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
@@ -83,9 +93,28 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             del self.fields["initial_quantity"]
         else:
             self.order_fields(
-                ["name", "image", "category", "unit", "default_sale_price", "initial_quantity",
-                 "expiry_date", "is_active"]
+                ["name", "image", "category", "barcode", "unit", "default_sale_price", "purchase_price",
+                 "initial_quantity", "expiry_date", "is_active"]
             )
+
+    def clean_barcode(self):
+        """Un code-barres identifie UN produit : sans cette unicité (au sein
+        de l'entreprise, le catalogue étant partagé entre ses boutiques), un
+        scan à la caisse ajouterait au hasard l'un des deux. Espaces et
+        retours à la ligne retirés : un lecteur ou un copier-coller en
+        ajoute volontiers."""
+        code = (self.cleaned_data.get("barcode") or "").strip()
+        if not code:
+            return ""
+        clash = Product.objects.filter(compte=self.compte, barcode__iexact=code)
+        if self.instance.pk:
+            clash = clash.exclude(pk=self.instance.pk)
+        other = clash.first()
+        if other is not None:
+            raise forms.ValidationError(
+                _("Ce code-barres est déjà utilisé par le produit « %(name)s ».") % {"name": other.name}
+            )
+        return code
 
     def clean_initial_quantity(self):
         return self.cleaned_data.get("initial_quantity") or Decimal("0")

@@ -28,6 +28,17 @@
             </div>
         </a>
     </div>
+    {% if margin_mois is not None %}
+    <div class="col-6 col-lg-3">
+        <a href="{% url 'sales:margin_report' %}" class="stat-card text-decoration-none text-reset">
+            <div class="stat-icon"><i class="bi bi-graph-up-arrow"></i></div>
+            <div>
+                <div class="stat-value {% if margin_mois < 0 %}text-danger{% endif %}">{{ margin_mois }} {{ request.boutique.devise }}</div>
+                <div class="stat-label">{% trans "Bénéfice net du mois" %}{% if margin_mois_percent is not None %} · {{ margin_mois_percent }} %{% endif %}</div>
+            </div>
+        </a>
+    </div>
+    {% endif %}
     <div class="col-6 col-lg-3">
         <a href="{% url 'sales:invoice_list' %}?unpaid=1" class="stat-card text-decoration-none text-reset">
             <div class="stat-icon"><i class="bi bi-receipt"></i></div>

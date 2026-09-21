@@ -27,7 +27,7 @@
         <thead><tr><th>{% trans "Nom" %}</th><th>{% trans "Téléphone" %}</th><th class="d-none d-md-table-cell">Email</th></tr></thead>
         <tbody>
             {% for client in clients %}
-            <tr><td class="fw-semibold">{{ client.name }}</td><td>{{ client.phone|default:"—" }}</td><td class="d-none d-md-table-cell">{{ client.email|default:"—" }}</td></tr>
+            <tr><td class="fw-semibold"><a href="{% url 'sales:client_statement' client.id %}">{{ client.name }}</a></td><td>{{ client.phone|default:"—" }}</td><td class="d-none d-md-table-cell">{{ client.email|default:"—" }}</td></tr>
             {% empty %}
             <tr><td colspan="3" class="text-muted text-center py-4">{% trans "Aucun client." %}</td></tr>
             {% endfor %}

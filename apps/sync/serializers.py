@@ -355,7 +355,7 @@ class InvoicePullSerializer(serializers.ModelSerializer):
     class Meta:
         model = Invoice
         fields = [
-            "id", "client_id", "number", "type", "status", "issue_date", "due_date",
+            "id", "client_id", "number", "commande_seq", "type", "status", "issue_date", "due_date",
             "currency", "subtotal_ht", "total_tva", "total_ttc", "discount_amount", "note",
             "pdf_format", "created_by_id", "lines", "payments", "updated_at",
         ]

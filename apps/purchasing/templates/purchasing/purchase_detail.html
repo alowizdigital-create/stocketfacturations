@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{{ purchase.number }}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{{ purchase.number }}</h1>
+        <div class="text-muted">{{ purchase.received_date|date:"d/m/Y" }}{% if purchase.supplier %} · {{ purchase.supplier }}{% endif %}</div>
+    </div>
+    <a href="{% url 'purchasing:purchase_list' %}" class="btn btn-outline-secondary">{% trans "Retour" %}</a>
+</div>
+
+<div class="card-app mb-3">
+    <div class="card-app-body">
+        <div class="row g-3">
+            <div class="col-md-3"><div class="text-muted small">{% trans "Fournisseur" %}</div><div class="fw-semibold">{{ purchase.supplier|default:"—" }}</div></div>
+            <div class="col-md-3"><div class="text-muted small">{% trans "Référence fournisseur" %}</div><div class="fw-semibold">{{ purchase.reference|default:"—" }}</div></div>
+            <div class="col-md-3"><div class="text-muted small">{% trans "Enregistrée par" %}</div><div class="fw-semibold">{% if purchase.created_by %}{{ purchase.created_by.get_full_name|default:purchase.created_by.email }}{% else %}—{% endif %}</div></div>
+            <div class="col-md-3"><div class="text-muted small">{% trans "Total" %}</div><div class="fw-semibold">{{ purchase.total_cost }} {{ request.boutique.devise }}</div></div>
+            {% if purchase.note %}<div class="col-12"><div class="text-muted small">{% trans "Note" %}</div><div>{{ purchase.note }}</div></div>{% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead>
+            <tr>
+                <th>{% trans "Produit" %}</th>
+                <th class="text-end">{% trans "Quantité" %}</th>
+                <th class="text-end">{% trans "Coût unitaire" %}</th>
+                <th class="text-end">{% trans "Total" %}</th>
+                <th class="text-end">{% trans "Prix d'achat du produit" %}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for line in lines %}
+            <tr>
+                <td class="fw-semibold"><a href="{% url 'catalog:product_detail' line.product.id %}">{{ line.product.name }}</a></td>
+                <td class="text-end">{{ line.quantity|floatformat:"-3" }}</td>
+                <td class="text-end">{{ line.unit_cost }}</td>
+                <td class="text-end">{{ line.line_total }}</td>
+                <td class="text-end text-muted small">
+                    {% if line.cost_before is not None and line.cost_before != line.cost_after %}{{ line.cost_before }} → {% endif %}{{ line.cost_after|default_if_none:"—" }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Dépenses" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Dépenses" %}</h1>
+        <div class="text-muted">{% trans "Loyer, salaires, transport, électricité... Les achats de marchandises se saisissent dans « Réceptions »." %}</div>
+    </div>
+    {% if not IS_OFFLINE %}
+    <a href="{% url 'purchasing:expense_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle dépense" %}</a>
+    {% endif %}
+</div>
+
+<form method="get" class="card-app mb-3">
+    <div class="card-app-body d-flex flex-wrap gap-2 align-items-end">
+        <div>
+            <label class="form-label small mb-1" for="exp-from">{% trans "Du" %}</label>
+            <input type="date" name="from" id="exp-from" value="{{ date_from|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="exp-to">{% trans "Au" %}</label>
+            <input type="date" name="to" id="exp-to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="exp-cat">{% trans "Catégorie" %}</label>
+            <select name="category" id="exp-cat" class="form-select">
+                <option value="">{% trans "Toutes" %}</option>
+                {% for value, label in categories %}
+                <option value="{{ value }}" {% if value == category %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> {% trans "Afficher" %}</button>
+    </div>
+</form>
+
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Total de la période" %}</div>
+            <div class="stat-value">{{ total }} {{ request.boutique.devise }}</div>
+        </div></div>
+    </div>
+    <div class="col-md-8">
+        <div class="card-app h-100"><div class="card-app-body">
+            {% for label, amount in breakdown %}
+            <div class="d-flex justify-content-between py-1"><span>{{ label }}</span><span class="fw-semibold">{{ amount }} {{ request.boutique.devise }}</span></div>
+            {% empty %}
+            <div class="text-muted">{% trans "Aucune dépense sur cette période." %}</div>
+            {% endfor %}
+        </div></div>
+    </div>
+</div>
+
+{% if delivery_total %}
+<div class="alert alert-light border small">
+    <i class="bi bi-truck"></i>
+    {% blocktrans trimmed with amount=delivery_total devise=request.boutique.devise n=delivery_count %}
+    Inclut {{ amount }} {{ devise }} de frais de livraison ({{ n }} commande(s) livrée(s)), comptés automatiquement à chaque livraison.
+    {% endblocktrans %}
+</div>
+{% endif %}
+
+<div class="table-app">
+    <table class="table mb-0">
+        <thead><tr><th>{% trans "Date" %}</th><th>{% trans "Libellé" %}</th><th>{% trans "Catégorie" %}</th><th class="text-end">{% trans "Montant" %}</th><th>{% trans "Saisie par" %}</th><th></th></tr></thead>
+        <tbody>
+            {% for expense in expenses %}
+            <tr {% if expense.is_cancelled %}class="text-muted"{% endif %}>
+                <td>{{ expense.expense_date|date:"d/m/Y" }}</td>
+                <td>
+                    <span {% if expense.is_cancelled %}style="text-decoration: line-through;"{% endif %}>{{ expense.label }}</span>
+                    {% if expense.cash_movement_id %}<span class="badge-status badge-gray" title="{% trans 'Payée depuis une caisse individuelle' %}"><i class="bi bi-wallet2"></i></span>{% endif %}
+                    {% if expense.is_cancelled %}<span class="badge-status badge-red">{% trans "Annulée" %}</span>{% endif %}
+                    {% if expense.note %}<div class="small text-muted">{{ expense.note }}</div>{% endif %}
+                </td>
+                <td>{{ expense.get_category_display }}</td>
+                <td class="text-end fw-semibold">{{ expense.amount }}</td>
+                <td>{% if expense.created_by %}{{ expense.created_by.get_full_name|default:expense.created_by.email }}{% else %}—{% endif %}</td>
+                <td class="text-end">
+                    {% if request.boutique_role == "ADMIN_COMPTE" and not expense.is_cancelled and not IS_OFFLINE %}
+                    <form method="post" action="{% url 'purchasing:expense_cancel' expense.id %}" class="d-inline" onsubmit="return confirm('{% trans "Annuler cette dépense ?" %}');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link text-danger p-0" title="{% trans 'Annuler' %}"><i class="bi bi-x-circle"></i></button>
+                    </form>
+                    {% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune dépense." %}</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

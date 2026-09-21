@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 {% block title %}{{ title }}{% endblock %}
 {% block content %}
 <div class="page-header">
@@ -46,6 +46,15 @@
                     <div class="flex-grow-1">{{ field }}</div>
                     <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#quick-category-modal" title="{% trans 'Nouvelle catégorie' %}">
                         <i class="bi bi-plus-lg"></i>
+                    </button>
+                </div>
+                {% elif field.name == "barcode" %}
+                <div class="input-group">
+                    {{ field }}
+                    <!-- Caché si le navigateur ne lit pas les codes avec la caméra ; un lecteur
+                         USB/Bluetooth, lui, écrit directement dans le champ. -->
+                    <button type="button" id="barcode-scan-btn" class="btn btn-outline-secondary d-none" title="{% trans 'Scanner avec la caméra' %}" aria-label="{% trans 'Scanner avec la caméra' %}">
+                        <i class="bi bi-upc-scan"></i>
                     </button>
                 </div>
                 {% elif field.name == "unit" %}
@@ -325,5 +334,45 @@ document.addEventListener("DOMContentLoaded", function () {
             });
     });
 });
+</script>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/barcode-scanner.js' %}?v=2"></script>
+<script>
+(function () {
+    const input = document.getElementById("id_barcode");
+    if (!input) return;
+
+    // Un lecteur USB/Bluetooth qui écrit dans ce champ termine par Entrée :
+    // sans ce blocage, le formulaire partirait aussitôt, produit à moitié rempli.
+    input.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") { e.preventDefault(); BarcodeScanner.beep("ok"); }
+    });
+
+    const button = document.getElementById("barcode-scan-btn");
+    if (!BarcodeScanner.cameraSupported()) return;
+    button.classList.remove("d-none");
+    button.addEventListener("click", () => {
+        BarcodeScanner.openCamera({
+            continuous: false,   // se ferme au premier code lu
+            onCode: (code) => {
+                input.value = code;
+                input.dispatchEvent(new Event("input", {bubbles: true}));
+                return {ok: true, message: code};
+            },
+            labels: {
+                title: "{% trans 'Scanner le code-barres' %}",
+                close: "{% trans 'Fermer' %}",
+                hint: "{% trans 'Présentez le code-barres devant la caméra.' %}",
+                unsupported: "{% trans 'Ce navigateur ne sait pas lire les codes-barres avec la caméra. Utilisez un lecteur, ou Chrome sur Android.' %}",
+                insecure: "{% trans 'La caméra exige une connexion sécurisée (https).' %}",
+                denied: "{% trans 'Accès à la caméra refusé. Autorisez-le dans les réglages du navigateur.' %}",
+                noCamera: "{% trans 'Aucune caméra disponible sur cet appareil.' %}",
+                error: "{% trans 'Erreur — réessayez.' %}",
+            },
+        });
+    });
+})();
 </script>
 {% endblock %}

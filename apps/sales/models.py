@@ -98,6 +98,12 @@ class SaleLine(UUIDModel):
     quantity = models.DecimalField(max_digits=12, decimal_places=3)
     unit_price_ht = models.DecimalField(max_digits=12, decimal_places=0)
     tva_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0)
+    # Coût d'achat unitaire du produit AU MOMENT de la vente (photo, pas un
+    # lien vivant) : la marge d'une vente passée ne doit pas changer quand le
+    # prix d'achat évolue ensuite. None = coût alors inconnu (produit sans prix
+    # d'achat, ligne libre, ou vente antérieure à cette fonctionnalité) : ces
+    # lignes sont exclues du calcul de marge plutôt que comptées à coût zéro.
+    unit_cost = models.DecimalField(max_digits=12, decimal_places=0, null=True, blank=True)
     line_total_ht = models.DecimalField(max_digits=14, decimal_places=0)
     line_total_ttc = models.DecimalField(max_digits=14, decimal_places=0)
     position = models.PositiveIntegerField(default=0)
@@ -177,6 +183,11 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     converted_from = models.ForeignKey(
         "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="conversions"
     )
+    # Numéro simple d'une commande (1, 2, 3...), propre à la boutique : celui
+    # qu'on annonce au client et qu'on lit dans la liste des commandes, à la
+    # place du numéro de document long (`number`). Attribué à la création
+    # (voir Invoice.next_commande_seq) ; vide pour les devis et les factures.
+    commande_seq = models.PositiveIntegerField(_("n° de commande"), null=True, blank=True)
     delivery_status = models.CharField(
         _("statut de livraison"), max_length=15, choices=DELIVERY_STATUS_CHOICES, default=EN_ATTENTE,
     )
@@ -219,6 +230,14 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
         prefix = f"{boutique.code}-CMD-{issue_date:%Y%m%d}-"
         existing = Invoice.objects.filter(boutique=boutique, number__startswith=prefix).count()
         return f"{prefix}{existing + 1:04d}"
+
+    @staticmethod
+    def next_commande_seq(boutique):
+        """Prochain numéro simple de commande de la boutique : le plus grand
+        déjà attribué + 1 (les commandes annulées gardent le leur : un numéro
+        annoncé à un client n'est jamais réutilisé)."""
+        last = Invoice.objects.filter(boutique=boutique, type=Invoice.COMMANDE).aggregate(m=models.Max("commande_seq"))["m"]
+        return (last or 0) + 1
 
     @property
     def amount_paid(self):
@@ -313,3 +332,34 @@ class Payment(UUIDModel, TimeStampedModel):
 
     def __str__(self):
         return f"{self.amount} {self.invoice.currency} ({self.get_method_display()})"
+
+
+class PaymentReminder(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
+    """Trace d'une relance de paiement envoyée (ou préparée) à un client :
+    sert à afficher « dernière relance le… » et à éviter de harceler le même
+    client plusieurs fois par jour. Journal simple, jamais modifié.
+    `invoice` vide = relance de relevé (toutes les factures impayées du
+    client d'un coup). `amount` = ce que le message réclamait à ce moment-là."""
+
+    API = "API"
+    LINK = "LINK"
+    CHANNEL_CHOICES = [(API, _("Envoyée par l'API WhatsApp")), (LINK, _("Ouverte dans WhatsApp"))]
+
+    client = models.ForeignKey(Client, on_delete=models.CASCADE, related_name="reminders")
+    invoice = models.ForeignKey(
+        "Invoice", on_delete=models.SET_NULL, null=True, blank=True, related_name="reminders"
+    )
+    amount = models.DecimalField(max_digits=14, decimal_places=0)
+    currency = models.CharField(max_length=3, default="XOF")
+    channel = models.CharField(max_length=10, choices=CHANNEL_CHOICES)
+    sent_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name="payment_reminders"
+    )
+
+    class Meta:
+        verbose_name = _("relance de paiement")
+        verbose_name_plural = _("relances de paiement")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.client} — {self.amount} {self.currency}"

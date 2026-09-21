@@ -96,6 +96,8 @@ def build_invoice(*, boutique, client, type, created_by, lines_data, issue_date=
     )
     if pdf_format:
         invoice_kwargs["pdf_format"] = pdf_format
+    if type == Invoice.COMMANDE:
+        invoice_kwargs["commande_seq"] = Invoice.next_commande_seq(boutique)
     if id is not None:
         invoice_kwargs["id"] = id
     if created_at is not None:
@@ -333,6 +335,7 @@ def convert_commande_to_invoice(commande, created_by=None):
             quantity=line.quantity,
             unit_price_ht=line.unit_price_ht,
             tva_rate=line.tva_rate,
+            unit_cost=line.product.purchase_price if line.product is not None else None,
             line_total_ht=line.line_total_ht,
             line_total_ttc=line.line_total_ttc,
             position=line.position,
@@ -400,19 +403,31 @@ def deliver_commande(commande, delivered_by=None):
     return invoice
 
 
-def mark_commande_en_cours(commande):
+@transaction.atomic
+def mark_commande_en_cours(commande, undone_by=None):
     """Fait passer la commande en préparation : soit départ depuis
     EN_ATTENTE (on commence à la préparer), soit annulation d'un marquage
     'livrée' fait par erreur (delivered_at/delivered_by sont alors
-    effacés — un nouveau marquage livré les réécrira proprement)."""
+    effacés — un nouveau marquage livré les réécrira proprement).
+
+    Annuler une livraison rembourse aussi les frais de livraison déjà
+    prélevés dans la caisse du livreur (voir
+    apps.cashier.services.refund_delivery_fee) : sans ça, la relivraison
+    les débiterait une seconde fois. Ne touche ni à la facture ni au stock,
+    que la validation de la commande a déjà générés."""
+
+    from apps.cashier.services import refund_delivery_fee
 
     if commande.type != Invoice.COMMANDE:
         raise ValueError("Seule une commande peut être mise en cours.")
 
+    was_delivered = commande.delivery_status == Invoice.LIVREE
     commande.delivery_status = Invoice.EN_COURS
     commande.delivered_at = None
     commande.delivered_by = None
     commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
+    if was_delivered:
+        refund_delivery_fee(commande, refunded_by=undone_by)
     return commande
 
 
@@ -490,13 +505,15 @@ def build_sale(*, boutique, client, created_by, lines_data, sale_date=None, curr
 
     computed, subtotal_ht, total_tva, total_ttc = _compute_totals(lines_data)
     for position, (line, line_total_ht, line_total_ttc) in enumerate(computed):
+        product = line.get("product")
         SaleLine.objects.create(
             sale=sale,
-            product=line.get("product"),
+            product=product,
             description=line["description"],
             quantity=line["quantity"],
             unit_price_ht=line["unit_price_ht"],
             tva_rate=line["tva_rate"],
+            unit_cost=product.purchase_price if product is not None else None,
             line_total_ht=line_total_ht,
             line_total_ttc=line_total_ttc,
             position=position,
