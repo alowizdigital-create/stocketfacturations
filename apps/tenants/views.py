@@ -22,6 +22,7 @@ from .forms import (
     StaffUpdateForm,
     SubscriptionForm,
 )
+from .limits import boutiques_limit_reached, users_limit_reached
 from .models import BoutiqueAPIToken, Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
 
 User = get_user_model()
@@ -124,6 +125,16 @@ def staff_list(request):
 @login_required
 @compte_admin_required
 def staff_create(request):
+    if users_limit_reached(request.compte):
+        messages.error(
+            request,
+            _(
+                "Votre offre (%(plan)s) autorise au maximum %(max)s employé(s). Passez à une offre "
+                "supérieure pour en ajouter un de plus."
+            ) % {"plan": request.compte.subscription.plan.name, "max": request.compte.subscription.plan.max_users},
+        )
+        return redirect("tenants:subscription")
+
     if request.method == "POST":
         form = StaffCreateForm(request.POST, compte=request.compte)
         if form.is_valid():
@@ -215,6 +226,16 @@ def boutique_create(request):
     automatiquement affecté (Membership ADMIN_COMPTE) — sans ça, il ne
     pourrait ni basculer dessus (tenants:set_boutique exige une Membership
     sur la boutique visée) ni y affecter d'autres employés ensuite."""
+    if boutiques_limit_reached(request.compte):
+        messages.error(
+            request,
+            _(
+                "Votre offre (%(plan)s) autorise au maximum %(max)s boutique(s). Passez à une offre "
+                "supérieure pour en créer une de plus."
+            ) % {"plan": request.compte.subscription.plan.name, "max": request.compte.subscription.plan.max_boutiques},
+        )
+        return redirect("tenants:subscription")
+
     if request.method == "POST":
         form = BoutiqueCreateForm(request.POST, compte=request.compte)
         if form.is_valid():
@@ -393,3 +414,14 @@ def subscription_view(request):
         "tenants/subscription.html",
         {"form": form, "subscription": subscription, "plans": plans},
     )
+
+
+@login_required
+def subscription_expired(request):
+    """Page affichée à la place de l'application quand l'abonnement de
+    l'entreprise est expiré (voir
+    apps.core.middleware.SubscriptionGuardMiddleware). Pas de
+    @compte_admin_required : n'importe quel employé peut y atterrir, mais
+    seul un administrateur voit le lien pour renouveler."""
+    subscription = getattr(request.compte, "subscription", None) if request.compte else None
+    return render(request, "tenants/subscription_expired.html", {"subscription": subscription})

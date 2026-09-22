@@ -781,6 +781,7 @@ def commande_search(request):
             "id": str(c.id),
             "number": c.commande_seq if c.commande_seq is not None else c.number,
             "client": c.client.name if c.client else None,
+            "client_phone": c.client.phone if c.client else "",
             "status": c.status,
             "status_display": c.get_status_display(),
             "date": c.issue_date.strftime("%d/%m/%Y"),

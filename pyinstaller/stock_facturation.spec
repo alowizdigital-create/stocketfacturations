@@ -19,7 +19,7 @@ ROOT = Path(SPECPATH).resolve().parent  # noqa: F821 — injecté par PyInstalle
 # vide, comme observé lors d'un premier essai de cette spec.
 sys.path.insert(0, str(ROOT))
 
-LOCAL_APPS = ["core", "accounts", "tenants", "catalog", "stock", "sales", "cashier", "sync"]
+LOCAL_APPS = ["core", "accounts", "tenants", "catalog", "stock", "sales", "cashier", "purchasing", "sync"]
 # Apps contrib Django avec un paquet de migrations réel (messages/staticfiles
 # n'en ont pas — inutile de les lister).
 CONTRIB_APPS_WITH_MIGRATIONS = ["admin", "auth", "contenttypes", "sessions"]

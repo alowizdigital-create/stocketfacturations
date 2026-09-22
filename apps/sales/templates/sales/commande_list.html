@@ -32,25 +32,20 @@
 
 <div class="table-app">
     <table class="table mb-0">
-        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Statut" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th><th class="text-end">{% trans "Action" %}</th></tr></thead>
+        <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Téléphone" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th><th class="text-end">{% trans "Action" %}</th></tr></thead>
         <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
                 <td class="fw-semibold">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}</td>
                 <td>{{ invoice.client|default:"—" }}</td>
-                <td>
-                    <span class="badge-status
-                        {% if invoice.status == 'PAYEE' %}badge-green
-                        {% elif invoice.status == 'BROUILLON' %}badge-gray
-                        {% elif invoice.status == 'ANNULEE' %}badge-red
-                        {% else %}badge-orange{% endif %}">
-                        {{ invoice.get_status_display }}
-                    </span>
-                </td>
+                <td class="text-muted">{{ invoice.client.phone|default:"—" }}</td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
                 <td class="text-end text-nowrap">
                     <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 copy-phone-btn" data-phone="{{ invoice.client.phone|default:'' }}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" {% if not invoice.client.phone %}disabled{% endif %}>
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                     {% if invoice.next_action %}
                     <form method="post" action="{% url 'sales:commande_advance' invoice.id %}" class="d-inline"{% if invoice.next_action.confirm %} data-confirm="{{ invoice.next_action.confirm }}"{% endif %}>
                         {% csrf_token %}
@@ -81,13 +76,6 @@
     const searchInput = document.getElementById("commande-search");
     const tbody = document.getElementById("commandes-tbody");
     let searchTimer = null;
-
-    function badgeClass(status) {
-        if (status === "PAYEE") return "badge-green";
-        if (status === "BROUILLON") return "badge-gray";
-        if (status === "ANNULEE") return "badge-red";
-        return "badge-orange";
-    }
 
     function escapeHtml(str) {
         const div = document.createElement("div");
@@ -123,11 +111,14 @@
             <tr>
                 <td class="fw-semibold">${escapeHtml(c.number)}</td>
                 <td>${c.client ? escapeHtml(c.client) : "—"}</td>
-                <td><span class="badge-status ${badgeClass(c.status)}">${escapeHtml(c.status_display)}</span></td>
+                <td class="text-muted">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
                 <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
                 <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
                 <td class="text-end text-nowrap">
                     <a href="${c.url}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
+                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 copy-phone-btn" data-phone="${escapeHtml(c.client_phone || "")}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" ${c.client_phone ? "" : "disabled"}>
+                        <i class="bi bi-clipboard"></i>
+                    </button>
                     ${actionCell(c)}
                 </td>
             </tr>`).join("");
@@ -145,6 +136,39 @@
     tbody.addEventListener("submit", (e) => {
         const form = e.target.closest("form[data-confirm]");
         if (form && !window.confirm(form.dataset.confirm)) e.preventDefault();
+    });
+
+    // Copier le numéro du client — délégué sur le tableau, même raison que
+    // ci-dessus (couvre les lignes redessinées par la recherche).
+    tbody.addEventListener("click", async (e) => {
+        const button = e.target.closest(".copy-phone-btn");
+        if (!button || button.disabled) return;
+        const phone = button.dataset.phone;
+        if (!phone) return;
+        try {
+            await navigator.clipboard.writeText(phone);
+        } catch (error) {
+            // Presse-papiers indisponible (contexte non sécurisé, permission
+            // refusée...) : repli sur la sélection manuelle classique.
+            const helper = document.createElement("textarea");
+            helper.value = phone;
+            helper.style.position = "fixed";
+            helper.style.opacity = "0";
+            document.body.appendChild(helper);
+            helper.select();
+            document.execCommand("copy");
+            document.body.removeChild(helper);
+        }
+        const icon = button.querySelector("i");
+        icon.className = "bi bi-check-lg";
+        button.classList.add("btn-success");
+        button.classList.remove("btn-outline-secondary");
+        clearTimeout(button._resetTimer);
+        button._resetTimer = setTimeout(() => {
+            icon.className = "bi bi-clipboard";
+            button.classList.remove("btn-success");
+            button.classList.add("btn-outline-secondary");
+        }, 1500);
     });
 
     searchInput.addEventListener("input", () => {

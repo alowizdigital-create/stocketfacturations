@@ -127,3 +127,53 @@ class CurrentTenantMiddleware:
             if boutique.is_default:
                 return boutique
         return None
+
+
+class SubscriptionGuardMiddleware:
+    """Bloque l'accès à l'application quand l'abonnement de l'entreprise
+    (apps.tenants.models.Subscription) est expiré — redirige vers
+    tenants:subscription_expired, qui explique la situation et, pour un
+    administrateur, propose de renouveler.
+
+    Doit s'exécuter APRÈS CurrentTenantMiddleware (a besoin de
+    request.compte). Uniquement en ligne : le poste offline n'a pas cette
+    donnée synchronisée (Subscription n'est pas une ressource de synchro)
+    et reste utilisable même si l'abonnement en ligne a expiré — il
+    resynchronisera normalement dès le renouvellement.
+
+    Un super-administrateur (plateforme) n'est jamais bloqué : c'est lui
+    qui doit pouvoir intervenir même sur une entreprise dont l'accès est
+    coupé."""
+
+    # Chemins toujours accessibles même abonnement expiré : la page qui
+    # l'explique et celle qui permet de le renouveler (même préfixe
+    # `/entreprises/abonnement`), la déconnexion, les fichiers statiques,
+    # et l'API de synchro (le poste offline continue de pousser/tirer).
+    EXEMPT_PREFIXES = (
+        "/entreprises/abonnement", "/comptes/deconnexion", "/static/", "/media/",
+        "/api/", "/sw.js",
+    )
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        from django.conf import settings
+
+        if (
+            not settings.IS_OFFLINE
+            and getattr(request, "compte", None) is not None
+            and not request.user.is_superuser
+            and not request.path.startswith(self.EXEMPT_PREFIXES)
+            and self._is_expired(request.compte)
+        ):
+            from django.shortcuts import redirect
+
+            return redirect("tenants:subscription_expired")
+
+        return self.get_response(request)
+
+    @staticmethod
+    def _is_expired(compte):
+        subscription = getattr(compte, "subscription", None)
+        return subscription is not None and not subscription.is_active

@@ -19,4 +19,5 @@ urlpatterns = [
     path("parametres/jeton/", views.boutique_token, name="boutique_token"),
     path("parametres/jeton/generer/", views.boutique_token_generate, name="boutique_token_generate"),
     path("abonnement/", views.subscription_view, name="subscription"),
+    path("abonnement/expire/", views.subscription_expired, name="subscription_expired"),
 ]

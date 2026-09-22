@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth.views import redirect_to_login
 from django.db.models import Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
@@ -34,8 +35,19 @@ def short_link_redirect(request, code):
     return redirect(link.target_path)
 
 
-@login_required
+def landing(request):
+    """Page d'accueil publique de Zweey (visiteur non connecté, version en
+    ligne). Le poste offline n'en a pas : il est déjà installé et lié à une
+    boutique, on l'envoie directement à la connexion."""
+    return render(request, "core/landing.html")
+
+
 def home(request):
+    if not request.user.is_authenticated:
+        if settings.IS_OFFLINE:
+            return redirect_to_login(request.get_full_path())
+        return landing(request)
+
     if request.boutique is None:
         # Un super-administrateur de la plateforme n'a souvent aucune
         # boutique : son point d'entrée est l'administration plateforme.

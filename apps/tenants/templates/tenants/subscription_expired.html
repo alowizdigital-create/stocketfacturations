@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Abonnement expiré" %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-center">
+    <div class="card-app text-center" style="max-width: 560px; width: 100%; margin-top: 3rem;">
+        <div class="card-app-body py-5">
+            <div class="mb-3" style="font-size: 2.5rem; color: var(--brand);"><i class="bi bi-calendar-x"></i></div>
+            <h1 class="h4 mb-2">{% trans "Abonnement expiré" %}</h1>
+            {% if subscription %}
+            <p class="text-muted mb-3">
+                {% if subscription.expires_at %}
+                {% blocktrans trimmed with plan=subscription.plan.name date=subscription.expires_at|date:"d/m/Y" %}
+                Votre offre « {{ plan }} » a expiré le {{ date }}.
+                {% endblocktrans %}
+                {% else %}
+                {% blocktrans trimmed with plan=subscription.plan.name %}Votre offre « {{ plan }} » n'est plus active.{% endblocktrans %}
+                {% endif %}
+            </p>
+            {% else %}
+            <p class="text-muted mb-3">{% trans "Aucun abonnement actif n'est associé à votre entreprise." %}</p>
+            {% endif %}
+
+            {% if request.is_compte_admin %}
+            <p class="mb-4">{% trans "Renouvelez-le pour continuer à utiliser Zweey — vos données restent intactes." %}</p>
+            <a href="{% url 'tenants:subscription' %}" class="btn btn-primary"><i class="bi bi-arrow-repeat"></i> {% trans "Renouveler mon abonnement" %}</a>
+            {% else %}
+            <p class="mb-4">{% trans "Contactez l'administrateur de votre entreprise pour qu'il renouvelle l'abonnement." %}</p>
+            {% endif %}
+
+            <div class="mt-4">
+                <a href="{% url 'accounts:logout' %}" class="small text-muted">{% trans "Se déconnecter" %}</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
