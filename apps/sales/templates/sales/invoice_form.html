@@ -1,8 +1,13 @@
 {% extends "base.html" %}
 {% load i18n %}
-{% block title %}{% if editing_invoice %}{% trans "Modifier le devis" %}{% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}{% endblock %}
+{% block title %}{% if editing_invoice %}{% if editing_invoice.type == "COMMANDE" %}{% trans "Modifier la commande" %}{% else %}{% trans "Modifier le devis" %}{% endif %}{% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}{% endblock %}
 {% block content %}
-<div class="page-header"><div><h1>{% if editing_invoice %}{% blocktrans trimmed with number=editing_invoice.number %}Modifier le devis {{ number }}{% endblocktrans %}{% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}</h1></div></div>
+<div class="page-header"><div><h1>
+    {% if editing_invoice %}
+        {% if editing_invoice.type == "COMMANDE" %}{% blocktrans trimmed with number=editing_invoice.commande_seq|default:editing_invoice.number %}Modifier la commande n° {{ number }}{% endblocktrans %}
+        {% else %}{% blocktrans trimmed with number=editing_invoice.number %}Modifier le devis {{ number }}{% endblocktrans %}{% endif %}
+    {% elif document_kind == "commande" %}{% trans "Nouvelle commande" %}{% else %}{% trans "Nouveau devis" %}{% endif %}
+</h1></div></div>
 <form method="post" id="devis-form">
     {% csrf_token %}
     <div class="card-app mb-3">
@@ -116,12 +121,12 @@
     {{ form.note }}
     {{ form.deposit_amount }}
     <div class="d-flex gap-2 mt-4">
-        <button type="{% if document_kind == "commande" %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if editing_invoice %}{% trans "Enregistrer les modifications" %}{% elif document_kind == "commande" %}{% trans "Créer la commande" %}{% else %}{% trans "Créer le devis" %}{% endif %}</button>
+        <button type="{% if document_kind == "commande" and not editing_invoice %}button{% else %}submit{% endif %}" id="devis-submit" class="btn btn-primary">{% if editing_invoice %}{% trans "Enregistrer les modifications" %}{% elif document_kind == "commande" %}{% trans "Créer la commande" %}{% else %}{% trans "Créer le devis" %}{% endif %}</button>
         <a href="{% if editing_invoice %}{% url 'sales:invoice_detail' editing_invoice.id %}{% elif document_kind == "commande" %}{% url 'sales:commande_list' %}{% else %}{% url 'sales:devis_list' %}{% endif %}" class="btn btn-outline-secondary">{% trans "Annuler" %}</a>
     </div>
 </form>
 
-{% if document_kind == "commande" %}
+{% if document_kind == "commande" and not editing_invoice %}
 <!-- Note + acompte demandés au moment de créer la commande (même principe
      que le pop-up de paiement de sale_form.html) — le client n'a pas
      forcément encore payé, l'acompte reste optionnel (0 = aucun acompte). -->
@@ -638,7 +643,7 @@
     reindexRows();
     recomputeAll();
 
-    {% if document_kind == "commande" %}
+    {% if document_kind == "commande" and not editing_invoice %}
     // --- Pop-up "note + acompte" affiché au clic sur "Créer la commande" --
     const commandeModalEl = document.getElementById("commande-info-modal");
     const commandeModal = new bootstrap.Modal(commandeModalEl);

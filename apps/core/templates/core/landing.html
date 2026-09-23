@@ -16,7 +16,7 @@
     <link href="{% static 'vendor/fonts/inter/inter.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
     <link href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.min.css' %}" rel="stylesheet">
-    <link href="{% static 'css/landing.css' %}?v=3" rel="stylesheet">
+    <link href="{% static 'css/landing.css' %}?v=5" rel="stylesheet">
 </head>
 <body class="landing">
 
@@ -36,8 +36,12 @@
             <a href="#faq">Questions</a>
         </nav>
         <div class="d-flex align-items-center gap-2">
-            <a href="{% url 'accounts:login' %}" class="btn btn-ghost btn-sm d-none d-sm-inline-block py-2">Se connecter</a>
-            <a href="{% url 'tenants:signup' %}" class="btn btn-brand btn-sm py-2">Créer mon entreprise</a>
+            <a href="{% url 'accounts:login' %}" class="btn btn-outline-brand">
+                <span class="d-none d-sm-inline">Se connecter</span><span class="d-sm-none">Connexion</span>
+            </a>
+            <a href="{% url 'tenants:signup' %}" class="btn btn-brand">
+                <span class="d-none d-sm-inline">Créer mon entreprise</span><span class="d-sm-none">S'inscrire</span>
+            </a>
         </div>
     </div>
 </header>

@@ -36,6 +36,8 @@
         <button type="button" id="print-invoice-btn" class="btn btn-outline-secondary" data-pdf-url="{% url 'sales:invoice_pdf' invoice.id %}"><i class="bi bi-printer"></i> {% trans "Imprimer" %}</button>
         {% if invoice.type == "DEVIS" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
         <a href="{% url 'sales:devis_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
+        {% elif invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" and not IS_OFFLINE %}
+        <a href="{% url 'sales:commande_update' invoice.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
         {% endif %}
         <!-- <a href="{% url 'sales:invoice_public_view' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Lien envoyé au client : prix, quantités, total"><i class="bi bi-eye"></i> Aperçu client</a> -->
         <!-- <a href="{% url 'sales:invoice_public_gallery' invoice.id %}" class="btn btn-outline-secondary" target="_blank" title="Second lien envoyé au client : toutes les photos des produits commandés"><i class="bi bi-images"></i> Galerie photos</a> -->

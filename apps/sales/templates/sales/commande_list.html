@@ -4,6 +4,16 @@
 {% block content %}
 <div class="page-header">
     <a href="{% url 'sales:commande_create' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> {% trans "Nouvelle commande" %}</a>
+    <div class="d-flex gap-2 ms-auto">
+        <!-- Exporte l'onglet de livraison et la recherche affichés à l'instant
+             (href tenu à jour par le JS de recherche en direct ci-dessous). -->
+        <a id="export-pdf-link" href="{% url 'sales:commande_export_pdf' %}?livraison={{ delivery_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-secondary" target="_blank" title="{% trans 'Télécharger en PDF' %}">
+            <i class="bi bi-file-earmark-pdf"></i> <span class="d-none d-sm-inline">PDF</span>
+        </a>
+        <a id="export-excel-link" href="{% url 'sales:commande_export_excel' %}?livraison={{ delivery_filter }}{% if query %}&q={{ query|urlencode }}{% endif %}" class="btn btn-outline-secondary" title="{% trans 'Télécharger en Excel' %}">
+            <i class="bi bi-file-earmark-excel"></i> <span class="d-none d-sm-inline">Excel</span>
+        </a>
+    </div>
 </div>
 
 <!-- Trois onglets fixes sur Invoice.delivery_status (voir apps.sales.views.commande_list)
@@ -124,7 +134,20 @@
             </tr>`).join("");
     }
 
+    // Liens d'export PDF/Excel : toujours l'onglet + la recherche affichés
+    // à l'instant, pour que le fichier téléchargé corresponde à ce que
+    // l'utilisateur a sous les yeux.
+    const exportPdfLink = document.getElementById("export-pdf-link");
+    const exportExcelLink = document.getElementById("export-excel-link");
+
+    function updateExportLinks(query) {
+        const suffix = "?livraison=" + encodeURIComponent(deliveryFilter) + (query ? "&q=" + encodeURIComponent(query) : "");
+        exportPdfLink.href = exportPdfLink.href.split("?")[0] + suffix;
+        exportExcelLink.href = exportExcelLink.href.split("?")[0] + suffix;
+    }
+
     async function runSearch(query) {
+        updateExportLinks(query);
         const url = searchUrl + "?livraison=" + encodeURIComponent(deliveryFilter) + "&q=" + encodeURIComponent(query);
         const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
         const data = await resp.json();

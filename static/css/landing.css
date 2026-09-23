@@ -51,6 +51,14 @@ body.landing {
   padding: .75rem 1.4rem; border-radius: 10px; transition: background .15s ease, border-color .15s ease;
 }
 .btn-ghost:hover { background: var(--brand-light); border-color: #d9cce6; color: var(--brand-dark); }
+/* Bouton "Se connecter" de la navigation : doit rester repérable au premier
+   coup d'œil à côté du bouton plein "Créer mon entreprise", donc un contour
+   dans la couleur de marque plutôt que le gris neutre de .btn-ghost. */
+.btn-outline-brand {
+  background: transparent; border: 1.5px solid var(--brand); color: var(--brand); font-weight: 600;
+  padding: .7rem 1.3rem; border-radius: 10px; transition: background .15s ease, color .15s ease;
+}
+.btn-outline-brand:hover, .btn-outline-brand:focus { background: var(--brand); color: #fff; }
 .btn-light-on-dark {
   background: #fff; color: var(--brand-deep); font-weight: 700; padding: .8rem 1.5rem; border-radius: 10px; border: 0;
 }
@@ -216,4 +224,14 @@ body.landing {
   .section { padding: 3.5rem 0; }
   .mock-float { left: 8px; bottom: -18px; }
   .cta { padding: 2.5rem 1.25rem; }
+}
+
+@media (max-width: 420px) {
+  /* La nav ne laisse la place qu'au logo + deux boutons compacts (voir
+     les libellés courts "Connexion"/"S'inscrire" dans landing.html) —
+     sans ce resserrement, le texte des boutons repasse à la ligne. */
+  .lp-nav .container { gap: .5rem; }
+  .lp-nav .d-flex.gap-2 { gap: .4rem !important; }
+  .lp-nav .btn { padding: .6rem .75rem; font-size: .85rem; }
+  .lp-brand { font-size: 1.1rem; }
 }

@@ -18,6 +18,7 @@ from django.urls import reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.text import slugify
 from django.utils.translation import gettext as _
 from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.http import require_POST
@@ -29,7 +30,7 @@ from apps.sync import outbox
 from apps.sync.models import OutboxEntry
 from apps.tenants.models import Membership
 
-from . import reminders, reports, services
+from . import exports, reminders, reports, services
 from .forms import (
     ClientForm, ClientImportForm, InvoiceForm, InvoiceLineFormSet, InvoicePaymentForm, PaymentForm, SaleForm,
 )
@@ -713,23 +714,31 @@ def _commande_next_action(commande):
     return None
 
 
-@login_required
-def commande_list(request):
-    query = request.GET.get("q", "").strip()
-    # Plus de vue "Toutes" : la liste est toujours classée sur l'un des
-    # trois statuts de livraison (voir Invoice.DELIVERY_STATUS_CHOICES),
-    # "en cours" par défaut (voir DEFAULT_COMMANDE_TAB). Une
-    # commande annulée ne compte dans aucun des trois, plus rien à
-    # préparer/livrer pour elle.
+def _commande_delivery_filter(request):
     delivery_filter = request.GET.get("livraison") or DEFAULT_COMMANDE_TAB
     if delivery_filter not in (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.LIVREE):
         delivery_filter = DEFAULT_COMMANDE_TAB
+    return delivery_filter
 
-    base = (
+
+def _commande_base_queryset(request):
+    # Plus de vue "Toutes" : la liste est toujours classée sur l'un des
+    # trois statuts de livraison (voir Invoice.DELIVERY_STATUS_CHOICES).
+    # Une commande annulée ne compte dans aucun des trois, plus rien à
+    # préparer/livrer pour elle.
+    return (
         Invoice.objects.filter(boutique=request.boutique, type=Invoice.COMMANDE)
         .exclude(status=Invoice.ANNULEE)
         .select_related("client", "delivered_by")
     )
+
+
+@login_required
+def commande_list(request):
+    query = request.GET.get("q", "").strip()
+    delivery_filter = _commande_delivery_filter(request)
+
+    base = _commande_base_queryset(request)
     delivery_counts = {
         Invoice.EN_ATTENTE: base.filter(delivery_status=Invoice.EN_ATTENTE).count(),
         Invoice.EN_COURS: base.filter(delivery_status=Invoice.EN_COURS).count(),
@@ -751,6 +760,48 @@ def commande_list(request):
             "delivery_filter": delivery_filter, "delivery_counts": delivery_counts,
         },
     )
+
+
+# Une exportation ne s'arrête jamais à 100 lignes comme l'écran (voir
+# commande_list), mais reste plafonnée par prudence — au-delà, le fichier
+# devient de toute façon peu maniable pour l'usage visé (impression, envoi).
+EXPORT_MAX_ROWS = 2000
+
+
+def _commandes_for_export(request):
+    """Mêmes filtres que l'écran (onglet de livraison + recherche), sans la
+    limite d'affichage à 100 lignes — c'est justement pour obtenir la
+    liste complète qu'on exporte."""
+    delivery_filter = _commande_delivery_filter(request)
+    query = request.GET.get("q", "").strip()
+    commandes = _commande_base_queryset(request).filter(delivery_status=delivery_filter)
+    if query:
+        commandes = commandes.filter(_commande_query(query))
+    commandes = commandes.order_by("-issue_date", "-created_at")[:EXPORT_MAX_ROWS]
+    label = dict(Invoice.DELIVERY_STATUS_CHOICES).get(delivery_filter, delivery_filter)
+    return list(commandes), label
+
+
+@login_required
+def commande_export_pdf(request):
+    commandes, label = _commandes_for_export(request)
+    pdf_bytes = exports.build_commandes_pdf(commandes, boutique=request.boutique, delivery_label=label)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"commandes-{slugify(label)}-{timezone.localdate():%Y%m%d}.pdf"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+@login_required
+def commande_export_excel(request):
+    commandes, label = _commandes_for_export(request)
+    xlsx_bytes = exports.build_commandes_xlsx(commandes, boutique=request.boutique, delivery_label=label)
+    response = HttpResponse(
+        xlsx_bytes, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    filename = f"commandes-{slugify(label)}-{timezone.localdate():%Y%m%d}.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 @login_required
@@ -950,6 +1001,92 @@ def devis_update(request, invoice_id):
             "rate_map": request.boutique.exchange_rate_map,
             "document_kind": "devis",
             "editing_invoice": devis,
+        },
+    )
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+def commande_update(request, invoice_id):
+    """Modification d'une commande tant qu'elle n'est pas encore convertie
+    en facture (voir services.update_invoice) — même formulaire que
+    commande_create, pré-rempli avec les lignes existantes. Contrairement à
+    la création, aucun acompte n'est demandé ici : le formulaire se soumet
+    directement (voir invoice_form.html, `editing_invoice`) — un versement
+    se saisit depuis la fiche de la commande (bouton « Valider la
+    commande » ou paiement générique), jamais par ce formulaire."""
+    commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
+
+    if commande.status in (Invoice.CONVERTIE, Invoice.ANNULEE):
+        messages.error(request, _("Cette commande n'est plus modifiable."))
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    if settings.IS_OFFLINE:
+        # Même limite que devis_update : update_invoice() n'est pas rejouable
+        # côté push (PushInvoicesView appelle build_invoice(..., id=...), qui
+        # ne modifie jamais un Invoice déjà existant) — modifier une commande
+        # hors-ligne ne remonterait donc jamais en ligne.
+        messages.error(
+            request,
+            _(
+                "La modification d'une commande n'est pas encore disponible hors-ligne — "
+                "utilisez le poste en ligne."
+            ),
+        )
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    if request.method == "POST":
+        form = InvoiceForm(request.POST, boutique=request.boutique)
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        if form.is_valid() and formset.is_valid():
+            lines_data = _extract_lines_data(formset, require_changed=False)
+            if not lines_data:
+                messages.error(request, _("Ajoutez au moins une ligne à la commande."))
+            else:
+                services.update_invoice(
+                    commande,
+                    client=form.cleaned_data["client"],
+                    lines_data=lines_data,
+                    discount_amount=Decimal(form.cleaned_data["discount_amount"]),
+                    currency=form.cleaned_data["currency"] or request.boutique.devise,
+                    note=form.cleaned_data["note"],
+                )
+                messages.success(request, _("%(invoice)s modifiée.") % {"invoice": commande.number})
+                return redirect("sales:invoice_detail", invoice_id=commande.id)
+    else:
+        form = InvoiceForm(
+            boutique=request.boutique,
+            initial={
+                "client": commande.client_id,
+                "currency": commande.currency,
+                "discount_amount": commande.discount_amount,
+                "note": commande.note,
+            },
+        )
+        line_initial = [
+            {
+                "product": line.product_id,
+                "description": line.description,
+                "quantity": line.quantity,
+                "unit_price_ht": line.unit_price_ht,
+                "tva_rate": line.tva_rate,
+                "discount_amount": line.discount_amount,
+            }
+            for line in commande.lines.all()
+        ]
+        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte})
+
+    preselected_products = _preselected_products_for_formset(formset, request.compte)
+    return render(
+        request,
+        "sales/invoice_form.html",
+        {
+            "form": form,
+            "formset": formset,
+            "preselected_products": preselected_products,
+            "rate_map": request.boutique.exchange_rate_map,
+            "document_kind": "commande",
+            "editing_invoice": commande,
         },
     )
 

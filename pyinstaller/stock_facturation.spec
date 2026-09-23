@@ -52,6 +52,10 @@ hiddenimports += collect_submodules("waitress")
 # chemins pointés dans REST_FRAMEWORK (config/settings/base.py) — même
 # mécanisme dynamique que Django lui-même, il faut donc le paquet complet.
 hiddenimports += collect_submodules("rest_framework")
+# Export Excel des commandes (apps.sales.exports) : reportlab (PDF) est déjà
+# importé directement donc suivi par l'analyse statique, mais openpyxl ne
+# l'est qu'au moment de l'export — même précaution que les paquets ci-dessus.
+hiddenimports += collect_submodules("openpyxl")
 hiddenimports += [
     "webview.platforms.edgechromium",
     "platformdirs",
