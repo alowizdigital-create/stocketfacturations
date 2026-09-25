@@ -634,9 +634,10 @@ def _commande_query(query):
 
 
 # Onglet affiché à l'ouverture de la liste des commandes — partagé par la
-# page (commande_list) et la recherche en direct (commande_search), qui
-# doivent toujours filtrer sur le même onglet.
+# page (commande_list), la recherche en direct (commande_search) et les
+# exports, qui doivent toujours filtrer sur le même onglet.
 DEFAULT_COMMANDE_TAB = Invoice.EN_COURS
+COMMANDE_DELIVERY_TABS = (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.EN_MAGASIN, Invoice.LIVREE)
 
 
 def _deliver_and_validate(request, commande):
@@ -683,40 +684,72 @@ def _deliver_and_validate(request, commande):
     return True
 
 
-def _commande_next_action(commande):
-    """Étape suivante d'une commande dans la colonne « Action » de la liste
-    (voir commande_advance) : en attente -> en cours -> livrée. None quand
-    il n'y a plus rien à avancer. `current` est l'état que l'utilisateur a
-    sous les yeux — la vue vérifie qu'il n'a pas changé entre-temps."""
-    if commande.delivery_status == Invoice.EN_ATTENTE:
-        return {
-            "current": Invoice.EN_ATTENTE, "label": _("Démarrer"), "title": _("Passer en cours de préparation"),
+def _commande_deliver_action(commande):
+    """Action « Livrée », commune à EN_COURS et EN_MAGASIN : valide aussi la
+    commande (voir services.deliver_commande)."""
+    return {
+        "current": commande.delivery_status, "to": Invoice.LIVREE, "label": _("Livrée"),
+        "title": (
+            _("Marquer comme livrée")
+            if commande.status == Invoice.CONVERTIE
+            else _("Marquer comme livrée et valider la commande")
+        ),
+        "icon": "bi-check2-circle", "btn": "btn-success",
+        # Une livraison peut déduire le prix de livraison de la caisse de
+        # celui qui clique, et valide la commande (facture, stock) tant
+        # qu'elle ne l'est pas : on confirme pour éviter un clic malheureux.
+        "confirm": (
+            _("Marquer la commande %(number)s comme livrée ?")
+            if commande.status == Invoice.CONVERTIE
+            else _("Marquer la commande %(number)s comme livrée et la valider (facture générée, stock déduit) ?")
+        ) % {"number": commande.commande_seq if commande.commande_seq is not None else commande.number},
+    }
+
+
+def _commande_actions(commande):
+    """Actions disponibles pour une commande dans la colonne « Action » de
+    la liste (voir commande_advance). `current` est l'état que
+    l'utilisateur a sous les yeux (la vue vérifie qu'il n'a pas changé
+    entre-temps), `to` la cible. Plusieurs actions à la fois sont possibles :
+    une commande en cours peut repartir en attente, passer en magasin, ou
+    être livrée directement ; une commande en magasin peut repartir en
+    cours ou être livrée."""
+    status = commande.delivery_status
+    if status == Invoice.EN_ATTENTE:
+        return [{
+            "current": status, "to": Invoice.EN_COURS, "label": _("Démarrer"),
+            "title": _("Passer en cours de préparation"),
             "icon": "bi-play-fill", "btn": "btn-outline-primary", "confirm": "",
-        }
-    if commande.delivery_status == Invoice.EN_COURS:
-        return {
-            "current": Invoice.EN_COURS, "label": _("Livrée"),
-            "title": (
-                _("Marquer comme livrée")
-                if commande.status == Invoice.CONVERTIE
-                else _("Marquer comme livrée et valider la commande")
-            ),
-            "icon": "bi-check2-circle", "btn": "btn-success",
-            # Une livraison peut déduire le prix de livraison de la caisse de
-            # celui qui clique, et valide la commande (facture, stock) tant
-            # qu'elle ne l'est pas : on confirme pour éviter un clic malheureux.
-            "confirm": (
-                _("Marquer la commande %(number)s comme livrée ?")
-                if commande.status == Invoice.CONVERTIE
-                else _("Marquer la commande %(number)s comme livrée et la valider (facture générée, stock déduit) ?")
-            ) % {"number": commande.commande_seq if commande.commande_seq is not None else commande.number},
-        }
-    return None
+        }]
+    if status == Invoice.EN_COURS:
+        return [
+            {
+                "current": status, "to": Invoice.EN_ATTENTE, "label": _("En attente"),
+                "title": _("Remettre en attente"),
+                "icon": "bi-arrow-counterclockwise", "btn": "btn-outline-secondary", "confirm": "",
+            },
+            {
+                "current": status, "to": Invoice.EN_MAGASIN, "label": _("En magasin"),
+                "title": _("Envoyer en magasin"),
+                "icon": "bi-shop", "btn": "btn-outline-primary", "confirm": "",
+            },
+            _commande_deliver_action(commande),
+        ]
+    if status == Invoice.EN_MAGASIN:
+        return [
+            {
+                "current": status, "to": Invoice.EN_COURS, "label": _("En cours"),
+                "title": _("Remettre en cours de préparation"),
+                "icon": "bi-arrow-counterclockwise", "btn": "btn-outline-secondary", "confirm": "",
+            },
+            _commande_deliver_action(commande),
+        ]
+    return []
 
 
 def _commande_delivery_filter(request):
     delivery_filter = request.GET.get("livraison") or DEFAULT_COMMANDE_TAB
-    if delivery_filter not in (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.LIVREE):
+    if delivery_filter not in COMMANDE_DELIVERY_TABS:
         delivery_filter = DEFAULT_COMMANDE_TAB
     return delivery_filter
 
@@ -739,11 +772,7 @@ def commande_list(request):
     delivery_filter = _commande_delivery_filter(request)
 
     base = _commande_base_queryset(request)
-    delivery_counts = {
-        Invoice.EN_ATTENTE: base.filter(delivery_status=Invoice.EN_ATTENTE).count(),
-        Invoice.EN_COURS: base.filter(delivery_status=Invoice.EN_COURS).count(),
-        Invoice.LIVREE: base.filter(delivery_status=Invoice.LIVREE).count(),
-    }
+    delivery_counts = {status: base.filter(delivery_status=status).count() for status in COMMANDE_DELIVERY_TABS}
 
     commandes = base.filter(delivery_status=delivery_filter)
     if query:
@@ -752,7 +781,7 @@ def commande_list(request):
         commandes = commandes[:100]
     commandes = list(commandes)
     for commande in commandes:
-        commande.next_action = _commande_next_action(commande)
+        commande.actions = _commande_actions(commande)
     return render(
         request, "sales/commande_list.html",
         {
@@ -812,17 +841,9 @@ def commande_search(request):
     l'onglet de livraison actif (voir commande_list) tout comme le rendu
     serveur initial, pour que les deux restent cohérents."""
     query = request.GET.get("q", "").strip()
-    delivery_filter = request.GET.get("livraison") or DEFAULT_COMMANDE_TAB
-    if delivery_filter not in (Invoice.EN_ATTENTE, Invoice.EN_COURS, Invoice.LIVREE):
-        delivery_filter = DEFAULT_COMMANDE_TAB
+    delivery_filter = _commande_delivery_filter(request)
 
-    commandes = (
-        Invoice.objects.filter(
-            boutique=request.boutique, type=Invoice.COMMANDE, delivery_status=delivery_filter,
-        )
-        .exclude(status=Invoice.ANNULEE)
-        .select_related("client")
-    )
+    commandes = _commande_base_queryset(request).filter(delivery_status=delivery_filter)
     if query:
         commandes = commandes.filter(_commande_query(query))
     commandes = commandes.order_by("-issue_date", "-created_at")[:100]
@@ -839,18 +860,16 @@ def commande_search(request):
             "total_ttc": float(c.total_ttc),
             "currency": c.currency,
             "url": reverse("sales:invoice_detail", args=[c.id]),
-            "action": _json_action(c),
+            "actions": _json_actions(c),
         }
         for c in commandes
     ]
     return JsonResponse({"results": results})
 
 
-def _json_action(commande):
-    action = _commande_next_action(commande)
-    if action is None:
-        return None
-    return {**action, "url": reverse("sales:commande_advance", args=[commande.id])}
+def _json_actions(commande):
+    url = reverse("sales:commande_advance", args=[commande.id])
+    return [{**action, "url": url} for action in _commande_actions(commande)]
 
 
 def _preselected_products_for_formset(formset, compte):
@@ -1401,14 +1420,17 @@ def commande_mark_en_cours(request, invoice_id):
 @boutique_role_required(*MANAGE_ROLES)
 @require_POST
 def commande_advance(request, invoice_id):
-    """Bouton « Action » de la liste des commandes : fait avancer d'UNE
-    étape (en attente -> en cours -> livrée). Contrairement à
-    commande_mark_en_cours, ne recule jamais : le formulaire envoie l'état
-    que l'utilisateur voyait (`from`) et rien n'est modifié si la commande
-    a changé entre-temps — sinon un clic sur une liste périmée pourrait,
-    pour un administrateur, annuler la livraison qu'un collègue vient de
-    faire. La commande est verrouillée le temps de la vérification."""
+    """Bouton « Action » de la liste des commandes : fait passer la commande
+    d'UN statut de livraison à un autre (`from` -> `to`, voir
+    _commande_actions pour les transitions proposées). Rien n'est modifié si
+    la commande a changé de statut entre-temps — sinon un clic sur une liste
+    périmée pourrait, par exemple, renvoyer en préparation une commande
+    qu'un collègue vient de livrer. La commande est verrouillée le temps de
+    la vérification. Livrer (LIVREE) valide aussi la commande — voir
+    _deliver_and_validate ; les autres transitions ne changent que le statut
+    de livraison, sans autre effet de bord."""
     seen = request.POST.get("from", "")
+    target_status = request.POST.get("to", "")
     with transaction.atomic():
         commande = get_object_or_404(
             Invoice.objects.select_for_update(), id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE,
@@ -1422,11 +1444,28 @@ def commande_advance(request, invoice_id):
                     "commande": commande.number, "status": commande.get_delivery_status_display(),
                 },
             )
-        elif seen == Invoice.EN_ATTENTE:
-            services.mark_commande_en_cours(commande)
-            messages.success(request, _("%(commande)s passée en cours.") % {"commande": commande.number})
-        elif seen == Invoice.EN_COURS:
+        elif target_status == Invoice.LIVREE and seen in (Invoice.EN_COURS, Invoice.EN_MAGASIN):
             _deliver_and_validate(request, commande)
+        else:
+            try:
+                if (seen, target_status) == (Invoice.EN_ATTENTE, Invoice.EN_COURS):
+                    services.mark_commande_en_cours(commande)
+                    messages.success(request, _("%(commande)s passée en cours.") % {"commande": commande.number})
+                elif (seen, target_status) == (Invoice.EN_COURS, Invoice.EN_ATTENTE):
+                    services.mark_commande_en_attente(commande)
+                    messages.success(request, _("%(commande)s remise en attente.") % {"commande": commande.number})
+                elif (seen, target_status) == (Invoice.EN_COURS, Invoice.EN_MAGASIN):
+                    services.mark_commande_en_magasin(commande)
+                    messages.success(request, _("%(commande)s envoyée en magasin.") % {"commande": commande.number})
+                elif (seen, target_status) == (Invoice.EN_MAGASIN, Invoice.EN_COURS):
+                    services.mark_commande_en_cours(commande)
+                    messages.success(
+                        request, _("%(commande)s remise en cours de préparation.") % {"commande": commande.number}
+                    )
+                else:
+                    messages.error(request, _("Ce changement de statut n'est pas autorisé."))
+            except ValueError as exc:
+                messages.error(request, str(exc))
 
     target = request.POST.get("next", "")
     if not (target and url_has_allowed_host_and_scheme(

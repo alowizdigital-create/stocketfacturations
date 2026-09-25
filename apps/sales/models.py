@@ -146,15 +146,24 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     # indépendant du statut paiement/facturation ci-dessus, une commande
     # peut être en attente/en préparation/livrée quel que soit son statut
     # de règlement. Champ porté par Invoice (comme note/pdf_format) plutôt
-    # qu'un modèle séparé, pour rester simple. Trois niveaux : EN_ATTENTE
-    # (venant d'être passée, pas encore commencée) -> EN_COURS (en cours
-    # de préparation) -> LIVREE (remise au client).
+    # qu'un modèle séparé, pour rester simple. EN_ATTENTE (venant d'être
+    # passée, pas encore commencée) -> EN_COURS (en cours de préparation)
+    # -> LIVREE (remise au client). EN_MAGASIN est une étape intermédiaire
+    # facultative depuis EN_COURS : certaines commandes transitent par le
+    # magasin (marchandise arrivée, prête à être remise) avant la
+    # livraison ; d'autres passent directement de EN_COURS à LIVREE. Les
+    # trois transitions EN_ATTENTE<->EN_COURS<->EN_MAGASIN sont réversibles
+    # (voir services.mark_commande_en_attente/en_cours/en_magasin) ; passer
+    # à LIVREE valide aussi la commande (voir services.deliver_commande) et
+    # ne se défait qu'exceptionnellement, réservé à un administrateur.
     EN_ATTENTE = "EN_ATTENTE"
     EN_COURS = "EN_COURS"
+    EN_MAGASIN = "EN_MAGASIN"
     LIVREE = "LIVREE"
     DELIVERY_STATUS_CHOICES = [
         (EN_ATTENTE, _("En attente")),
         (EN_COURS, _("En cours")),
+        (EN_MAGASIN, _("En magasin")),
         (LIVREE, _("Livrée")),
     ]
 

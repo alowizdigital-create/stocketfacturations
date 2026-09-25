@@ -16,15 +16,18 @@
     </div>
 </div>
 
-<!-- Trois onglets fixes sur Invoice.delivery_status (voir apps.sales.views.commande_list)
+<!-- Quatre onglets fixes sur Invoice.delivery_status (voir apps.sales.views.commande_list)
      — pas de vue "Toutes" : chaque commande (non annulée) est toujours
-     classée dans exactement l'un des trois. -->
-<div class="d-flex gap-2 mb-3">
+     classée dans exactement l'un des quatre. -->
+<div class="d-flex gap-2 mb-3 flex-wrap">
     <a href="?livraison=EN_ATTENTE" class="btn btn-sm {% if delivery_filter == 'EN_ATTENTE' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         {% trans "En attente" %} <span class="badge-status badge-gray ms-1">{{ delivery_counts.EN_ATTENTE }}</span>
     </a>
     <a href="?livraison=EN_COURS" class="btn btn-sm {% if delivery_filter == 'EN_COURS' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         {% trans "En cours" %} <span class="badge-status badge-orange ms-1">{{ delivery_counts.EN_COURS }}</span>
+    </a>
+    <a href="?livraison=EN_MAGASIN" class="btn btn-sm {% if delivery_filter == 'EN_MAGASIN' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        {% trans "En magasin" %} <span class="badge-status badge-orange ms-1">{{ delivery_counts.EN_MAGASIN }}</span>
     </a>
     <a href="?livraison=LIVREE" class="btn btn-sm {% if delivery_filter == 'LIVREE' %}btn-primary{% else %}btn-outline-secondary{% endif %}">
         {% trans "Livrées" %} <span class="badge-status badge-green ms-1">{{ delivery_counts.LIVREE }}</span>
@@ -51,23 +54,26 @@
                 <td class="text-muted">{{ invoice.client.phone|default:"—" }}</td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
-                <td class="text-end text-nowrap">
-                    <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
-                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 copy-phone-btn" data-phone="{{ invoice.client.phone|default:'' }}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" {% if not invoice.client.phone %}disabled{% endif %}>
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                    {% if invoice.next_action %}
-                    <form method="post" action="{% url 'sales:commande_advance' invoice.id %}" class="d-inline"{% if invoice.next_action.confirm %} data-confirm="{{ invoice.next_action.confirm }}"{% endif %}>
-                        {% csrf_token %}
-                        <input type="hidden" name="from" value="{{ invoice.next_action.current }}">
-                        <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                        <button type="submit" class="btn btn-sm {{ invoice.next_action.btn }}" title="{{ invoice.next_action.title }}" aria-label="{{ invoice.next_action.title }}">
-                            <i class="bi {{ invoice.next_action.icon }}"></i><span class="d-none d-md-inline ms-1">{{ invoice.next_action.label }}</span>
+                <td class="text-end">
+                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                        <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary copy-phone-btn" data-phone="{{ invoice.client.phone|default:'' }}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" {% if not invoice.client.phone %}disabled{% endif %}>
+                            <i class="bi bi-clipboard"></i>
                         </button>
-                    </form>
-                    {% else %}
-                    <span class="text-muted small">{% trans "Terminée" %}</span>
-                    {% endif %}
+                        {% for action in invoice.actions %}
+                        <form method="post" action="{% url 'sales:commande_advance' invoice.id %}" class="d-inline"{% if action.confirm %} data-confirm="{{ action.confirm }}"{% endif %}>
+                            {% csrf_token %}
+                            <input type="hidden" name="from" value="{{ action.current }}">
+                            <input type="hidden" name="to" value="{{ action.to }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm {{ action.btn }}" title="{{ action.title }}" aria-label="{{ action.title }}">
+                                <i class="bi {{ action.icon }}"></i><span class="d-none d-md-inline ms-1">{{ action.label }}</span>
+                            </button>
+                        </form>
+                        {% empty %}
+                        <span class="text-muted small align-self-center">{% trans "Terminée" %}</span>
+                        {% endfor %}
+                    </div>
                 </td>
             </tr>
             {% empty %}
@@ -95,21 +101,22 @@
 
     const csrfToken = "{{ csrf_token }}";
 
-    // Même colonne « Action » que le rendu serveur (voir plus haut) : le
-    // bouton doit rester disponible après une recherche en direct.
-    function actionCell(c) {
-        const a = c.action;
-        if (!a) return '<span class="text-muted small">{% trans "Terminée" %}</span>';
+    // Même colonne « Action » que le rendu serveur (voir plus haut) : les
+    // boutons doivent rester disponibles après une recherche en direct.
+    function actionButtons(c) {
+        const actions = c.actions || [];
+        if (!actions.length) return '<span class="text-muted small align-self-center">{% trans "Terminée" %}</span>';
         const next = window.location.pathname + window.location.search;
-        return `
+        return actions.map((a) => `
             <form method="post" action="${escapeHtml(a.url)}" class="d-inline"${a.confirm ? ` data-confirm="${escapeHtml(a.confirm)}"` : ""}>
                 <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(csrfToken)}">
                 <input type="hidden" name="from" value="${escapeHtml(a.current)}">
+                <input type="hidden" name="to" value="${escapeHtml(a.to)}">
                 <input type="hidden" name="next" value="${escapeHtml(next)}">
                 <button type="submit" class="btn btn-sm ${escapeHtml(a.btn)}" title="${escapeHtml(a.title)}" aria-label="${escapeHtml(a.title)}">
                     <i class="bi ${escapeHtml(a.icon)}"></i><span class="d-none d-md-inline ms-1">${escapeHtml(a.label)}</span>
                 </button>
-            </form>`;
+            </form>`).join("");
     }
 
     function renderRows(items) {
@@ -124,12 +131,14 @@
                 <td class="text-muted">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
                 <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
                 <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
-                <td class="text-end text-nowrap">
-                    <a href="${c.url}" class="btn btn-sm btn-outline-secondary me-1" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
-                    <button type="button" class="btn btn-sm btn-outline-secondary me-1 copy-phone-btn" data-phone="${escapeHtml(c.client_phone || "")}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" ${c.client_phone ? "" : "disabled"}>
-                        <i class="bi bi-clipboard"></i>
-                    </button>
-                    ${actionCell(c)}
+                <td class="text-end">
+                    <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
+                        <a href="${c.url}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
+                        <button type="button" class="btn btn-sm btn-outline-secondary copy-phone-btn" data-phone="${escapeHtml(c.client_phone || "")}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" ${c.client_phone ? "" : "disabled"}>
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                        ${actionButtons(c)}
+                    </div>
                 </td>
             </tr>`).join("");
     }

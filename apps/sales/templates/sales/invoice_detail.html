@@ -115,10 +115,43 @@
                 {% elif invoice.delivery_status == "EN_COURS" %}
                 <span class="text-muted">{% trans "En cours de préparation" %}</span>
                 {% if invoice.status != "ANNULEE" %}
-                <form method="post" action="{% url 'sales:commande_mark_delivered' invoice.id %}" class="mt-1">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-box-seam"></i> {% trans "Marquer comme livrée" %}</button>
-                </form>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                    <form method="post" action="{% url 'sales:commande_advance' invoice.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="from" value="EN_COURS">
+                        <input type="hidden" name="to" value="EN_ATTENTE">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> {% trans "Remettre en attente" %}</button>
+                    </form>
+                    <form method="post" action="{% url 'sales:commande_advance' invoice.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="from" value="EN_COURS">
+                        <input type="hidden" name="to" value="EN_MAGASIN">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-primary btn-sm"><i class="bi bi-shop"></i> {% trans "Envoyer en magasin" %}</button>
+                    </form>
+                    <form method="post" action="{% url 'sales:commande_mark_delivered' invoice.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-box-seam"></i> {% trans "Marquer comme livrée" %}</button>
+                    </form>
+                </div>
+                {% endif %}
+                {% elif invoice.delivery_status == "EN_MAGASIN" %}
+                <span class="text-muted">{% trans "En magasin" %}</span>
+                {% if invoice.status != "ANNULEE" %}
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                    <form method="post" action="{% url 'sales:commande_advance' invoice.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="from" value="EN_MAGASIN">
+                        <input type="hidden" name="to" value="EN_COURS">
+                        <input type="hidden" name="next" value="{{ request.path }}">
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-counterclockwise"></i> {% trans "Remettre en préparation" %}</button>
+                    </form>
+                    <form method="post" action="{% url 'sales:commande_mark_delivered' invoice.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-success btn-sm"><i class="bi bi-box-seam"></i> {% trans "Marquer comme livrée" %}</button>
+                    </form>
+                </div>
                 {% endif %}
                 {% else %}
                 <span class="text-muted">{% trans "En attente" %}</span>

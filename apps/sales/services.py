@@ -405,10 +405,11 @@ def deliver_commande(commande, delivered_by=None):
 
 @transaction.atomic
 def mark_commande_en_cours(commande, undone_by=None):
-    """Fait passer la commande en préparation : soit départ depuis
-    EN_ATTENTE (on commence à la préparer), soit annulation d'un marquage
-    'livrée' fait par erreur (delivered_at/delivered_by sont alors
-    effacés — un nouveau marquage livré les réécrira proprement).
+    """Fait passer la commande en préparation : départ depuis EN_ATTENTE (on
+    commence à la préparer), retour depuis EN_MAGASIN (on la reprend en
+    préparation), ou annulation d'un marquage 'livrée' fait par erreur
+    (delivered_at/delivered_by sont alors effacés — un nouveau marquage
+    livré les réécrira proprement).
 
     Annuler une livraison rembourse aussi les frais de livraison déjà
     prélevés dans la caisse du livreur (voir
@@ -428,6 +429,40 @@ def mark_commande_en_cours(commande, undone_by=None):
     commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
     if was_delivered:
         refund_delivery_fee(commande, refunded_by=undone_by)
+    return commande
+
+
+def mark_commande_en_attente(commande):
+    """Remet en attente une commande dont la préparation n'est en fait pas
+    encore démarrée pour de bon — simple retour en arrière, avant que quoi
+    que ce soit (frais de livraison, facture) n'ait été engagé à ce stade.
+    Contrairement à mark_commande_en_cours, ne part que d'EN_COURS : ce
+    n'est pas un moyen détourné d'annuler une livraison."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être remise en attente.")
+    if commande.delivery_status != Invoice.EN_COURS:
+        raise ValueError("Seule une commande en cours de préparation peut être remise en attente.")
+
+    commande.delivery_status = Invoice.EN_ATTENTE
+    commande.save(update_fields=["delivery_status", "updated_at"])
+    return commande
+
+
+def mark_commande_en_magasin(commande):
+    """Signale qu'une commande en préparation est arrivée en magasin —
+    étape intermédiaire facultative avant la livraison (certaines commandes
+    y passent, d'autres sont livrées directement depuis EN_COURS). Aucun
+    effet sur la facture, le stock ou une caisse : un simple repère pour
+    l'équipe."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être envoyée en magasin.")
+    if commande.delivery_status != Invoice.EN_COURS:
+        raise ValueError("Seule une commande en cours de préparation peut être envoyée en magasin.")
+
+    commande.delivery_status = Invoice.EN_MAGASIN
+    commande.save(update_fields=["delivery_status", "updated_at"])
     return commande
 
 
