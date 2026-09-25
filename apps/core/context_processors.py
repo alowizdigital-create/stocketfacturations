@@ -22,3 +22,16 @@ def notifications(request):
         "unread_notifications": unread[:10],
         "unread_notifications_count": unread.count(),
     }
+
+
+def google_auth(request):
+    """Expose si la connexion Google est configurée (voir
+    apps.accounts.google_oauth) — le bouton "Se connecter avec Google" des
+    pages de connexion/inscription ne s'affiche que si c'est le cas.
+    Jamais en mode offline : cette connexion exige une redirection web vers
+    Google, impossible depuis le poste hors-ligne."""
+    from django.conf import settings
+
+    from apps.accounts.google_oauth import is_configured
+
+    return {"GOOGLE_AUTH_CONFIGURED": not settings.IS_OFFLINE and is_configured()}

@@ -8,7 +8,6 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
 
-from apps.catalog.models import Unit
 from apps.core.permissions import block_when_offline, compte_admin_required
 
 from .forms import (
@@ -23,7 +22,8 @@ from .forms import (
     SubscriptionForm,
 )
 from .limits import boutiques_limit_reached, users_limit_reached
-from .models import BoutiqueAPIToken, Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
+from .models import BoutiqueAPIToken, Boutique, ExchangeRate, Membership, Plan, Subscription
+from .services import create_company_with_owner
 
 User = get_user_model()
 
@@ -36,37 +36,14 @@ def signup(request):
         form = SignupForm(request.POST)
         if form.is_valid():
             data = form.cleaned_data
-            with transaction.atomic():
-                compte = Compte.objects.create(name=data["entreprise_name"], email=data["email"])
-                # Chaque entreprise démarre avec une boutique par défaut,
-                # sélectionnée automatiquement à la connexion (voir
-                # CurrentTenantMiddleware) — pas besoin de choisir tant
-                # qu'il n'y en a qu'une.
-
-                entreprise_name = data["entreprise_name"].strip()
-                boutique_code = entreprise_name.replace(" ", "")[:3].upper()
-
-                boutique = Boutique.objects.create(
-                    compte=compte,
-                    name=data["boutique_name"],
-                    code=boutique_code,
-                    devise=data["devise"],
-                    is_default=True,
-                )
-                Unit.objects.create(compte=compte, name="Pièce", symbol="pc")
-                free_plan = Plan.objects.filter(name="Gratuit").first()
-                if free_plan:
-                    Subscription.objects.create(compte=compte, plan=free_plan)
-                user = User.objects.create_user(
-                    email=data["email"],
-                    password=data["password"],
-                    # first_name=data["first_name"],
-                    # last_name=data["last_name"],
-                )
-                Membership.objects.create(
-                    user=user, boutique=boutique, role=Membership.ADMIN_COMPTE
-                )
-
+            user, boutique = create_company_with_owner(
+                user_model=User,
+                entreprise_name=data["entreprise_name"],
+                boutique_name=data["boutique_name"],
+                devise=data["devise"],
+                email=data["email"],
+                password=data["password"],
+            )
             login(request, user)
             request.session["boutique_id"] = str(boutique.id)
             return redirect("core:home")

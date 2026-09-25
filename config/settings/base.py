@@ -66,6 +66,7 @@ TEMPLATES = [
                 "django.template.context_processors.i18n",
                 "apps.core.context_processors.is_offline",
                 "apps.core.context_processors.notifications",
+                "apps.core.context_processors.google_auth",
             ],
         },
     },
@@ -175,3 +176,16 @@ TECHSOFT_WHATSAPP_API_URL = env(
     "TECHSOFT_WHATSAPP_API_URL", default="https://app.techsoft-sms.com/whatsapp/api"
 )
 TECHSOFT_WHATSAPP_SENDER = env("TECHSOFT_WHATSAPP_SENDER", default="")
+
+# --- Connexion Google (OAuth 2.0) ------------------------------------------
+# Flux "Authorization Code" implémenté à la main (voir
+# apps.accounts.google_oauth), sans django-allauth : deux appels HTTP directs
+# à Google. Le bouton "Se connecter avec Google" ne s'affiche que si les deux
+# variables sont renseignées (voir apps.core.context_processors.google_auth).
+# Identifiants à créer gratuitement sur https://console.cloud.google.com/
+# (API et services > Identifiants > ID client OAuth > Application web),
+# avec comme URI de redirection autorisée :
+#   https://zweey.com/comptes/google/callback/  (et l'équivalent en local
+#   pour tester, ex: http://127.0.0.1:8000/comptes/google/callback/).
+GOOGLE_OAUTH_CLIENT_ID = env("GOOGLE_OAUTH_CLIENT_ID", default="")
+GOOGLE_OAUTH_CLIENT_SECRET = env("GOOGLE_OAUTH_CLIENT_SECRET", default="")

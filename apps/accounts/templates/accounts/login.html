@@ -6,6 +6,14 @@
     <div class="auth-card">
         <div class="auth-brand"><i class="bi bi-boxes"></i> Zweey</div>
         <h1 class="h5 mb-3">{% trans "Connexion" %}</h1>
+        {% if GOOGLE_AUTH_CONFIGURED %}
+        <a href="{% url 'accounts:google_login' %}" class="btn btn-outline-secondary w-100 py-2 mb-3 d-flex align-items-center justify-content-center gap-2">
+            <i class="bi bi-google"></i> {% trans "Continuer avec Google" %}
+        </a>
+        <div class="d-flex align-items-center gap-2 text-muted small mb-3">
+            <hr class="flex-grow-1"><span>{% trans "ou" %}</span><hr class="flex-grow-1">
+        </div>
+        {% endif %}
         <form method="post">
             {% csrf_token %}
             {% if form.non_field_errors %}
