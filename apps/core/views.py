@@ -35,11 +35,20 @@ def short_link_redirect(request, code):
     return redirect(link.target_path)
 
 
+DOWNLOAD_FILENAME = "Zweey-Windows.zip"
+
+
 def landing(request):
     """Page d'accueil publique de Zweey (visiteur non connecté, version en
     ligne). Le poste offline n'en a pas : il est déjà installé et lié à une
-    boutique, on l'envoie directement à la connexion."""
-    return render(request, "core/landing.html")
+    boutique, on l'envoie directement à la connexion.
+
+    Le bouton de téléchargement du poste offline ne s'affiche que si le
+    fichier existe réellement dans media/ (voir DEPLOY.md pour comment il y
+    arrive) — sinon on préfère ne rien montrer plutôt qu'un lien mort."""
+    download_path = settings.MEDIA_ROOT / "downloads" / DOWNLOAD_FILENAME
+    download_url = settings.MEDIA_URL + "downloads/" + DOWNLOAD_FILENAME if download_path.exists() else None
+    return render(request, "core/landing.html", {"download_url": download_url})
 
 
 def home(request):

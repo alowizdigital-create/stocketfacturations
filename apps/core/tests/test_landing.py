@@ -4,6 +4,7 @@ import pytest
 from django.urls import reverse
 
 from apps.accounts.models import User
+from apps.core.views import DOWNLOAD_FILENAME
 from apps.sync.tests.factories import BoutiqueFactory
 from apps.tenants.models import Membership
 
@@ -46,3 +47,22 @@ def test_offline_workstation_has_no_landing(client, settings):
 def test_landing_links_resolve(client):
     for url in ("/comptes/connexion/", "/entreprises/inscription/"):
         assert client.get(url).status_code == 200
+
+
+def test_download_button_hidden_without_the_file(client):
+    """Pas de lien mort tant que l'exe n'a pas été déposé sur le serveur
+    (voir DEPLOY.md) — le dossier n'existe même pas dans un environnement de
+    test fraîchement installé."""
+    html = client.get("/").content.decode()
+    assert "Télécharger pour Windows" not in html
+
+
+def test_download_button_shown_once_file_is_deployed(client, tmp_path, settings):
+    settings.MEDIA_ROOT = tmp_path
+    downloads = tmp_path / "downloads"
+    downloads.mkdir()
+    (downloads / DOWNLOAD_FILENAME).write_bytes(b"fake zip")
+
+    html = client.get("/").content.decode()
+    assert "Télécharger pour Windows" in html
+    assert f"/media/downloads/{DOWNLOAD_FILENAME}" in html

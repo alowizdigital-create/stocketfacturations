@@ -193,6 +193,12 @@
                     <li><i class="bi bi-check-circle-fill"></i><div><strong>Synchronisation automatique</strong><span>Ventes, factures et mouvements de stock remontent au serveur en arrière-plan.</span></div></li>
                     <li><i class="bi bi-check-circle-fill"></i><div><strong>Aussi sur téléphone</strong><span>Installable comme une application depuis le navigateur, en ligne.</span></div></li>
                 </ul>
+                {% if download_url %}
+                <a href="{{ download_url }}" class="btn btn-brand mt-2" download>
+                    <i class="bi bi-download"></i> Télécharger pour Windows
+                </a>
+                <p class="text-muted small mt-2 mb-0">Décompressez le fichier puis lancez <code>stock_facturation.exe</code>. Windows peut afficher un avertissement « éditeur inconnu » au premier lancement — cliquez sur « Plus d'infos » puis « Exécuter quand même ».</p>
+                {% endif %}
             </div>
             <div class="col-lg-6 order-lg-1 reveal">
                 <div class="panel" aria-hidden="true">
