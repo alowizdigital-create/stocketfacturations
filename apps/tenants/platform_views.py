@@ -3,6 +3,8 @@ et de tous les utilisateurs, réservée au super-administrateur (is_superuser).
 Distinct de l'espace « Administration » d'une entreprise (Équipe, Paramètres),
 qui ne voit que sa propre entreprise."""
 
+from collections import Counter
+
 from django.contrib import messages
 from django.contrib.auth import get_user_model, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -12,6 +14,8 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils.translation import gettext as _
 
 from apps.core.permissions import platform_admin_required
+from apps.sales.models import Invoice, Payment, Sale
+from apps.stock.models import StockMovement
 
 from .models import Boutique, Compte, Membership
 from .platform_forms import PlatformPasswordForm, PlatformUserForm
@@ -19,6 +23,15 @@ from .platform_forms import PlatformPasswordForm, PlatformUserForm
 User = get_user_model()
 
 PAGE_SIZE = 25
+
+# Ce qui compte comme "utiliser l'application" : les actions qui laissent une
+# trace `created_by`, tous comptes/boutiques confondus (vue plateforme, donc
+# volontairement pas filtrée par entreprise). Ventes et lignes de caisse sont
+# les gestes les plus fréquents d'un utilisateur actif ; mouvements de stock
+# et paiements captent aussi l'activité côté gestion. Pas de piste d'audit
+# dédiée dans l'app — ce total est un indicateur, pas une mesure exacte du
+# temps passé ni des connexions.
+ACTIVITY_MODELS = [Sale, Invoice, StockMovement, Payment]
 
 
 def _render(request, template, context):
@@ -90,6 +103,48 @@ def platform_user_list(request):
         request, "tenants/platform/user_list.html",
         {"page": page, "query": query, "total": User.objects.count()},
     )
+
+
+def _top_active_users(limit=10):
+    """Les utilisateurs les plus actifs, tous comptes confondus : compte le
+    nombre d'actions (ventes, devis/commandes/factures, mouvements de
+    stock, paiements) créées par chacun, additionné sur ACTIVITY_MODELS,
+    puis garde les `limit` plus grands totaux. Une requête d'agrégation
+    par modèle (pas une jointure géante) — sommées en mémoire, ce qui reste
+    largement suffisant vu le nombre d'utilisateurs attendu."""
+    totals = Counter()
+    for model in ACTIVITY_MODELS:
+        rows = (
+            model.objects.exclude(created_by__isnull=True)
+            .values("created_by").annotate(n=Count("id"))
+        )
+        for row in rows:
+            totals[row["created_by"]] += row["n"]
+
+    top = totals.most_common(limit)
+    users = User.objects.in_bulk([user_id for user_id, _count in top])
+    ranking = []
+    for user_id, count in top:
+        user = users.get(user_id)
+        if user is None:
+            continue  # utilisateur supprimé depuis (created_by=SET_NULL sinon)
+        ranking.append({"user": user, "count": count})
+
+    for row in ranking:
+        row["company_names"] = sorted({
+            m.boutique.compte.name
+            for m in row["user"].memberships.filter(is_active=True).select_related("boutique__compte")
+        })
+    return ranking
+
+
+@login_required
+@platform_admin_required
+def platform_top_users(request):
+    """Classement des 10 utilisateurs les plus actifs de la plateforme
+    (voir _top_active_users) — réservé au super-administrateur, jamais
+    visible depuis l'espace d'une entreprise."""
+    return _render(request, "tenants/platform/top_users.html", {"ranking": _top_active_users(10)})
 
 
 @login_required

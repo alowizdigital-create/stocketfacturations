@@ -152,6 +152,9 @@
             <a class="nav-link {% if '/plateforme/utilisateurs' in request.path %}active{% endif %}" href="{% url 'platform_admin:user_list' %}">
                 <i class="bi bi-people"></i> {% trans "Utilisateurs" %}
             </a>
+            <a class="nav-link {% if '/plateforme/activite' in request.path %}active{% endif %}" href="{% url 'platform_admin:top_users' %}">
+                <i class="bi bi-graph-up"></i> {% trans "Utilisateurs actifs" %}
+            </a>
             {% endif %}
         </nav>
         <div class="sidebar-footer">

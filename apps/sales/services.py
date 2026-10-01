@@ -466,6 +466,23 @@ def mark_commande_en_magasin(commande):
     return commande
 
 
+def delete_commande(commande):
+    """Supprime définitivement une commande qui n'a encore rien engagé :
+    toujours EN_ATTENTE (jamais commencée) et toujours BROUILLON (jamais
+    validée — voir commande_generate_invoice/deliver_commande, les deux
+    seuls chemins qui déduisent du stock ou génèrent une facture). Dans cet
+    état, rien d'autre n'en dépend, à l'exception d'un éventuel acompte
+    versé à la création : son Payment disparaît avec elle (CASCADE), c'est
+    le choix assumé d'une suppression définitive plutôt que d'une simple
+    annulation. Lève ValueError si la commande a le moindre engagement."""
+
+    if commande.type != Invoice.COMMANDE:
+        raise ValueError("Seule une commande peut être supprimée de cette façon.")
+    if commande.delivery_status != Invoice.EN_ATTENTE or commande.status != Invoice.BROUILLON:
+        raise ValueError("Seule une commande en attente et non validée peut être supprimée.")
+    commande.delete()
+
+
 def _apply_payment_status(invoice):
     """Recalcule et sauvegarde le statut PAYEE/PARTIELLEMENT_PAYEE à partir
     du total déjà payé — factorisé pour être réutilisé aussi bien après un

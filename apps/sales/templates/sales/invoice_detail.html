@@ -156,10 +156,18 @@
                 {% else %}
                 <span class="text-muted">{% trans "En attente" %}</span>
                 {% if invoice.status != "ANNULEE" %}
-                <form method="post" action="{% url 'sales:commande_mark_en_cours' invoice.id %}" class="mt-1">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass-split"></i> {% trans "Commencer la préparation" %}</button>
-                </form>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                    <form method="post" action="{% url 'sales:commande_mark_en_cours' invoice.id %}">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-secondary btn-sm"><i class="bi bi-hourglass-split"></i> {% trans "Commencer la préparation" %}</button>
+                    </form>
+                    {% if invoice.status == "BROUILLON" %}
+                    <form method="post" action="{% url 'sales:commande_delete' invoice.id %}" onsubmit="return confirm('{% blocktrans trimmed with number=invoice.commande_seq|default:invoice.number %}Supprimer définitivement la commande {{ number }} ? Cette action est irréversible.{% endblocktrans %}');">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i> {% trans "Supprimer" %}</button>
+                    </form>
+                    {% endif %}
+                </div>
                 {% endif %}
                 {% endif %}
             </div>

@@ -52,7 +52,11 @@ def test_google_button_hidden_offline_even_if_configured(client):
 
 # --- google_login --------------------------------------------------------------
 
+@override_settings(GOOGLE_OAUTH_CLIENT_ID="", GOOGLE_OAUTH_CLIENT_SECRET="")
 def test_login_refused_when_not_configured(client):
+    # Explicitement vidé (plutôt que de compter sur l'absence de .env) :
+    # un poste avec de vrais identifiants Google dans son environnement ne
+    # doit pas rendre ce test caduc.
     response = client.get(reverse("accounts:google_login"))
     assert response.status_code == 302 and response.url == reverse("accounts:login")
 

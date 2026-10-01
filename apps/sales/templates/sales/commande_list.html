@@ -73,6 +73,15 @@
                         {% empty %}
                         <span class="text-muted small align-self-center">{% trans "Terminée" %}</span>
                         {% endfor %}
+                        {% if invoice.delivery_status == "EN_ATTENTE" and invoice.status == "BROUILLON" %}
+                        <form method="post" action="{% url 'sales:commande_delete' invoice.id %}" class="d-inline" data-confirm="{% blocktrans trimmed with number=invoice.commande_seq|default:invoice.number %}Supprimer définitivement la commande {{ number }} ? Cette action est irréversible.{% endblocktrans %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger" title="{% trans 'Supprimer' %}" aria-label="{% trans 'Supprimer' %}">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </form>
+                        {% endif %}
                     </div>
                 </td>
             </tr>
@@ -119,6 +128,25 @@
             </form>`).join("");
     }
 
+    const DELETE_CONFIRM_TEMPLATE = "{% trans 'Supprimer définitivement la commande %(number)s ? Cette action est irréversible.' %}";
+
+    // Bouton « Supprimer » : même condition que le rendu serveur — seulement
+    // pour l'onglet En attente et une commande jamais validée (voir
+    // apps.sales.views.commande_delete, qui revérifie tout côté serveur).
+    function deleteButton(c) {
+        if (!(deliveryFilter === "EN_ATTENTE" && c.status === "BROUILLON")) return "";
+        const next = window.location.pathname + window.location.search;
+        const confirmMsg = DELETE_CONFIRM_TEMPLATE.replace("%(number)s", c.number);
+        return `
+            <form method="post" action="${escapeHtml(c.delete_url)}" class="d-inline" data-confirm="${escapeHtml(confirmMsg)}">
+                <input type="hidden" name="csrfmiddlewaretoken" value="${escapeHtml(csrfToken)}">
+                <input type="hidden" name="next" value="${escapeHtml(next)}">
+                <button type="submit" class="btn btn-sm btn-outline-danger" title="{% trans 'Supprimer' %}" aria-label="{% trans 'Supprimer' %}">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </form>`;
+    }
+
     function renderRows(items) {
         if (!items.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune commande trouvée." %}</td></tr>';
@@ -138,6 +166,7 @@
                             <i class="bi bi-clipboard"></i>
                         </button>
                         ${actionButtons(c)}
+                        ${deleteButton(c)}
                     </div>
                 </td>
             </tr>`).join("");

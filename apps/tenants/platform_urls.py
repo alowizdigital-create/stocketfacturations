@@ -6,6 +6,7 @@ app_name = "platform_admin"
 
 urlpatterns = [
     path("", views.platform_dashboard, name="dashboard"),
+    path("activite/", views.platform_top_users, name="top_users"),
     path("utilisateurs/", views.platform_user_list, name="user_list"),
     path("utilisateurs/<uuid:user_id>/", views.platform_user_edit, name="user_edit"),
 ]

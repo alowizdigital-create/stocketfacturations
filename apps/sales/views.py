@@ -860,6 +860,7 @@ def commande_search(request):
             "total_ttc": float(c.total_ttc),
             "currency": c.currency,
             "url": reverse("sales:invoice_detail", args=[c.id]),
+            "delete_url": reverse("sales:commande_delete", args=[c.id]),
             "actions": _json_actions(c),
         }
         for c in commandes
@@ -1467,6 +1468,38 @@ def commande_advance(request, invoice_id):
             except ValueError as exc:
                 messages.error(request, str(exc))
 
+    target = request.POST.get("next", "")
+    if not (target and url_has_allowed_host_and_scheme(
+        target, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
+    )):
+        target = reverse("sales:commande_list")
+    return redirect(target)
+
+
+@login_required
+@boutique_role_required(*MANAGE_ROLES)
+@require_POST
+def commande_delete(request, invoice_id):
+    """Bouton « Supprimer » de la liste des commandes — définitif, réservé
+    aux commandes encore EN_ATTENTE et jamais validées (voir
+    services.delete_commande). Bloqué hors-ligne : la synchronisation ne
+    sait que créer/mettre à jour, jamais supprimer côté poste offline — un
+    poste qui aurait encore cette commande en cache la garderait pour
+    toujours si elle disparaissait seulement en ligne."""
+    commande = get_object_or_404(Invoice, id=invoice_id, boutique=request.boutique, type=Invoice.COMMANDE)
+
+    if settings.IS_OFFLINE:
+        messages.error(request, _("La suppression d'une commande n'est disponible qu'en ligne."))
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    number = commande.commande_seq if commande.commande_seq is not None else commande.number
+    try:
+        services.delete_commande(commande)
+    except ValueError as exc:
+        messages.error(request, str(exc))
+        return redirect("sales:invoice_detail", invoice_id=commande.id)
+
+    messages.success(request, _("Commande %(number)s supprimée définitivement.") % {"number": number})
     target = request.POST.get("next", "")
     if not (target and url_has_allowed_host_and_scheme(
         target, allowed_hosts={request.get_host()}, require_https=request.is_secure(),
