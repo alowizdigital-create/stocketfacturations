@@ -127,3 +127,36 @@ def test_button_delivers_and_message_says_settled(client, boutique, user):
     }, follow=True)
     assert "soldée" in " ".join(str(m) for m in response.context["messages"])
     assert _facture(commande).status == Invoice.PAYEE
+
+
+# --- plus de bouton « Valider la commande » sur la fiche -------------------------
+
+def test_commande_detail_has_no_validate_button(client, boutique, user):
+    client.force_login(user)
+    commande = _commande(boutique)
+    html = client.get(reverse("sales:invoice_detail", args=[commande.id])).content.decode()
+    assert "Valider la commande" not in html and "commande-payment-modal" not in html
+    assert "Valider le devis" not in html          # une commande en brouillon ne retombe pas sur le bouton des devis
+
+
+def test_devis_validate_button_still_present(client, boutique, user):
+    client.force_login(user)
+    devis = services.build_invoice(
+        boutique=boutique, client=None, type=Invoice.DEVIS, created_by=None,
+        lines_data=[{"product": None, "description": "x", "quantity": Decimal("1"),
+                     "unit_price_ht": Decimal("1000"), "tva_rate": Decimal("0")}],
+    )
+    html = client.get(reverse("sales:invoice_detail", args=[devis.id])).content.decode()
+    assert "Valider le devis" in html
+
+
+def test_commande_can_still_be_validated_by_delivering(client, boutique, user):
+    """Sans le bouton, la validation passe par « Livrée » (facture + stock)."""
+    client.force_login(user)
+    commande = _commande(boutique)
+    Invoice.objects.filter(pk=commande.pk).update(delivery_status=Invoice.EN_COURS)
+    client.post(reverse("sales:commande_advance", args=[commande.id]), {
+        "from": Invoice.EN_COURS, "to": Invoice.LIVREE, "next": "",
+    })
+    commande.refresh_from_db()
+    assert commande.status == Invoice.CONVERTIE and _facture(commande).status == Invoice.PAYEE

@@ -64,11 +64,7 @@
             <i class="bi bi-cash-coin"></i> {% blocktrans trimmed with amount=invoice.balance_due currency=invoice.currency %}Encaisser (reste {{ amount }} {{ currency }}){% endblocktrans %}
         </button>
         {% endif %}
-        {% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
-        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#commande-payment-modal">
-            <i class="bi bi-check2-circle"></i> {% trans "Valider la commande" %}
-        </button>
-        {% elif invoice.status == "BROUILLON" %}
+        {% if invoice.type != "COMMANDE" and invoice.status == "BROUILLON" %}
         <form method="post" action="{% url 'sales:invoice_validate' invoice.id %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-primary"><i class="bi bi-check2-circle"></i> {% trans "Valider le devis" %}</button>
@@ -428,49 +424,7 @@
 </script>
 {% endif %}
 
-{% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
-<form method="post" action="{% url 'sales:commande_generate_invoice' invoice.id %}" id="commande-invoice-form">
-    {% csrf_token %}
-    <input type="hidden" name="payment_type" id="commande-payment-type" value="full">
-    <input type="hidden" name="deposit_amount" id="commande-deposit-amount" value="0">
-</form>
 
-<!-- Comme pour un devis (voir #devis-payment-modal) : à la validation, on
-     demande si le client règle le solde maintenant ou ne fait qu'un
-     acompte — le solde ici est invoice.balance_due (le total de la
-     commande moins un acompte déjà versé à la création), pas le total
-     complet, pour ne pas redemander de payer une part déjà encaissée. -->
-<div class="modal fade" id="commande-payment-modal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">{% trans "Valider la commande" %}</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p>{% blocktrans trimmed with total=invoice.balance_due currency=invoice.currency %}Solde restant : <strong>{{ total }} {{ currency }}</strong>{% endblocktrans %}</p>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="commande-payment-choice" id="commande-payment-full" value="full" checked>
-                    <label class="form-check-label" for="commande-payment-full">{% trans "Le client paie tout maintenant" %}</label>
-                </div>
-                <div class="form-check mb-2">
-                    <input class="form-check-input" type="radio" name="commande-payment-choice" id="commande-payment-partial" value="partial">
-                    <label class="form-check-label" for="commande-payment-partial">{% trans "Le client fait un acompte" %}</label>
-                </div>
-                <div id="commande-deposit-wrapper" class="mt-2" style="display:none;">
-                    <label class="form-label" for="commande-deposit-input">{% blocktrans trimmed with currency=invoice.currency %}Montant de l'acompte ({{ currency }}){% endblocktrans %}</label>
-                    <input type="number" min="0" step="1" class="form-control" id="commande-deposit-input">
-                    <div class="form-text text-danger" id="commande-deposit-error" style="display:none;"></div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">{% trans "Annuler" %}</button>
-                <button type="button" class="btn btn-primary" id="commande-payment-confirm">{% trans "Confirmer et valider la commande" %}</button>
-            </div>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 {% if IS_OFFLINE %}
 <!-- Aperçu du PDF dans une modale (plutôt qu'une navigation vers l'URL du
@@ -608,39 +562,5 @@ document.getElementById("print-invoice-btn").addEventListener("click", function 
 })();
 {% endif %}
 
-{% if invoice.type == "COMMANDE" and invoice.status != "CONVERTIE" and invoice.status != "ANNULEE" %}
-(function () {
-    var remaining = {{ invoice.balance_due }};
-    var fullRadio = document.getElementById("commande-payment-full");
-    var partialRadio = document.getElementById("commande-payment-partial");
-    var depositWrapper = document.getElementById("commande-deposit-wrapper");
-    var depositInput = document.getElementById("commande-deposit-input");
-    var depositError = document.getElementById("commande-deposit-error");
-
-    function toggleDepositWrapper() {
-        depositWrapper.style.display = partialRadio.checked ? "block" : "none";
-    }
-    fullRadio.addEventListener("change", toggleDepositWrapper);
-    partialRadio.addEventListener("change", toggleDepositWrapper);
-
-    document.getElementById("commande-payment-confirm").addEventListener("click", function () {
-        var paymentType = partialRadio.checked ? "partial" : "full";
-        var depositAmount = 0;
-
-        if (paymentType === "partial") {
-            depositAmount = parseFloat(depositInput.value);
-            if (isNaN(depositAmount) || depositAmount <= 0 || depositAmount > remaining) {
-                depositError.textContent = "{% trans 'Entrez un montant d\'acompte valide (entre 1 et' %} " + remaining + ").";
-                depositError.style.display = "block";
-                return;
-            }
-        }
-
-        document.getElementById("commande-payment-type").value = paymentType;
-        document.getElementById("commande-deposit-amount").value = depositAmount;
-        document.getElementById("commande-invoice-form").requestSubmit();
-    });
-})();
-{% endif %}
 </script>
 {% endblock %}
