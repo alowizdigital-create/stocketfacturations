@@ -7,5 +7,8 @@
 </div>
 {% endblock %}
 {% block extra_js %}
-<script>initCheckoutForm(document.getElementById("checkout-root"));</script>
+<script>
+    initCheckoutForm(document.getElementById("checkout-root"));
+    trackCheckoutStart(document.getElementById("checkout-root"));
+</script>
 {% endblock %}

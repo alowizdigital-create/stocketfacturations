@@ -4,12 +4,19 @@ import uuid
 from decimal import Decimal
 
 from django.conf import settings
+from django.core.validators import RegexValidator
 from django.db import models
 from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 from apps.core.images import ensure_webp
 from apps.core.models import TimeStampedModel, UUIDModel
+
+
+FB_PIXEL_VALIDATOR = RegexValidator(r"^[0-9]{8,20}$", _("L'identifiant du pixel Facebook ne contient que des chiffres."))
+TIKTOK_PIXEL_VALIDATOR = RegexValidator(
+    r"^[A-Za-z0-9]{10,30}$", _("L'identifiant du pixel TikTok ne contient que des lettres et des chiffres."),
+)
 
 
 def _join_cities(cities):
@@ -135,6 +142,16 @@ class Boutique(UUIDModel, TimeStampedModel):
     shop_order_footer = models.CharField(
         _("message sous le bouton de commande"), max_length=300, blank=True,
         help_text=_("Facultatif (ex: « Nous vous contacterons dans les 30 min après votre commande. Merci ! »)."),
+    )
+    # Pixels publicitaires de la vitrine (voir storefront/_pixels.html). Les
+    # identifiants sont validés strictement : ils sont insérés dans du JavaScript.
+    fb_pixel_id = models.CharField(
+        _("Pixel Facebook (Meta)"), max_length=20, blank=True, validators=[FB_PIXEL_VALIDATOR],
+        help_text=_("Identifiant numérique du pixel (Gestionnaire d'événements Meta). Laissez vide pour ne rien envoyer à Facebook."),
+    )
+    tiktok_pixel_id = models.CharField(
+        _("Pixel TikTok"), max_length=30, blank=True, validators=[TIKTOK_PIXEL_VALIDATOR],
+        help_text=_("Identifiant du pixel (TikTok Ads Manager → Événements). Laissez vide pour ne rien envoyer à TikTok."),
     )
     shop_delivery_fee = models.DecimalField(
         _("frais de livraison"), max_digits=10, decimal_places=0, default=0,

@@ -1,5 +1,5 @@
 {% load i18n %}
-<div class="co" id="checkout-root" data-subtotal="{{ totals.subtotal }}">
+<div class="co" id="checkout-root" data-subtotal="{{ totals.subtotal }}" data-count="{{ totals.count }}" data-currency="{{ boutique.devise }}" data-ids="{% for line in lines %}{{ line.product.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
     {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
 
     <div class="co-items">

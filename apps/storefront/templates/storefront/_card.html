@@ -8,7 +8,7 @@
             </a>
             {% if product.on_sale %}<span class="p-badge">{% trans "Promotion" %}</span>{% endif %}
             {% if product.stock > 0 %}
-            <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="p-buy-form">
+            <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="p-buy-form" data-track-id="{{ product.id }}" data-track-name="{{ product.name }}" data-track-price="{{ product.shop_price }}" data-currency="{{ boutique.devise }}">
                 {% csrf_token %}
                 <input type="hidden" name="quantity" value="1">
                 <input type="hidden" name="buy_now" value="1">

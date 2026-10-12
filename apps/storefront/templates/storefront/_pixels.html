@@ -1,0 +1,46 @@
+{% comment %}
+Pixels publicitaires de la boutique (Facebook / TikTok). N'envoie rien tant que
+l'identifiant n'est pas renseigné dans Boutique en ligne. Les identifiants sont
+validés à la saisie (chiffres / alphanumérique) et échappés ici.
+window.shopTrack est toujours défini (sans effet sans pixel) pour que le reste
+de la page puisse l'appeler sans condition.
+{% endcomment %}
+<script>
+{% if boutique.fb_pixel_id %}
+!function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '{{ boutique.fb_pixel_id|escapejs }}');
+fbq('track', 'PageView');
+{% endif %}
+{% if boutique.tiktok_pixel_id %}
+!function(w,d,t){w.TiktokAnalyticsObject=t;var ttq=w[t]=w[t]||[];ttq.methods=["page","track","identify","instances","debug","on","off","once","ready","alias","group","enableCookie","disableCookie"],ttq.setAndDefer=function(t,e){t[e]=function(){t.push([e].concat(Array.prototype.slice.call(arguments,0)))}};for(var i=0;i<ttq.methods.length;i++)ttq.setAndDefer(ttq,ttq.methods[i]);ttq.instance=function(t){for(var e=ttq._i[t]||[],n=0;n<ttq.methods.length;n++)ttq.setAndDefer(e,ttq.methods[n]);return e},ttq.load=function(e,n){var i="https://analytics.tiktok.com/i18n/pixel/events.js";ttq._i=ttq._i||{},ttq._i[e]=[],ttq._i[e]._u=i,ttq._t=ttq._t||{},ttq._t[e]=+new Date,ttq._o=ttq._o||{},ttq._o[e]=n||{};var o=document.createElement("script");o.type="text/javascript",o.async=!0,o.src=i+"?sdkid="+e+"&lib="+t;var a=document.getElementsByTagName("script")[0];a.parentNode.insertBefore(o,a)};ttq.load('{{ boutique.tiktok_pixel_id|escapejs }}');ttq.page();}(window,document,'ttq');
+{% endif %}
+
+// Événements standard : Facebook (ViewContent, AddToCart, InitiateCheckout, Purchase)
+// et TikTok (mêmes noms, sauf Purchase = CompletePayment).
+window.shopTrack = function (name, d) {
+    d = d || {};
+    try {
+        if (window.fbq) {
+            window.fbq("track", name, {
+                content_ids: d.ids || [], content_name: d.name, content_type: "product",
+                value: d.value || 0, currency: d.currency, num_items: d.quantity || 1
+            }, d.eventId ? { eventID: d.eventId } : undefined);
+        }
+        if (window.ttq) {
+            var tt = name === "Purchase" ? "CompletePayment" : name;
+            window.ttq.track(tt, {
+                // Quantité/prix par ligne seulement pour un produit unique : avec plusieurs
+                // produits on ne les connaît pas ligne par ligne, et un chiffre faux
+                // fausserait l'optimisation de la campagne (la valeur totale reste exacte).
+                contents: (d.ids || []).map(function (id, i, all) {
+                    var c = { content_id: id };
+                    if (d.name) c.content_name = d.name;
+                    if (all.length === 1) { c.quantity = d.quantity || 1; if (d.price) c.price = d.price; }
+                    return c;
+                }),
+                content_type: "product", value: d.value || 0, currency: d.currency
+            });
+        }
+    } catch (e) { /* le suivi ne doit jamais gêner un achat */ }
+};
+</script>

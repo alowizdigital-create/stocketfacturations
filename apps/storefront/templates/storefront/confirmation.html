@@ -26,3 +26,15 @@
     <a href="{% url 'storefront:home' slug=slug %}" class="btn btn-outline-brand">{% trans "Retour à la boutique" %}</a>
 </div>
 {% endblock %}
+{% block extra_js %}
+{{ track_purchase|json_script:"track-purchase" }}
+<script>
+(function () {
+    var el = document.getElementById("track-purchase");
+    if (!el) return;
+    var data = JSON.parse(el.textContent), key = "shop_purchase_" + data.eventId;
+    try { if (localStorage.getItem(key)) return; localStorage.setItem(key, "1"); } catch (e) {}
+    window.shopTrack("Purchase", data);
+})();
+</script>
+{% endblock %}

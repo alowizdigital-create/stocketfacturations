@@ -548,7 +548,7 @@ def test_related_products_prefer_same_category_and_exclude_self(client, boutique
     for i in range(5):
         _product(boutique, f"Autre{i}")
     html = client.get(_url("product", main.id)).content.decode()
-    related_html = html.split("Vous aimerez aussi")[1]
+    related_html = html.split("Vous aimerez aussi")[1].split('id="track-view"')[0]
     assert "Meme cat" in related_html and "Principal" not in related_html
     assert related_html.count('class="p-card') == 4
 
@@ -730,3 +730,85 @@ def test_description_has_about_heading_and_paragraphs(client, boutique):
 def test_about_section_hidden_without_description(client, boutique):
     p = _product(boutique, "Simple")
     assert "À propos du produit" not in client.get(_url("product", p.id)).content.decode()
+
+
+# --- pixels Facebook / TikTok ------------------------------------------------------------
+
+def test_no_pixel_scripts_without_ids(client, boutique):
+    _product(boutique)
+    html = client.get(_url("home")).content.decode()
+    assert "connect.facebook.net" not in html and "analytics.tiktok.com" not in html
+    assert "window.shopTrack" in html          # défini quand même : sans effet
+
+
+def test_facebook_pixel_installed(client, boutique):
+    boutique.fb_pixel_id = "123456789012345"
+    boutique.save()
+    html = client.get(_url("home")).content.decode()
+    assert "connect.facebook.net" in html and "fbq('init', '123456789012345')" in html
+    assert "analytics.tiktok.com" not in html
+
+
+def test_tiktok_pixel_installed(client, boutique):
+    boutique.tiktok_pixel_id = "CABC123DEF456GHI789"
+    boutique.save()
+    html = client.get(_url("home")).content.decode()
+    assert "ttq.load('CABC123DEF456GHI789')" in html and "connect.facebook.net" not in html
+
+
+def test_both_pixels_on_every_storefront_page(client, boutique):
+    boutique.fb_pixel_id, boutique.tiktok_pixel_id = "123456789012345", "CABC123DEF456GHI789"
+    boutique.save()
+    p = _fill_cart(client, boutique)
+    for url in (_url("home"), _url("product", p.id), _url("cart"), _url("checkout")):
+        html = client.get(url).content.decode()
+        assert "fbq('init'" in html and "ttq.load(" in html
+
+
+def test_product_page_sends_view_content_data(client, boutique):
+    p = _product(boutique, "Mastic", price="10000")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert 'id="track-view"' in html and str(p.id) in html and '"ViewContent"' in html
+    assert 'data-track-id="%s"' % p.id in html and 'data-currency="XAF"' in html
+
+
+def test_cards_carry_add_to_cart_tracking_data(client, boutique):
+    p = _product(boutique, "Casque", price="15000")
+    html = client.get(_url("home")).content.decode()
+    assert 'data-track-id="%s"' % p.id in html and 'data-track-price="15000"' in html
+
+
+def test_checkout_exposes_data_for_initiate_checkout(client, boutique):
+    p = _fill_cart(client, boutique, qty=2, price="1500")
+    html = client.get(_url("checkout"), {"modal": "1"}).content.decode()
+    assert 'data-ids="%s"' % p.id in html and 'data-count="2"' in html and 'data-subtotal="3000"' in html
+    assert "trackCheckoutStart" in client.get(_url("checkout")).content.decode()
+
+
+def test_confirmation_sends_purchase_with_dedup_key(client, boutique):
+    _fill_cart(client, boutique, qty=2, price="1500")
+    url = client.post(_url("checkout"), FORM).url
+    html = client.get(url).content.decode()
+    commande = Invoice.objects.get()
+    assert 'id="track-purchase"' in html and str(commande.id) in html and '"value": 3000.0' in html
+    assert "shop_purchase_" in html and '"Purchase"' in html
+
+
+def test_pixel_ids_validated_in_settings(admin_client, boutique):
+    url = reverse("tenants:shop_settings")
+    base = {"shop_enabled": "on", "shop_slug": SLUG, "shop_delivery_fee": "0"}
+    bad = admin_client.post(url, {**base, "fb_pixel_id": "abc'); alert(1);//"})
+    assert bad.status_code == 200 and Boutique.objects.get(pk=boutique.pk).fb_pixel_id == ""
+    bad = admin_client.post(url, {**base, "tiktok_pixel_id": "x'</script><script>alert(1)"})
+    assert bad.status_code == 200 and Boutique.objects.get(pk=boutique.pk).tiktok_pixel_id == ""
+    ok = admin_client.post(url, {**base, "fb_pixel_id": "123456789012345", "tiktok_pixel_id": "CABC123DEF456GHI789"})
+    assert ok.status_code == 302
+    boutique.refresh_from_db()
+    assert boutique.fb_pixel_id == "123456789012345" and boutique.tiktok_pixel_id == "CABC123DEF456GHI789"
+
+
+def test_pixels_never_loaded_when_shop_disabled(client, boutique):
+    boutique.fb_pixel_id = "123456789012345"
+    boutique.shop_enabled = False
+    boutique.save()
+    assert client.get(_url("home")).status_code == 404

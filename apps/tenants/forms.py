@@ -242,6 +242,7 @@ class BoutiqueShopForm(BootstrapFormMixin, forms.ModelForm):
         fields = [
             "shop_enabled", "shop_slug", "shop_description", "shop_order_notice",
             "shop_checkout_notice", "shop_order_footer", "shop_delivery_fee", "shop_delivery_info",
+            "fb_pixel_id", "tiktok_pixel_id",
         ]
         widgets = {
             "shop_order_notice": forms.Textarea(attrs={"rows": 3}),

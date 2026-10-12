@@ -47,7 +47,7 @@
             <hr>
 
             {% if max_qty > 0 %}
-            <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}">
+            <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" data-track-id="{{ product.id }}" data-track-name="{{ product.name }}" data-track-price="{{ product.shop_price }}" data-currency="{{ boutique.devise }}">
                 {% csrf_token %}
                 <label class="form-label" for="qty">{% trans "Quantité" %}</label>
                 <div class="mb-3">
@@ -89,6 +89,13 @@
 {% endif %}
 {% endblock %}
 {% block extra_js %}
+{{ track_view|json_script:"track-view" }}
+<script>
+(function () {
+    var el = document.getElementById("track-view");
+    if (el) window.shopTrack("ViewContent", JSON.parse(el.textContent));
+})();
+</script>
 <script>
 (function () {
     var input = document.getElementById("qty");

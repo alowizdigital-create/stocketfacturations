@@ -138,6 +138,7 @@
         }
     </style>
     {% block extra_css %}{% endblock %}
+    {% include "storefront/_pixels.html" %}
 </head>
 <body>
 {% if delivery_banner %}<div class="announce"><i class="bi bi-truck"></i> {{ delivery_banner }}</div>{% endif %}
@@ -194,6 +195,14 @@
     </div>
 </div>
 <script>
+// Début de commande (pixels) : une fois par ouverture du formulaire.
+window.trackCheckoutStart = function (root) {
+    if (!root) return;
+    window.shopTrack("InitiateCheckout", {
+        ids: (root.dataset.ids || "").split(",").filter(Boolean), value: parseFloat(root.dataset.subtotal) || 0,
+        quantity: parseInt(root.dataset.count, 10) || 1, currency: root.dataset.currency
+    });
+};
 // Formulaire de commande : frais/total selon la ville, bloc Mobile Money.
 window.initCheckoutForm = function (root) {
     if (!root) return;
@@ -268,24 +277,33 @@ window.initCheckoutForm = function (root) {
         var buyNow = form.querySelector("input[name=buy_now]") || (submitter && submitter.name === "buy_now");
         e.preventDefault();
         var data = new FormData(form);
+        function trackAdd() {
+            var qty = parseInt(data.get("quantity"), 10) || 1, price = parseFloat(form.dataset.trackPrice) || 0;
+            window.shopTrack("AddToCart", {
+                ids: [form.dataset.trackId], name: form.dataset.trackName, quantity: qty,
+                price: price, value: price * qty, currency: form.dataset.currency
+            });
+        }
         if (!buyNow) {                                         // « Ajouter au panier » : panier latéral
             data.delete("buy_now");
             fetch(form.action, { method: "POST", body: data, headers: XHR, credentials: "same-origin" })
                 .then(function (r) { return r.json(); })
-                .then(function () { return window.openCartDrawer(); })
+                .then(function () { trackAdd(); return window.openCartDrawer(); })
                 .catch(function () { window.location.href = form.action; });
             return;
         }
         data.set("buy_now", "1");                              // « Commander maintenant » : formulaire en fenêtre
         window.openCheckoutModal(function () {
             return fetch(form.action, { method: "POST", body: data, headers: XHR, credentials: "same-origin" })
-                .then(function (r) { return r.json(); });
+                .then(function (r) { return r.json(); })
+                .then(function (result) { trackAdd(); return result; });
         });
     });
     window.openCheckoutModal = function (before) {
         content.innerHTML = '<div class="co-loading"><div class="spinner-border" role="status"></div></div>';
         show();
         return Promise.resolve(before ? before() : null).then(load)
+            .then(function () { window.trackCheckoutStart(content.querySelector("#checkout-root")); })
             .catch(function () { window.location.href = modal.dataset.url; });
     };
 

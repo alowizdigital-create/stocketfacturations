@@ -143,6 +143,10 @@ def product_detail(request, slug, product_id):
         request, boutique, product=product, images=images,
         max_qty=int(min(product.stock, catalog.MAX_QTY_PER_LINE)),
         related=catalog.related_products(boutique, product),
+        track_view={
+            "ids": [str(product.id)], "name": product.name, "value": float(product.shop_price),
+            "price": float(product.shop_price), "currency": boutique.devise,
+        },
     ))
 
 
@@ -261,6 +265,11 @@ def confirmation(request, slug, order_id):
         whatsapp = f"https://wa.me/{number}?text={quote(text)}"
     return render(request, "storefront/confirmation.html", _context(
         request, boutique, commande=commande, whatsapp=whatsapp, payment_methods=boutique.payment_methods,
+        track_purchase={
+            "ids": [str(line.product_id) for line in commande.lines.all() if line.product_id],
+            "value": float(commande.total_ttc), "currency": commande.currency, "eventId": str(commande.id),
+            "quantity": int(sum(line.quantity for line in commande.lines.all() if line.product_id)),
+        },
     ))
 
 
