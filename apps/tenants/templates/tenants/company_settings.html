@@ -91,6 +91,16 @@
 <div class="card-app mt-3" style="max-width: 520px;">
     <div class="card-app-body d-flex justify-content-between align-items-center">
         <div>
+            <div class="fw-semibold">{% trans "Boutique en ligne" %}</div>
+            <div class="text-muted small">{% trans "Une vitrine publique où vos clients commandent (livraison ou Mobile Money)." %}</div>
+        </div>
+        <a href="{% url 'tenants:shop_settings' %}" class="btn btn-outline-secondary btn-sm">{% trans "Gérer" %}</a>
+    </div>
+</div>
+
+<div class="card-app mt-3" style="max-width: 520px;">
+    <div class="card-app-body d-flex justify-content-between align-items-center">
+        <div>
             <div class="fw-semibold">{% trans "Taux de change" %}</div>
             <div class="text-muted small">{% trans "Pour proposer une vente/un devis dans une autre devise, convertie automatiquement." %}</div>
         </div>

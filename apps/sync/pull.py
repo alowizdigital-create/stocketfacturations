@@ -21,6 +21,8 @@ def _pull_boutique(client):
             "name": data["compte_name"],
             "email": data.get("compte_email") or "",
             "phone": data.get("compte_phone") or "",
+            "niu": data.get("compte_niu") or "",
+            "rccm": data.get("compte_rccm") or "",
         },
     )
     # Contrairement aux photos produit (qui ne se re-téléchargent jamais,
@@ -47,6 +49,7 @@ def _pull_boutique(client):
             "address": data.get("address", ""),
             "phone": data.get("phone", ""),
             "devise": data["devise"],
+            "tva_rate": data.get("tva_rate") or 0,
             "country_calling_code": data.get("country_calling_code", ""),
             "om_account_name": data.get("om_account_name", ""),
             "om_number": data.get("om_number", ""),

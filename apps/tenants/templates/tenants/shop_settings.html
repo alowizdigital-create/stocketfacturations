@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Boutique en ligne" %}{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <h1>{% trans "Boutique en ligne" %}</h1>
+        <div class="text-muted">{% blocktrans trimmed with name=request.boutique.name %}Vitrine publique de « {{ name }} » : vos clients choisissent des produits et envoient une commande, qui arrive dans votre liste de commandes.{% endblocktrans %}</div>
+    </div>
+</div>
+
+{% if request.boutique.shop_enabled and shop_url %}
+<div class="alert alert-success d-flex flex-wrap justify-content-between align-items-center gap-2" style="max-width: 560px;">
+    <span><i class="bi bi-globe2"></i> <a href="{{ shop_url }}" target="_blank" rel="noopener" class="fw-semibold">{{ shop_url }}</a></span>
+    <button type="button" class="btn btn-sm btn-outline-success" onclick="navigator.clipboard.writeText('{{ shop_url }}')">{% trans "Copier le lien" %}</button>
+</div>
+{% endif %}
+
+<div class="card-app" style="max-width: 560px;">
+    <div class="card-app-body">
+        <form method="post">
+            {% csrf_token %}
+            {{ form.non_field_errors }}
+            {% for field in form %}
+            <div class="mb-3">
+                {% if field.name == "shop_enabled" %}
+                <div class="form-check form-switch">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+                {% else %}
+                <label class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% endif %}
+                {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+                {{ field.errors }}
+            </div>
+            {% endfor %}
+            <p class="text-muted small">{% trans "Le paiement Mobile Money utilise les numéros renseignés dans Paramètres de l'entreprise → Paramètres régionaux. Sans numéro, seul le paiement à la livraison est proposé." %}</p>
+            <button type="submit" class="btn btn-primary">{% trans "Enregistrer" %}</button>
+        </form>
+    </div>
+</div>
+
+<div class="card-app mt-3" style="max-width: 560px;">
+    <div class="card-app-header">{% trans "Produits visibles en ligne" %}</div>
+    <div class="card-app-body">
+        <p class="mb-2">{% blocktrans trimmed %}<strong>{{ online_count }}</strong> produit(s) sur {{ total_count }} actif(s). Un produit sans stock dans cette boutique s'affiche comme épuisé.{% endblocktrans %}</p>
+        <p class="text-muted small">{% trans "Pour choisir produit par produit, cochez « Afficher sur la boutique en ligne » dans la fiche du produit." %}</p>
+        <form method="post" class="d-flex gap-2">
+            {% csrf_token %}
+            <button name="action" value="publish_all" class="btn btn-outline-primary btn-sm">{% trans "Tout publier" %}</button>
+            <button name="action" value="unpublish_all" class="btn btn-outline-secondary btn-sm">{% trans "Tout retirer" %}</button>
+        </form>
+    </div>
+</div>
+{% endblock %}

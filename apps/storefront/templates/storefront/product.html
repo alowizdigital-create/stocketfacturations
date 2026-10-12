@@ -1,0 +1,33 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{{ product.name }} — {{ boutique.name }}{% endblock %}
+{% block content %}
+<a href="{% url 'storefront:home' slug=slug %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> {% trans "Retour à la boutique" %}</a>
+<div class="row g-4 mt-1">
+    <div class="col-md-6">
+        {% if images %}
+        <img id="main-img" src="{{ images.0.url }}" alt="{{ product.name }}" class="product-img rounded-3 border">
+        {% if images|length > 1 %}
+        <div class="d-flex gap-2 mt-2">
+            {% for img in images %}<img src="{{ img.url }}" alt="" width="64" height="64" class="rounded border" style="object-fit:cover;cursor:pointer;" onclick="document.getElementById('main-img').src=this.src">{% endfor %}
+        </div>
+        {% endif %}
+        {% else %}<div class="product-img product-img-ph rounded-3 border"><i class="bi bi-image"></i></div>{% endif %}
+    </div>
+    <div class="col-md-6">
+        <h1 class="h4">{{ product.name }}</h1>
+        {% if product.category %}<div class="text-muted small mb-2">{{ product.category.name }}</div>{% endif %}
+        <div class="price fs-3 mb-3">{{ product.shop_price }} {{ boutique.devise }}</div>
+        {% if max_qty > 0 %}
+        <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="d-flex gap-2 align-items-center">
+            {% csrf_token %}
+            <input type="number" name="quantity" value="1" min="1" max="{{ max_qty }}" class="form-control" style="width:90px;">
+            <button class="btn btn-brand flex-grow-1"><i class="bi bi-bag-plus"></i> {% trans "Ajouter au panier" %}</button>
+        </form>
+        {% if max_qty < 10 %}<div class="small text-warning mt-2">{% blocktrans %}Plus que {{ max_qty }} en stock.{% endblocktrans %}</div>{% endif %}
+        {% else %}
+        <div class="alert alert-secondary">{% trans "Ce produit est épuisé pour le moment." %}</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

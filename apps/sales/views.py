@@ -852,6 +852,7 @@ def commande_search(request):
         {
             "id": str(c.id),
             "number": c.commande_seq if c.commande_seq is not None else c.number,
+            "online": c.source == Invoice.EN_LIGNE,
             "client": c.client.name if c.client else None,
             "client_phone": c.client.phone if c.client else "",
             "status": c.status,
@@ -904,7 +905,7 @@ def _preselected_products_for_formset(formset, compte):
 def invoice_create(request):
     if request.method == "POST":
         form = InvoiceForm(request.POST, boutique=request.boutique)
-        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset)
             if not lines_data:
@@ -926,7 +927,7 @@ def invoice_create(request):
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(boutique=request.boutique)
-        formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
 
     preselected_products = _preselected_products_for_formset(formset, request.compte)
     return render(
@@ -971,7 +972,7 @@ def devis_update(request, invoice_id):
 
     if request.method == "POST":
         form = InvoiceForm(request.POST, boutique=request.boutique)
-        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset, require_changed=False)
             if not lines_data:
@@ -1008,7 +1009,7 @@ def devis_update(request, invoice_id):
             }
             for line in devis.lines.all()
         ]
-        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
 
     preselected_products = _preselected_products_for_formset(formset, request.compte)
     return render(
@@ -1057,7 +1058,7 @@ def commande_update(request, invoice_id):
 
     if request.method == "POST":
         form = InvoiceForm(request.POST, boutique=request.boutique)
-        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset, require_changed=False)
             if not lines_data:
@@ -1094,7 +1095,7 @@ def commande_update(request, invoice_id):
             }
             for line in commande.lines.all()
         ]
-        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(initial=line_initial, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
 
     preselected_products = _preselected_products_for_formset(formset, request.compte)
     return render(
@@ -1120,7 +1121,7 @@ def commande_create(request):
     conversion en facture (stock déduit à ce moment-là)."""
     if request.method == "POST":
         form = InvoiceForm(request.POST, boutique=request.boutique)
-        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(request.POST, form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
         if form.is_valid() and formset.is_valid():
             lines_data = _extract_lines_data(formset)
             if not lines_data:
@@ -1153,7 +1154,7 @@ def commande_create(request):
                 return redirect("sales:invoice_detail", invoice_id=invoice.id)
     else:
         form = InvoiceForm(boutique=request.boutique)
-        formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte})
+        formset = InvoiceLineFormSet(form_kwargs={"compte": request.compte, "default_tva": request.boutique.tva_rate})
 
     preselected_products = _preselected_products_for_formset(formset, request.compte)
     return render(
@@ -1696,11 +1697,35 @@ def margin_report(request):
         (_("Mois dernier"), last_month_end.replace(day=1), last_month_end),
     ]
     report = reports.margin_report(request.boutique, date_from, date_to)
+    prev_from, prev_to = reports.previous_period(date_from, date_to)
+    previous = reports.margin_report(request.boutique, prev_from, prev_to)
     return render(request, "sales/margin_report.html", {
         "date_from": date_from, "date_to": date_to, "presets": presets,
         "rows": report["rows"], "totals": report["totals"],
         "expenses_by_category": report["expenses_by_category"],
+        "deltas": reports.compare_totals(report["totals"], previous["totals"]),
+        "prev_from": prev_from, "prev_to": prev_to,
+        "trend": reports.trend(request.boutique, date_from, date_to),
     })
+
+
+@login_required
+@boutique_role_required(*MARGIN_REPORT_ROLES)
+def margin_report_export(request):
+    """Excel du rapport de marge pour la période demandée (mêmes paramètres
+    from/to et mêmes rôles que la page)."""
+    today = timezone.localdate()
+    date_from = parse_date(request.GET.get("from", "") or "") or today.replace(day=1)
+    date_to = parse_date(request.GET.get("to", "") or "") or today
+    if date_from > date_to:
+        date_from, date_to = date_to, date_from
+    report = reports.margin_report(request.boutique, date_from, date_to)
+    content = exports.build_margin_report_xlsx(
+        report, boutique=request.boutique, date_from=date_from, date_to=date_to,
+    )
+    response = HttpResponse(content, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = f'attachment; filename="marge-{date_from:%Y%m%d}-{date_to:%Y%m%d}.xlsx"'
+    return response
 
 
 # --- Relances de paiement (WhatsApp) --------------------------------------

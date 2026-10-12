@@ -7,6 +7,7 @@ lignes)."""
 
 import io
 import logging
+from xml.sax.saxutils import escape
 
 from django.utils import timezone
 from reportlab.lib import colors
@@ -131,6 +132,7 @@ def _estimate_height(invoice, lines, payments, logo_sized, has_global_discount, 
     n = 0
     separator_count = 4  # header, infos client, après lignes, avant pied de page
     n += 3  # nom boutique + adresse/téléphone (jusqu'à 2 lignes)
+    n += len(invoice.boutique.legal_mentions)  # NIU / RCCM
     n += 3  # numéro, date, client
     if client_phone:
         n += 1  # téléphone du destinataire
@@ -200,6 +202,8 @@ def _render_invoice_pdf_80mm(invoice):
         w.text(invoice.boutique.address, font=FONT_SMALL, align="center")
     if invoice.boutique.phone:
         w.text(f"Tél: {invoice.boutique.phone}", font=FONT_SMALL, align="center")
+    for mention in invoice.boutique.legal_mentions:
+        w.text(mention, font=FONT_SMALL, align="center")
     w.separator()
 
     w.text(f"{title} {invoice.number}", font=FONT_BOLD)
@@ -306,6 +310,8 @@ def _render_invoice_pdf_a4(invoice):
         left_cell.append(Paragraph(invoice.boutique.address, _STYLE_SMALL))
     if invoice.boutique.phone:
         left_cell.append(Paragraph(f"Tél: {invoice.boutique.phone}", _STYLE_SMALL))
+    for mention in invoice.boutique.legal_mentions:
+        left_cell.append(Paragraph(escape(mention), _STYLE_SMALL))
 
     right_cell = [
         Paragraph(title, _STYLE_TITLE),

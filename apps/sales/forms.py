@@ -163,10 +163,13 @@ class InvoiceLineForm(BootstrapFormMixin, forms.Form):
         label=_("Remise (FCFA)"), min_value=0, required=False,
     )
 
-    def __init__(self, *args, compte=None, **kwargs):
+    def __init__(self, *args, compte=None, default_tva=None, **kwargs):
         super().__init__(*args, **kwargs)
         if compte is not None:
             self.fields["product"].queryset = Product.objects.filter(compte=compte, is_active=True)
+        if default_tva is not None:
+            # TVA par défaut de la boutique pour les lignes libres/vides.
+            self.fields["tva_rate"].initial = default_tva
 
     def clean_discount_amount(self):
         return self.cleaned_data.get("discount_amount") or 0

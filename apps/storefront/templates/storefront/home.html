@@ -1,0 +1,47 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block content %}
+{% if boutique.shop_description %}<p class="text-center text-muted mb-3">{{ boutique.shop_description }}</p>{% endif %}
+{% if boutique.shop_delivery_info %}<p class="text-center small mb-3"><i class="bi bi-truck"></i> {{ boutique.shop_delivery_info }}{% if boutique.shop_delivery_fee %} — {% trans "frais de livraison" %} {{ boutique.shop_delivery_fee }} {{ boutique.devise }}{% endif %}</p>{% endif %}
+
+<form method="get" class="d-flex gap-2 mb-3">
+    <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="{% trans 'Rechercher un produit' %}">
+    {% if category_id %}<input type="hidden" name="categorie" value="{{ category_id }}">{% endif %}
+    <button class="btn btn-brand" aria-label="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
+</form>
+
+{% if categories %}
+<div class="d-flex flex-wrap gap-2 mb-3">
+    <a href="?{% if query %}q={{ query }}{% endif %}" class="btn btn-sm {% if not category_id %}btn-brand{% else %}btn-outline-brand{% endif %}">{% trans "Tout" %}</a>
+    {% for c in categories %}
+    <a href="?categorie={{ c.id }}{% if query %}&q={{ query }}{% endif %}" class="btn btn-sm {% if category_id == c.id|stringformat:'s' %}btn-brand{% else %}btn-outline-brand{% endif %}">{{ c.name }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
+    {% for product in page %}
+    <div class="col">
+        <a href="{% url 'storefront:product' slug=slug product_id=product.id %}" class="product-card {% if product.stock <= 0 %}soldout{% endif %}">
+            {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img" loading="lazy">
+            {% else %}<div class="product-img product-img-ph"><i class="bi bi-image"></i></div>{% endif %}
+            <div class="p-2">
+                <div class="fw-semibold small">{{ product.name }}</div>
+                <div class="price">{{ product.shop_price }} {{ boutique.devise }}</div>
+                {% if product.stock <= 0 %}<div class="small text-danger">{% trans "Épuisé" %}</div>{% endif %}
+            </div>
+        </a>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center text-muted py-5">{% trans "Aucun produit pour le moment." %}</div>
+    {% endfor %}
+</div>
+
+{% if page.has_other_pages %}
+<nav class="d-flex justify-content-center gap-2 mt-4">
+    {% if page.has_previous %}<a class="btn btn-outline-brand btn-sm" href="?page={{ page.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category_id %}&categorie={{ category_id }}{% endif %}">&laquo;</a>{% endif %}
+    <span class="align-self-center small">{{ page.number }} / {{ page.paginator.num_pages }}</span>
+    {% if page.has_next %}<a class="btn btn-outline-brand btn-sm" href="?page={{ page.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category_id %}&categorie={{ category_id }}{% endif %}">&raquo;</a>{% endif %}
+</nav>
+{% endif %}
+{% endblock %}

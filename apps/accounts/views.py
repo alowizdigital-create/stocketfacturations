@@ -133,6 +133,7 @@ def google_signup_confirm(request):
                 devise=data["devise"],
                 email=pending["email"],
                 password=None,
+                country=data["country"],
             )
             del request.session[GOOGLE_PENDING_SIGNUP_SESSION_KEY]
             login(request, user, backend="django.contrib.auth.backends.ModelBackend")

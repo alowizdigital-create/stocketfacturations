@@ -62,6 +62,7 @@
         <img src="{{ invoice.boutique.logo.url }}" alt="" class="logo">
         {% endif %}
         <h1>{{ invoice.boutique.name }}</h1>
+        {% if invoice.boutique.legal_mentions %}<div class="sub">{{ invoice.boutique.legal_mentions|join:" · " }}</div>{% endif %}
         <div class="sub">{{ invoice.get_type_display }} {{ invoice.number }} — {{ invoice.issue_date|date:"d/m/Y" }}</div>
     </div>
 

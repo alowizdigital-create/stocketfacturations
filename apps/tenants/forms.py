@@ -1,8 +1,11 @@
+from decimal import Decimal
+
 from django import forms
 from django.contrib.auth import get_user_model
 from django.contrib.auth.password_validation import validate_password
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.country_profiles import COUNTRY_CHOICES, DEFAULT_COUNTRY
 from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
@@ -20,10 +23,14 @@ class SignupForm(BootstrapFormMixin, forms.Form):
     #     max_length=10,
     #     help_text="Ex: BTQ-001. Sert à numéroter les factures.",
     # )
+    country = forms.ChoiceField(
+        label=_("Pays"), choices=COUNTRY_CHOICES, initial=DEFAULT_COUNTRY, required=False,
+        help_text=_("Applique la devise, la TVA et l'indicatif du pays (modifiables ensuite dans les paramètres)."),
+    )
     devise = forms.ChoiceField(
         label=_("Devise de la boutique"),
         choices=CURRENCY_CHOICES,
-        initial="XOF",
+        initial="XAF",
         help_text=_("Toutes les ventes et devis de cette boutique utiliseront cette devise par défaut."),
     )
     email = forms.EmailField(label=_("Votre email"))
@@ -104,7 +111,7 @@ class BoutiqueCreateForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = Boutique
-        fields = ["name", "code", "address", "phone", "devise", "country_calling_code"]
+        fields = ["name", "code", "address", "phone", "devise", "country_calling_code", "tva_rate"]
         labels = {
             "name": _("Nom de la boutique"),
             "code": _("Code court"),
@@ -118,6 +125,11 @@ class BoutiqueCreateForm(BootstrapFormMixin, forms.ModelForm):
     def __init__(self, *args, compte=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.compte = compte
+        self.fields["tva_rate"].required = False
+
+    def clean_tva_rate(self):
+        value = self.cleaned_data.get("tva_rate")
+        return value if value is not None else Decimal("0")
 
     def clean_code(self):
         code = self.cleaned_data["code"].strip().upper()
@@ -174,7 +186,7 @@ class StaffUpdateForm(BootstrapFormMixin, forms.ModelForm):
 class CompteSettingsForm(BootstrapFormMixin, forms.ModelForm):
     class Meta:
         model = Compte
-        fields = ["name", "email", "phone", "logo"]
+        fields = ["name", "email", "phone", "niu", "rccm", "logo"]
         labels = {
             "name": _("Nom de l'entreprise"),
             "email": "Email",
@@ -201,6 +213,7 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
         fields = [
             "devise",
             "country_calling_code",
+            "tva_rate",
             "delivery_price",
             "om_account_name",
             "om_number",
@@ -218,6 +231,27 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
 
     def clean_devise(self):
         return self.cleaned_data["devise"].strip().upper()
+
+
+class BoutiqueShopForm(BootstrapFormMixin, forms.ModelForm):
+    """Réglages de la boutique en ligne (vitrine publique) de la boutique
+    courante — voir apps.storefront."""
+
+    class Meta:
+        model = Boutique
+        fields = ["shop_enabled", "shop_slug", "shop_description", "shop_delivery_fee", "shop_delivery_info"]
+
+    def clean_shop_slug(self):
+        slug = (self.cleaned_data.get("shop_slug") or "").strip().lower() or None
+        if slug and Boutique.objects.filter(shop_slug=slug).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError(_("Cette adresse est déjà utilisée — choisissez-en une autre."))
+        return slug
+
+    def clean(self):
+        cleaned = super().clean()
+        if cleaned.get("shop_enabled") and not cleaned.get("shop_slug"):
+            self.add_error("shop_slug", _("Choisissez l'adresse de votre boutique pour l'activer."))
+        return cleaned
 
 
 class ExchangeRateForm(BootstrapFormMixin, forms.ModelForm):

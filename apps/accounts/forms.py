@@ -2,6 +2,7 @@ from django import forms
 from django.contrib.auth import get_user_model
 from django.utils.translation import gettext_lazy as _
 
+from apps.core.country_profiles import COUNTRY_CHOICES, DEFAULT_COUNTRY
 from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
@@ -16,8 +17,12 @@ class GoogleSignupConfirmForm(BootstrapFormMixin, forms.Form):
 
     entreprise_name = forms.CharField(label=_("Nom de l'entreprise"), max_length=255)
     boutique_name = forms.CharField(label=_("Nom de la première boutique"), max_length=255)
+    country = forms.ChoiceField(
+        label=_("Pays"), choices=COUNTRY_CHOICES, initial=DEFAULT_COUNTRY, required=False,
+        help_text=_("Applique la devise, la TVA et l'indicatif du pays (modifiables ensuite dans les paramètres)."),
+    )
     devise = forms.ChoiceField(
-        label=_("Devise de la boutique"), choices=CURRENCY_CHOICES, initial="XOF",
+        label=_("Devise de la boutique"), choices=CURRENCY_CHOICES, initial="XAF",
         help_text=_("Toutes les ventes et devis de cette boutique utiliseront cette devise par défaut."),
     )
 

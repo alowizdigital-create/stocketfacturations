@@ -13,6 +13,7 @@ from apps.core.permissions import block_when_offline, compte_admin_required
 from .forms import (
     BoutiqueCreateForm,
     BoutiqueRegionalForm,
+    BoutiqueShopForm,
     CompteSettingsForm,
     ExchangeRateForm,
     SignupForm,
@@ -43,6 +44,7 @@ def signup(request):
                 devise=data["devise"],
                 email=data["email"],
                 password=data["password"],
+                country=data["country"],
             )
             login(request, user)
             request.session["boutique_id"] = str(boutique.id)
@@ -402,3 +404,47 @@ def subscription_expired(request):
     seul un administrateur voit le lien pour renouveler."""
     subscription = getattr(request.compte, "subscription", None) if request.compte else None
     return render(request, "tenants/subscription_expired.html", {"subscription": subscription})
+
+
+@login_required
+@compte_admin_required
+@block_when_offline("tenants:company_settings")
+def shop_settings(request):
+    """Active et règle la boutique en ligne de la boutique courante, et
+    publie/retire d'un coup tous les produits actifs de la vitrine."""
+    from apps.catalog.models import Product
+
+    boutique = request.boutique
+    if boutique is None:
+        return redirect("tenants:choose_boutique")
+
+    if request.method == "POST" and request.POST.get("action") in ("publish_all", "unpublish_all"):
+        publish = request.POST["action"] == "publish_all"
+        count = Product.objects.filter(compte=request.compte, is_active=True).update(is_online=publish)
+        messages.success(
+            request,
+            _("%(n)s produit(s) publié(s) sur la boutique en ligne.") % {"n": count} if publish
+            else _("%(n)s produit(s) retiré(s) de la boutique en ligne.") % {"n": count},
+        )
+        return redirect("tenants:shop_settings")
+
+    if request.method == "POST":
+        form = BoutiqueShopForm(request.POST, instance=boutique)
+        if form.is_valid():
+            form.save()
+            messages.success(request, _("Boutique en ligne mise à jour."))
+            return redirect("tenants:shop_settings")
+    else:
+        initial = {}
+        if not boutique.shop_slug:
+            from django.utils.text import slugify
+
+            initial["shop_slug"] = slugify(boutique.name)[:60]
+        form = BoutiqueShopForm(instance=boutique, initial=initial)
+
+    online_count = Product.objects.filter(compte=request.compte, is_active=True, is_online=True).count()
+    total_count = Product.objects.filter(compte=request.compte, is_active=True).count()
+    return render(request, "tenants/shop_settings.html", {
+        "form": form, "online_count": online_count, "total_count": total_count,
+        "shop_url": request.build_absolute_uri(f"/boutique/{boutique.shop_slug}/") if boutique.shop_slug else "",
+    })

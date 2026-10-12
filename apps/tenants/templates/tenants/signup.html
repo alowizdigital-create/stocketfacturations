@@ -33,4 +33,15 @@
         </p>
     </div>
 </div>
+<script>
+    // Pays « Cameroun » : la devise suit (le serveur applique de toute façon le profil).
+    (function () {
+        const country = document.getElementById("id_country");
+        const devise = document.getElementById("id_devise");
+        if (!country || !devise) return;
+        const sync = () => { if (country.value === "CM") devise.value = "XAF"; };
+        country.addEventListener("change", sync);
+        sync();
+    })();
+</script>
 {% endblock %}

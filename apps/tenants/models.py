@@ -25,6 +25,15 @@ class Compte(UUIDModel, TimeStampedModel):
         help_text=_("Affiché en haut des factures/devis (ticket 80 mm)."),
     )
 
+    niu = models.CharField(
+        _("NIU"), max_length=50, blank=True,
+        help_text=_("Numéro d'identifiant unique (contribuable) — affiché sur les factures et devis."),
+    )
+    rccm = models.CharField(
+        _("RCCM"), max_length=50, blank=True,
+        help_text=_("Registre du commerce et du crédit mobilier — affiché sur les factures et devis."),
+    )
+
     class Meta:
         verbose_name = _("entreprise")
         verbose_name_plural = _("entreprises")
@@ -57,6 +66,13 @@ class Boutique(UUIDModel, TimeStampedModel):
             "indicatif (ex: 07... devient +225 07...)."
         ),
     )
+    tva_rate = models.DecimalField(
+        _("TVA par défaut (%)"), max_digits=5, decimal_places=2, default=0,
+        help_text=_(
+            "Proposée sur les nouvelles lignes de facture/devis et les nouveaux produits "
+            "(ex: 19,25 au Cameroun). Modifiable ligne par ligne."
+        ),
+    )
     is_active = models.BooleanField(default=True)
     is_default = models.BooleanField(
         _("boutique par défaut"),
@@ -84,6 +100,26 @@ class Boutique(UUIDModel, TimeStampedModel):
         ),
     )
 
+    # Boutique en ligne (vitrine publique, voir apps.storefront) : désactivée
+    # par défaut, adresse /boutique/<shop_slug>/ choisie par le vendeur.
+    shop_enabled = models.BooleanField(_("boutique en ligne active"), default=False)
+    shop_slug = models.SlugField(
+        _("adresse de la boutique en ligne"), max_length=60, unique=True, null=True, blank=True,
+        help_text=_("Lettres minuscules, chiffres et tirets — ex: ma-boutique."),
+    )
+    shop_description = models.CharField(
+        _("présentation"), max_length=300, blank=True,
+        help_text=_("Une phrase affichée en haut de la boutique en ligne."),
+    )
+    shop_delivery_fee = models.DecimalField(
+        _("frais de livraison"), max_digits=10, decimal_places=0, default=0,
+        help_text=_("Ajoutés à chaque commande en ligne. 0 = livraison gratuite."),
+    )
+    shop_delivery_info = models.CharField(
+        _("informations de livraison"), max_length=200, blank=True,
+        help_text=_("Ex: Livraison à Douala et Yaoundé sous 24-48 h."),
+    )
+
     class Meta:
         verbose_name = _("boutique")
         verbose_name_plural = _("boutiques")
@@ -98,6 +134,17 @@ class Boutique(UUIDModel, TimeStampedModel):
         if self.is_default:
             Boutique.objects.filter(compte=self.compte).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+    @property
+    def legal_mentions(self):
+        """Mentions légales de l'entreprise (NIU, RCCM) renseignées, prêtes
+        à afficher sur une facture/devis — liste vide si rien n'est saisi."""
+        mentions = []
+        if self.compte.niu:
+            mentions.append(f"NIU : {self.compte.niu}")
+        if self.compte.rccm:
+            mentions.append(f"RCCM : {self.compte.rccm}")
+        return mentions
 
     @property
     def payment_methods(self):

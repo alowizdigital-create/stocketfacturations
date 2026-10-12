@@ -172,6 +172,17 @@
                 {% endif %}
             </div>
         </div>
+        {% if invoice.source == "EN_LIGNE" %}
+        <hr>
+        <div class="alert alert-info mb-2">
+            <div class="fw-semibold"><i class="bi bi-globe2"></i> {% trans "Commande passée sur la boutique en ligne" %}</div>
+            {% if invoice.delivery_address %}<div><i class="bi bi-geo-alt"></i> {{ invoice.delivery_address }}</div>{% endif %}
+            <div>
+                {% if invoice.online_payment_mode == "MOBILE_MONEY" %}<i class="bi bi-phone"></i> {% trans "Mobile Money déclaré — référence" %} <strong>{{ invoice.online_payment_reference }}</strong> ({% trans "à vérifier avant de livrer" %})
+                {% else %}<i class="bi bi-cash"></i> {% trans "Paiement à la livraison" %}{% endif %}
+            </div>
+        </div>
+        {% endif %}
         {% if invoice.note %}
         <hr>
         <!-- <div class="text-muted small mb-1"><i class="bi bi-eye-slash"></i> Note interne — jamais sur le reçu/PDF envoyé au client</div> -->

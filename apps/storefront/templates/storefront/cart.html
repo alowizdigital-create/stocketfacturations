@@ -1,0 +1,45 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Panier" %} — {{ boutique.name }}{% endblock %}
+{% block content %}
+<h1 class="h4 mb-3">{% trans "Votre panier" %}</h1>
+{% if not lines %}
+<div class="panel text-center py-5">
+    <p class="text-muted mb-3">{% trans "Votre panier est vide." %}</p>
+    <a href="{% url 'storefront:home' slug=slug %}" class="btn btn-brand">{% trans "Voir les produits" %}</a>
+</div>
+{% else %}
+<div class="panel">
+    {% for line in lines %}
+    <div class="d-flex align-items-center gap-3 py-2 {% if not forloop.last %}border-bottom{% endif %}">
+        {% if line.product.image %}<img src="{{ line.product.image.url }}" alt="" width="56" height="56" class="rounded" style="object-fit:cover;">
+        {% else %}<div class="product-img-ph rounded" style="width:56px;height:56px;background:var(--brand-light);"><i class="bi bi-image"></i></div>{% endif %}
+        <div class="flex-grow-1">
+            <div class="fw-semibold">{{ line.product.name }}</div>
+            <div class="small text-muted">{{ line.unit_ttc }} {{ boutique.devise }}</div>
+            {% if not line.in_stock %}<div class="small text-danger">{% blocktrans with n=line.product.stock|floatformat:0 %}Stock insuffisant (reste {{ n }}).{% endblocktrans %}</div>{% endif %}
+        </div>
+        <form method="post" action="{% url 'storefront:cart_update' slug=slug product_id=line.product.id %}" class="d-flex gap-1">
+            {% csrf_token %}
+            <input type="number" name="quantity" value="{{ line.quantity }}" min="0" max="99" class="form-control form-control-sm" style="width:70px;">
+            <button class="btn btn-sm btn-outline-brand" title="{% trans 'Mettre à jour' %}"><i class="bi bi-check2"></i></button>
+        </form>
+        <div class="fw-bold text-end" style="min-width:90px;">{{ line.line_ttc }}</div>
+    </div>
+    {% endfor %}
+    <div class="border-top mt-2 pt-2">
+        <div class="d-flex justify-content-between"><span>{% trans "Sous-total" %}</span><span>{{ totals.subtotal }} {{ boutique.devise }}</span></div>
+        {% if totals.delivery_fee %}<div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><span>{{ totals.delivery_fee }} {{ boutique.devise }}</span></div>{% endif %}
+        <div class="d-flex justify-content-between fs-5 fw-bold mt-1"><span>{% trans "Total" %}</span><span>{{ totals.total }} {{ boutique.devise }}</span></div>
+    </div>
+</div>
+<div class="d-flex flex-wrap gap-2 mt-3">
+    <a href="{% url 'storefront:home' slug=slug %}" class="btn btn-outline-brand">{% trans "Continuer mes achats" %}</a>
+    {% if has_stock_problem %}
+    <button class="btn btn-brand ms-auto" disabled>{% trans "Corrigez les quantités pour commander" %}</button>
+    {% else %}
+    <a href="{% url 'storefront:checkout' slug=slug %}" class="btn btn-brand ms-auto">{% trans "Commander" %} <i class="bi bi-arrow-right"></i></a>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}

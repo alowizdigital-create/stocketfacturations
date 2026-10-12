@@ -191,15 +191,18 @@ class BoutiquePullSerializer(serializers.ModelSerializer):
     compte_name = serializers.CharField(source="compte.name", read_only=True)
     compte_email = serializers.EmailField(source="compte.email", read_only=True)
     compte_phone = serializers.CharField(source="compte.phone", read_only=True)
+    compte_niu = serializers.CharField(source="compte.niu", read_only=True)
+    compte_rccm = serializers.CharField(source="compte.rccm", read_only=True)
     compte_logo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Boutique
         fields = [
-            "id", "name", "code", "address", "phone", "devise",
+            "id", "name", "code", "address", "phone", "devise", "tva_rate",
             "country_calling_code", "om_account_name", "om_number",
             "momo_account_name", "momo_number", "is_default",
             "compte_id", "compte_name", "compte_email", "compte_phone",
+            "compte_niu", "compte_rccm",
             "compte_logo_url", "updated_at",
         ]
 

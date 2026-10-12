@@ -308,6 +308,9 @@ def product_create(request):
             include_quantity=True,
         )
         if form.is_valid():
+            # Le taux de TVA n'est pas dans le formulaire : un nouveau produit
+            # reprend celui de la boutique (Boutique.tva_rate).
+            form.instance.tva_rate = request.boutique.tva_rate
             product = form.save()
             _save_extra_images(product, form.cleaned_data["extra_images"])
 

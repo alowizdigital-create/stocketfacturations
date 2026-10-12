@@ -20,6 +20,7 @@
             <input type="date" name="to" id="report-to" value="{{ date_to|date:'Y-m-d' }}" class="form-control">
         </div>
         <button type="submit" class="btn btn-primary"><i class="bi bi-funnel"></i> {% trans "Afficher" %}</button>
+        <a href="{% url 'sales:margin_report_export' %}?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}" class="btn btn-outline-secondary"><i class="bi bi-file-earmark-excel"></i> {% trans "Excel" %}</a>
         <div class="d-flex flex-wrap gap-1 ms-md-3">
             {% for label, start, end in presets %}
             <a href="?from={{ start|date:'Y-m-d' }}&to={{ end|date:'Y-m-d' }}" class="btn btn-sm btn-outline-secondary {% if start == date_from and end == date_to %}active{% endif %}">{{ label }}</a>
@@ -32,7 +33,7 @@
     <div class="col">
         <div class="card-app h-100"><div class="card-app-body">
             <div class="text-muted small">{% trans "Ventes (HT)" %}</div>
-            <div class="stat-value">{{ totals.revenue }}</div>
+            <div class="stat-value">{{ totals.revenue }}</div>{% if deltas.revenue is not None %}<div class="small mt-1 {% if deltas.revenue >= 0 %}text-success{% else %}text-danger{% endif %}" title="{% blocktrans with a=prev_from|date:"d/m" b=prev_to|date:"d/m" %}Par rapport au {{ a }} – {{ b }}{% endblocktrans %}"><i class="bi bi-{% if deltas.revenue >= 0 %}arrow-up-right{% else %}arrow-down-right{% endif %}"></i> {{ deltas.revenue }} %</div>{% endif %}
         </div></div>
     </div>
     <div class="col">
@@ -44,22 +45,57 @@
     <div class="col">
         <div class="card-app h-100"><div class="card-app-body">
             <div class="text-muted small">{% trans "Marge brute" %}{% if totals.margin_percent is not None %} · {{ totals.margin_percent }} %{% endif %}</div>
-            <div class="stat-value {% if totals.margin < 0 %}text-danger{% endif %}">{{ totals.margin }}</div>
+            <div class="stat-value {% if totals.margin < 0 %}text-danger{% endif %}">{{ totals.margin }}</div>{% if deltas.margin is not None %}<div class="small mt-1 {% if deltas.margin >= 0 %}text-success{% else %}text-danger{% endif %}" title="{% blocktrans with a=prev_from|date:"d/m" b=prev_to|date:"d/m" %}Par rapport au {{ a }} – {{ b }}{% endblocktrans %}"><i class="bi bi-{% if deltas.margin >= 0 %}arrow-up-right{% else %}arrow-down-right{% endif %}"></i> {{ deltas.margin }} %</div>{% endif %}
         </div></div>
     </div>
     <div class="col">
         <a href="{% url 'purchasing:expense_list' %}?from={{ date_from|date:'Y-m-d' }}&to={{ date_to|date:'Y-m-d' }}" class="card-app h-100 d-block text-decoration-none text-reset"><div class="card-app-body">
             <div class="text-muted small">{% trans "Dépenses" %}{% if totals.delivery_fees %} <span title="{% trans 'dont frais de livraison' %}">({% trans "dont livraisons" %} {{ totals.delivery_fees }})</span>{% endif %}</div>
-            <div class="stat-value">{{ totals.expenses_total }}</div>
+            <div class="stat-value">{{ totals.expenses_total }}</div>{% if deltas.expenses_total is not None %}<div class="small mt-1 {% if deltas.expenses_total >= 0 %}text-muted{% else %}text-muted{% endif %}" title="{% blocktrans with a=prev_from|date:"d/m" b=prev_to|date:"d/m" %}Par rapport au {{ a }} – {{ b }}{% endblocktrans %}"><i class="bi bi-{% if deltas.expenses_total >= 0 %}arrow-up-right{% else %}arrow-down-right{% endif %}"></i> {{ deltas.expenses_total }} %</div>{% endif %}
         </div></a>
     </div>
     <div class="col">
         <div class="card-app h-100"><div class="card-app-body">
             <div class="text-muted small">{% trans "Bénéfice net" %}</div>
-            <div class="stat-value {% if totals.net_profit < 0 %}text-danger{% else %}text-success{% endif %}">{{ totals.net_profit }}</div>
+            <div class="stat-value {% if totals.net_profit < 0 %}text-danger{% else %}text-success{% endif %}">{{ totals.net_profit }}</div>{% if deltas.net_profit is not None %}<div class="small mt-1 {% if deltas.net_profit >= 0 %}text-success{% else %}text-danger{% endif %}" title="{% blocktrans with a=prev_from|date:"d/m" b=prev_to|date:"d/m" %}Par rapport au {{ a }} – {{ b }}{% endblocktrans %}"><i class="bi bi-{% if deltas.net_profit >= 0 %}arrow-up-right{% else %}arrow-down-right{% endif %}"></i> {{ deltas.net_profit }} %</div>{% endif %}
         </div></div>
     </div>
 </div>
+
+
+<div class="row row-cols-2 g-3 mb-3">
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Nombre de ventes" %}</div>
+            <div class="stat-value">{{ totals.sales_count }}</div>
+            {% if deltas.sales_count is not None %}<div class="small mt-1 {% if deltas.sales_count >= 0 %}text-success{% else %}text-danger{% endif %}" title="{% blocktrans with a=prev_from|date:"d/m" b=prev_to|date:"d/m" %}Par rapport au {{ a }} – {{ b }}{% endblocktrans %}"><i class="bi bi-{% if deltas.sales_count >= 0 %}arrow-up-right{% else %}arrow-down-right{% endif %}"></i> {{ deltas.sales_count }} %</div>{% endif %}
+        </div></div>
+    </div>
+    <div class="col">
+        <div class="card-app h-100"><div class="card-app-body">
+            <div class="text-muted small">{% trans "Panier moyen (HT)" %}</div>
+            <div class="stat-value">{% if totals.average_basket is not None %}{{ totals.average_basket }}{% else %}—{% endif %}</div>
+        </div></div>
+    </div>
+</div>
+
+{% if trend.max %}
+<div class="card-app mb-3">
+    <div class="card-app-header">{% if trend.granularity == "month" %}{% trans "Ventes par mois (HT)" %}{% else %}{% trans "Ventes par jour (HT)" %}{% endif %}</div>
+    <div class="card-app-body" style="overflow-x:auto;">
+        <div class="d-flex align-items-end gap-1" style="height:140px; min-width: {% widthratio trend.points|length 1 18 %}px;">
+            {% for p in trend.points %}
+            <div class="flex-fill d-flex flex-column justify-content-end" style="min-width:12px; height:100%;" title="{{ p.label }} — {% trans 'Ventes' %} {{ p.revenue }} · {% trans 'Marge' %} {{ p.margin }}">
+                <div style="height:{{ p.height }}%; min-height:{% if p.revenue %}2px{% else %}0{% endif %}; background:var(--brand, #6f4a8e); border-radius:3px 3px 0 0; opacity:.85;"></div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="d-flex justify-content-between text-muted small mt-1">
+            <span>{{ trend.points.0.label }}</span><span>{% trans "Pic" %} : {{ trend.max }} {{ request.boutique.devise }}</span><span>{% with last=trend.points|last %}{{ last.label }}{% endwith %}</span>
+        </div>
+    </div>
+</div>
+{% endif %}
 
 {% if totals.revenue_unknown_cost %}
 <div class="alert alert-warning">
@@ -117,5 +153,5 @@
     </div>
 </div>
 {% endif %}
-<p class="text-muted small mt-2">{% trans "Les commandes et devis convertis en facture ne sont pas encore comptés ici : seules les ventes du point de vente le sont." %}</p>
+<p class="text-muted small mt-2">{% trans "Comptés ici : les ventes du point de vente et les commandes livrées/facturées. Les devis convertis en facture et les factures créées directement ne le sont pas encore." %}</p>
 {% endblock %}

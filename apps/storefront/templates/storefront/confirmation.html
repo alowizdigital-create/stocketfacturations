@@ -1,0 +1,28 @@
+{% extends "storefront/base.html" %}
+{% load i18n %}
+{% block title %}{% trans "Commande envoyée" %} — {{ boutique.name }}{% endblock %}
+{% block content %}
+<div class="panel text-center py-4 mb-3">
+    <div class="text-success" style="font-size:3rem;"><i class="bi bi-check-circle-fill"></i></div>
+    <h1 class="h4">{% trans "Merci, votre commande est envoyée !" %}</h1>
+    <p class="mb-1">{% trans "Numéro de commande" %} : <strong>{{ commande.commande_seq }}</strong></p>
+    <p class="text-muted small mb-0">{% trans "Le vendeur vous contactera au" %} {{ commande.client.phone }} {% trans "pour confirmer la livraison." %}</p>
+</div>
+
+<div class="panel mb-3">
+    {% for line in commande.lines.all %}
+    <div class="d-flex justify-content-between small py-1"><span>{{ line.quantity|floatformat:"-3" }} × {{ line.description }}</span><span>{{ line.line_total_ttc }}</span></div>
+    {% endfor %}
+    <div class="d-flex justify-content-between fw-bold border-top mt-2 pt-2"><span>{% trans "Total" %}</span><span>{{ commande.total_ttc }} {{ commande.currency }}</span></div>
+    <div class="small text-muted mt-2"><i class="bi bi-geo-alt"></i> {{ commande.delivery_address }}</div>
+    <div class="small text-muted">
+        {% if commande.online_payment_mode == "MOBILE_MONEY" %}<i class="bi bi-phone"></i> {% trans "Mobile Money" %} — {% trans "réf." %} {{ commande.online_payment_reference }} ({% trans "le vendeur la vérifiera" %})
+        {% else %}<i class="bi bi-cash"></i> {% trans "Paiement à la livraison" %}{% endif %}
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 justify-content-center">
+    {% if whatsapp %}<a href="{{ whatsapp }}" target="_blank" rel="noopener" class="btn btn-success"><i class="bi bi-whatsapp"></i> {% trans "Écrire au vendeur" %}</a>{% endif %}
+    <a href="{% url 'storefront:home' slug=slug %}" class="btn btn-outline-brand">{% trans "Retour à la boutique" %}</a>
+</div>
+{% endblock %}

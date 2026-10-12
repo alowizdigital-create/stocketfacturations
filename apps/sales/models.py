@@ -200,6 +200,24 @@ class Invoice(UUIDModel, BoutiqueScopedModel, TimeStampedModel):
     delivery_status = models.CharField(
         _("statut de livraison"), max_length=15, choices=DELIVERY_STATUS_CHOICES, default=EN_ATTENTE,
     )
+    # Commande passée par un client sur la boutique en ligne (voir
+    # apps.storefront) : adresse de livraison et mode de paiement choisi.
+    # Le Mobile Money est déclaratif — le vendeur vérifie la référence avant
+    # de livrer.
+    INTERNE = "INTERNE"
+    EN_LIGNE = "EN_LIGNE"
+    SOURCE_CHOICES = [(INTERNE, _("Interne")), (EN_LIGNE, _("Boutique en ligne"))]
+    PAY_LIVRAISON = "LIVRAISON"
+    PAY_MOBILE_MONEY = "MOBILE_MONEY"
+    ONLINE_PAYMENT_CHOICES = [
+        ("", ""), (PAY_LIVRAISON, _("Paiement à la livraison")), (PAY_MOBILE_MONEY, "Mobile Money"),
+    ]
+    source = models.CharField(_("origine"), max_length=10, choices=SOURCE_CHOICES, default=INTERNE)
+    delivery_address = models.CharField(_("adresse de livraison"), max_length=255, blank=True)
+    online_payment_mode = models.CharField(
+        _("paiement choisi"), max_length=15, choices=ONLINE_PAYMENT_CHOICES, blank=True,
+    )
+    online_payment_reference = models.CharField(_("référence Mobile Money"), max_length=100, blank=True)
     delivered_at = models.DateTimeField(_("livrée le"), null=True, blank=True)
     delivered_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,

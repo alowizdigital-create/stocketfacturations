@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.cashier",
     "apps.purchasing",
     "apps.sync",
+    "apps.storefront",
 ]
 
 MIDDLEWARE = [

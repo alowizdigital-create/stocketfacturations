@@ -8,19 +8,25 @@ administrateur."""
 from django.db import transaction
 
 from apps.catalog.models import Unit
+from apps.core.country_profiles import apply_profile
 
 from .models import Boutique, Compte, Membership, Plan, Subscription
 
 
 @transaction.atomic
-def create_company_with_owner(*, user_model, entreprise_name, boutique_name, devise, email, password=None):
+def create_company_with_owner(
+    *, user_model, entreprise_name, boutique_name, devise, email, password=None, country="",
+):
     """Crée l'entreprise, sa boutique par défaut et son administrateur.
     `password=None` laisse un mot de passe inutilisable (voir
     UserManager.create_user / AbstractBaseUser.set_password) — le cas d'un
     compte créé via Google, qui pourra en définir un plus tard via "mot de
     passe oublié" s'il veut aussi se connecter depuis le poste offline.
+    `country` (ex: "CM") applique le profil de départ du pays — devise, TVA
+    et indicatif, voir apps.core.country_profiles — et l'emporte sur `devise`.
     Renvoie (user, boutique)."""
 
+    devise, tva_rate, calling_code = apply_profile(country, devise)
     entreprise_name = entreprise_name.strip()
     compte = Compte.objects.create(name=entreprise_name, email=email)
 
@@ -30,6 +36,7 @@ def create_company_with_owner(*, user_model, entreprise_name, boutique_name, dev
     boutique_code = entreprise_name.replace(" ", "")[:3].upper()
     boutique = Boutique.objects.create(
         compte=compte, name=boutique_name, code=boutique_code, devise=devise, is_default=True,
+        tva_rate=tva_rate, country_calling_code=calling_code,
     )
     Unit.objects.create(compte=compte, name="Pièce", symbol="pc")
     free_plan = Plan.objects.filter(name="Gratuit").first()

@@ -59,6 +59,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             # "low_stock_threshold_default",
             "expiry_date",
             "is_active",
+            "is_online",
         ]
         labels = {
             "name": _("Nom"),
@@ -68,6 +69,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "unit": _("Unité"),
             "purchase_price": _("Prix d'achat (FCFA)"),
             "is_active": _("Actif"),
+            "is_online": _("Afficher sur la boutique en ligne"),
         }
         help_texts = {
             "purchase_price": _(

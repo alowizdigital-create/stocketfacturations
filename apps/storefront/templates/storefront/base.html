@@ -1,0 +1,55 @@
+{% load static i18n %}<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ boutique.name }}{% endblock %}</title>
+    <meta name="description" content="{{ boutique.shop_description|default:boutique.name }}">
+    <link href="{% static 'vendor/bootstrap/css/bootstrap.min.css' %}" rel="stylesheet">
+    <link href="{% static 'vendor/bootstrap-icons/font/bootstrap-icons.min.css' %}" rel="stylesheet">
+    <style>
+        :root { --brand: #6f4a8e; --brand-light: #f1ecf6; --border: #e6e1ee; }
+        body { background: #faf9fc; color: #2b2233; }
+        .shop-nav { background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        .shop-brand { color: var(--brand); font-weight: 700; text-decoration: none; display: flex; align-items: center; gap: .5rem; }
+        .shop-brand img { width: 32px; height: 32px; border-radius: 8px; object-fit: cover; }
+        .btn-brand { background: var(--brand); border-color: var(--brand); color: #fff; }
+        .btn-brand:hover { background: #5d3d78; color: #fff; }
+        .btn-outline-brand { color: var(--brand); border-color: var(--brand); }
+        .btn-outline-brand:hover { background: var(--brand); color: #fff; }
+        .product-card { background: #fff; border: 1px solid var(--border); border-radius: 12px; overflow: hidden; height: 100%; display: flex; flex-direction: column; text-decoration: none; color: inherit; }
+        .product-card:hover { box-shadow: 0 4px 14px rgba(111,74,142,.15); color: inherit; }
+        .product-img { aspect-ratio: 1 / 1; object-fit: cover; width: 100%; background: var(--brand-light); }
+        .product-img-ph { display: flex; align-items: center; justify-content: center; color: #c3bcd1; font-size: 2.5rem; }
+        .price { font-weight: 700; color: var(--brand); }
+        .soldout { opacity: .55; }
+        .panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
+        .cart-badge { position: absolute; top: -6px; right: -8px; font-size: .65rem; }
+        .hp { position: absolute; left: -9999px; }
+        footer { color: #7c7488; font-size: .8rem; }
+    </style>
+</head>
+<body>
+<nav class="shop-nav">
+    <div class="container d-flex align-items-center justify-content-between py-2 gap-2">
+        <a href="{% url 'storefront:home' slug=slug %}" class="shop-brand">
+            {% if boutique.compte.logo %}<img src="{{ boutique.compte.logo.url }}" alt="">{% endif %}
+            <span>{{ boutique.name }}</span>
+        </a>
+        <a href="{% url 'storefront:cart' slug=slug %}" class="btn btn-outline-brand position-relative" aria-label="{% trans 'Panier' %}">
+            <i class="bi bi-bag"></i> <span class="d-none d-sm-inline">{% trans "Panier" %}</span>
+            {% if cart_count %}<span class="badge rounded-pill bg-danger cart-badge">{{ cart_count }}</span>{% endif %}
+        </a>
+    </div>
+</nav>
+<main class="container py-3" style="max-width: 1000px;">
+    {% if messages %}{% for message in messages %}<div class="alert alert-info py-2">{{ message }}</div>{% endfor %}{% endif %}
+    {% block content %}{% endblock %}
+</main>
+<footer class="container text-center pb-4" style="max-width: 1000px;">
+    <div>{{ boutique.name }}{% if boutique.address %} — {{ boutique.address }}{% endif %}{% if boutique.phone %} — {{ boutique.phone }}{% endif %}</div>
+    {% for mention in boutique.legal_mentions %}<span class="me-2">{{ mention }}</span>{% endfor %}
+    <div class="mt-1">{% trans "Boutique propulsée par" %} Zweey</div>
+</footer>
+</body>
+</html>

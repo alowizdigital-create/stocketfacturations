@@ -5,6 +5,7 @@ l'application. Distinct de apps.sales.pdf, qui génère le PDF d'UN document
 (facture/devis/commande) : ici c'est toujours une liste."""
 
 import io
+from decimal import Decimal
 
 from django.utils import timezone
 from openpyxl import Workbook
@@ -120,6 +121,61 @@ def build_commandes_xlsx(commandes, *, boutique, delivery_label):
     widths = [max(len(str(row[i])) for row in ([list(COLUMNS)] + _rows(commandes))) for i in range(len(COLUMNS))]
     for index, width in enumerate(widths, start=1):
         sheet.column_dimensions[get_column_letter(index)].width = min(max(width + 2, 10), 40)
+
+    buffer = io.BytesIO()
+    workbook.save(buffer)
+    return buffer.getvalue()
+
+
+def build_margin_report_xlsx(report, *, boutique, date_from, date_to):
+    """Classeur Excel du rapport marge/bénéfice : une feuille de synthèse
+    (totaux + dépenses par catégorie) et une feuille par produit."""
+    totals = report["totals"]
+    workbook = Workbook()
+    summary = workbook.active
+    summary.title = "Synthèse"
+    summary.append([f"Marge et bénéfice — {boutique.name}"])
+    summary["A1"].font = Font(bold=True, size=14)
+    summary.append([f"Du {date_from:%d/%m/%Y} au {date_to:%d/%m/%Y} — montants HT en {boutique.devise}"])
+    summary.append([])
+    for label, value in [
+        ("Ventes (HT)", totals["revenue"]),
+        ("Coût des marchandises", totals["cost"]),
+        ("Marge brute", totals["margin"]),
+        ("Marge brute (%)", float(totals["margin_percent"]) if totals["margin_percent"] is not None else ""),
+        ("Dépenses", totals["expenses_total"]),
+        ("Bénéfice net", totals["net_profit"]),
+        ("Nombre de ventes", totals["sales_count"]),
+        ("Panier moyen (HT)", totals["average_basket"] if totals["average_basket"] is not None else ""),
+        ("Ventes au coût inconnu (exclues de la marge)", totals["revenue_unknown_cost"]),
+    ]:
+        summary.append([label, float(value) if isinstance(value, Decimal) else value])
+    summary.append([])
+    summary.append(["Dépenses par catégorie"])
+    summary.cell(row=summary.max_row, column=1).font = Font(bold=True)
+    for label, amount in report["expenses_by_category"]:
+        summary.append([label, float(amount)])
+    summary.column_dimensions["A"].width = 46
+    summary.column_dimensions["B"].width = 18
+
+    products = workbook.create_sheet("Produits")
+    header = ["Produit", "Qté vendue", "Ventes (HT)", "Coût", "Bénéfice", "Marge (%)"]
+    products.append(header)
+    fill = PatternFill("solid", fgColor=BRAND_HEX)
+    for cell in products[1]:
+        cell.font = Font(bold=True, color="FFFFFF")
+        cell.fill = fill
+    for row in report["rows"]:
+        known = row["margin_percent"] is not None
+        products.append([
+            row["name"], float(row["quantity"]), float(row["revenue"]),
+            float(row["cost"]) if known else "Prix d'achat inconnu",
+            float(row["margin"]) if known else "",
+            float(row["margin_percent"]) if known else "",
+        ])
+    products.freeze_panes = "A2"
+    for index, width in enumerate([40, 12, 16, 20, 14, 12], start=1):
+        products.column_dimensions[get_column_letter(index)].width = width
 
     buffer = io.BytesIO()
     workbook.save(buffer)

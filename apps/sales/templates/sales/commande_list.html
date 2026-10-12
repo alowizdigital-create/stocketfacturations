@@ -49,7 +49,7 @@
         <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
-                <td class="fw-semibold">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}</td>
+                <td class="fw-semibold">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}{% if invoice.source == "EN_LIGNE" %} <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>{% endif %}</td>
                 <td>{{ invoice.client|default:"—" }}</td>
                 <td class="text-muted">{{ invoice.client.phone|default:"—" }}</td>
                 <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
@@ -154,7 +154,7 @@
         }
         tbody.innerHTML = items.map((c) => `
             <tr>
-                <td class="fw-semibold">${escapeHtml(c.number)}</td>
+                <td class="fw-semibold">${escapeHtml(c.number)}${c.online ? ' <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>' : ""}</td>
                 <td>${c.client ? escapeHtml(c.client) : "—"}</td>
                 <td class="text-muted">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
                 <td class="d-none d-sm-table-cell text-muted">${c.date}</td>

@@ -21,6 +21,7 @@ urlpatterns = [
     path("ventes/<uuid:sale_id>/facturer/", views.sale_generate_invoice, name="sale_generate_invoice"),
 
     path("rapports/marge/", views.margin_report, name="margin_report"),
+    path("rapports/marge/export/", views.margin_report_export, name="margin_report_export"),
 
     path("factures/", views.invoice_list, name="invoice_list"),
     path("devis/", views.devis_list, name="devis_list"),

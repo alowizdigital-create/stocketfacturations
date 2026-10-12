@@ -76,6 +76,10 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         help_text=_("Laisser vide pour un produit sans date de péremption."),
     )
     is_active = models.BooleanField(default=True)
+    is_online = models.BooleanField(
+        _("visible sur la boutique en ligne"), default=False,
+        help_text=_("Le produit apparaît sur la vitrine publique de la boutique (si elle est activée)."),
+    )
 
     class Meta:
         verbose_name = _("produit")

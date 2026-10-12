@@ -29,4 +29,14 @@
         </p>
     </div>
 </div>
+<script>
+    (function () {
+        const country = document.getElementById("id_country");
+        const devise = document.getElementById("id_devise");
+        if (!country || !devise) return;
+        const sync = () => { if (country.value === "CM") devise.value = "XAF"; };
+        country.addEventListener("change", sync);
+        sync();
+    })();
+</script>
 {% endblock %}
