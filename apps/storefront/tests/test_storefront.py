@@ -718,3 +718,15 @@ def test_header_shows_logo_without_name_when_logo_exists(client, boutique):
 def test_header_falls_back_to_name_without_logo(client, boutique):
     header = client.get(_url("home")).content.decode().split("<header")[1].split("</header>")[0]
     assert "<span>" + boutique.name + "</span>" in header
+
+
+def test_description_has_about_heading_and_paragraphs(client, boutique):
+    p = _product(boutique, "Mastic", description="Premier paragraphe." + chr(10) * 2 + "Second paragraphe.")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert "À propos du produit" in html and "<p>Premier paragraphe.</p>" in html and "<p>Second paragraphe.</p>" in html
+    assert "inter.css" in html
+
+
+def test_about_section_hidden_without_description(client, boutique):
+    p = _product(boutique, "Simple")
+    assert "À propos du produit" not in client.get(_url("product", p.id)).content.decode()

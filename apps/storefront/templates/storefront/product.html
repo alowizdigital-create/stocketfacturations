@@ -17,7 +17,10 @@
     .btn-buy-lg { display: block; width: 100%; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .75rem; line-height: 1.2; }
     .btn-buy-lg:hover { background: #0f6a0c; color: #fff; }
     .btn-buy-lg small { display: block; font-size: .9rem; }
-    .pd-desc { white-space: pre-line; color: #33435c; line-height: 1.6; }
+    .pd-about h2 { font-size: 1.15rem; font-weight: 700; margin: 0 0 .9rem; padding-bottom: .5rem; border-bottom: 3px solid var(--brand); display: inline-block; letter-spacing: .01em; }
+    .pd-desc { font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif; font-size: 1rem; line-height: 1.75; color: #2b3a52; }
+    .pd-desc p { margin: 0 0 .9rem; }
+    .pd-desc p:last-child { margin-bottom: 0; }
     .related-title { font-size: 1.4rem; font-weight: 600; margin: 3rem 0 1.2rem; }
 </style>
 {% endblock %}
@@ -69,7 +72,10 @@
 
             {% if product.description %}
             <hr>
-            <div class="pd-desc">{{ product.description }}</div>
+            <section class="pd-about">
+                <h2>{% trans "À propos du produit" %}</h2>
+                <div class="pd-desc">{{ product.description|linebreaks }}</div>
+            </section>
             {% endif %}
         </div>
     </div>
