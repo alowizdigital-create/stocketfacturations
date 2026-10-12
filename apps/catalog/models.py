@@ -76,6 +76,14 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         help_text=_("Laisser vide pour un produit sans date de péremption."),
     )
     is_active = models.BooleanField(default=True)
+    compare_at_price = models.DecimalField(
+        _("prix avant promotion"), max_digits=12, decimal_places=0, null=True, blank=True,
+        help_text=_("Affiché barré sur la boutique en ligne, avec la mention « Promotion », s'il est supérieur au prix de vente."),
+    )
+    promo_ends_at = models.DateTimeField(
+        _("fin de la promotion"), null=True, blank=True,
+        help_text=_("Facultatif : affiche un compte à rebours et retire la promotion à cette date."),
+    )
     is_online = models.BooleanField(
         _("visible sur la boutique en ligne"), default=False,
         help_text=_("Le produit apparaît sur la vitrine publique de la boutique (si elle est activée)."),

@@ -60,6 +60,8 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "expiry_date",
             "is_active",
             "is_online",
+            "compare_at_price",
+            "promo_ends_at",
         ]
         labels = {
             "name": _("Nom"),
@@ -70,6 +72,8 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "purchase_price": _("Prix d'achat (FCFA)"),
             "is_active": _("Actif"),
             "is_online": _("Afficher sur la boutique en ligne"),
+            "compare_at_price": _("Prix avant promotion (barré)"),
+            "promo_ends_at": _("Fin de la promotion"),
         }
         help_texts = {
             "purchase_price": _(
@@ -80,6 +84,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         }
         widgets = {
             "expiry_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "promo_ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
         }
 
     def __init__(self, *args, compte=None, include_quantity=False, **kwargs):
@@ -91,6 +96,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         if compte is not None:
             self.fields["category"].queryset = Category.objects.filter(compte=compte)
             self.fields["unit"].queryset = Unit.objects.filter(compte=compte)
+        self.fields["promo_ends_at"].input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M", "%Y-%m-%d"]
         if not include_quantity:
             del self.fields["initial_quantity"]
         else:

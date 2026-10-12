@@ -303,3 +303,84 @@ def test_publish_buttons_send_action_via_hidden_field(admin_client):
     html = admin_client.get(reverse("tenants:shop_settings")).content.decode()
     assert 'type="hidden" name="action" value="publish_all"' in html
     assert '<button name="action"' not in html
+
+
+# --- présentation catalogue (promo, filtres, tri, achat direct) --------------------
+
+def test_promotion_shows_badge_and_old_price(client, boutique):
+    _product(boutique, "Promo", price="10000", compare_at_price=Decimal("15000"))
+    html = client.get(_url("home")).content.decode()
+    assert "Promotion" in html and "<span class=\"price-old\"" in html
+
+
+def test_expired_promotion_is_not_shown(client, boutique):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    _product(boutique, "Fini", price="10000", compare_at_price=Decimal("15000"),
+             promo_ends_at=timezone.now() - timedelta(hours=1))
+    assert "<span class=\"price-old\"" not in client.get(_url("home")).content.decode()
+
+
+def test_countdown_present_for_timed_promotion(client, boutique):
+    from datetime import timedelta
+
+    from django.utils import timezone
+
+    _product(boutique, "Chrono", price="10000", compare_at_price=Decimal("15000"),
+             promo_ends_at=timezone.now() + timedelta(hours=3))
+    assert "data-countdown" in client.get(_url("home")).content.decode()
+
+
+def test_no_promotion_when_compare_price_not_higher(client, boutique):
+    _product(boutique, "Pas promo", price="10000", compare_at_price=Decimal("9000"))
+    assert "<span class=\"price-old\"" not in client.get(_url("home")).content.decode()
+
+
+def test_low_stock_gauge_shown(client, boutique):
+    _product(boutique, "Peu", stock=3)
+    _product(boutique, "Beaucoup", stock=50)
+    html = client.get(_url("home")).content.decode()
+    assert html.count("restants") == 1
+
+
+def test_filter_available_only_and_price_range(client, boutique):
+    _product(boutique, "Stock", price="1000", stock=5)
+    _product(boutique, "Rupture", price="1000", stock=0)
+    _product(boutique, "Cher", price="9000", stock=5)
+    html = client.get(_url("home"), {"dispo": "1", "prix_max": "2000"}).content.decode()
+    assert "Stock" in html and "Rupture" not in html and "Cher" not in html
+
+
+def test_sorting_by_price(client, boutique):
+    _product(boutique, "Aaa", price="3000")
+    _product(boutique, "Bbb", price="1000")
+    html = client.get(_url("home"), {"tri": "prix_asc"}).content.decode()
+    assert html.index("Bbb") < html.index("Aaa")
+    html = client.get(_url("home"), {"tri": "prix_desc"}).content.decode()
+    assert html.index("Aaa") < html.index("Bbb")
+    assert client.get(_url("home"), {"tri": "n_importe_quoi", "prix_min": "abc"}).status_code == 200
+
+
+def test_card_has_buy_now_button_and_announcement(client, boutique):
+    boutique.shop_delivery_info = "Livraison gratuite à Douala"
+    boutique.save()
+    _product(boutique)
+    html = client.get(_url("home")).content.decode()
+    assert "COMMANDER MAINTENANT" in html and "Livraison gratuite à Douala" in html and "articles" in html
+
+
+def test_buy_now_replaces_cart_and_goes_to_checkout(client, boutique):
+    first, second = _product(boutique, "Un"), _product(boutique, "Deux")
+    client.post(_url("cart_add", first.id), {"quantity": 2})
+    response = client.post(_url("cart_add", second.id), {"quantity": 1, "buy_now": "1"})
+    assert response.status_code == 302 and response.url == _url("checkout")
+    html = client.get(_url("cart")).content.decode()
+    assert "Deux" in html and "Un<" not in html.replace("Deux", "")
+
+
+def test_product_form_has_promo_fields(admin_client, boutique):
+    Unit.objects.get_or_create(compte=boutique.compte, name="Pièce", defaults={"symbol": "pc"})
+    html = admin_client.get(reverse("catalog:product_create")).content.decode()
+    assert "compare_at_price" in html and "promo_ends_at" in html and 'type="datetime-local"' in html

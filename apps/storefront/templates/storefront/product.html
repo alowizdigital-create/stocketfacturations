@@ -17,12 +17,18 @@
     <div class="col-md-6">
         <h1 class="h4">{{ product.name }}</h1>
         {% if product.category %}<div class="text-muted small mb-2">{{ product.category.name }}</div>{% endif %}
-        <div class="price fs-3 mb-3">{{ product.shop_price }} {{ boutique.devise }}</div>
+        <div class="price fs-3 mb-3">{{ product.shop_price }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old fs-5">{{ product.shop_compare_price }} {{ boutique.devise }}</span> <span class="badge" style="background:var(--promo);">{% trans "Promotion" %}</span>{% endif %}</div>
         {% if max_qty > 0 %}
         <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="d-flex gap-2 align-items-center">
             {% csrf_token %}
             <input type="number" name="quantity" value="1" min="1" max="{{ max_qty }}" class="form-control" style="width:90px;">
-            <button class="btn btn-brand flex-grow-1"><i class="bi bi-bag-plus"></i> {% trans "Ajouter au panier" %}</button>
+            <button class="btn btn-outline-brand flex-grow-1"><i class="bi bi-bag-plus"></i> {% trans "Ajouter au panier" %}</button>
+        </form>
+        <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="mt-2">
+            {% csrf_token %}
+            <input type="hidden" name="quantity" value="1">
+            <input type="hidden" name="buy_now" value="1">
+            <button class="btn w-100 py-2 text-white" style="background:var(--buy);"><strong>{% trans "COMMANDER MAINTENANT" %}</strong><br><small>{% trans "paiement à la livraison" %}</small></button>
         </form>
         {% if max_qty < 10 %}<div class="small text-warning mt-2">{% blocktrans %}Plus que {{ max_qty }} en stock.{% endblocktrans %}</div>{% endif %}
         {% else %}

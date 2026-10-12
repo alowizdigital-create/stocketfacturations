@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from django.db.models import DecimalField, OuterRef, Subquery, Value
 from django.db.models.functions import Coalesce
+from django.utils import timezone
 
 from apps.catalog.models import Product, ProductBoutiquePrice
 from apps.sales.services import _line_totals
@@ -43,12 +44,33 @@ def unit_price_ttc(product, overrides):
     return _line_totals(Decimal("1"), unit_price_ht(product, overrides), product.tva_rate)[1]
 
 
+# En dessous de ce stock, la carte affiche « N restants » avec une jauge.
+LOW_STOCK_DISPLAY = 10
+
+
 def attach_prices(products, boutique):
-    """Pose `shop_price` (TTC unitaire) sur chaque produit de la liste."""
+    """Pose sur chaque produit de la liste : `shop_price` (TTC unitaire),
+    `shop_compare_price` (ancien prix TTC barré) et `on_sale` si une
+    promotion est en cours (prix avant promotion > prix actuel, non échue),
+    `promo_ends_ms` (fin de promo en ms, pour le compte à rebours) et
+    `low_stock`/`stock_gauge` (jauge de stock restant)."""
     overrides = price_overrides(boutique)
+    now = timezone.now()
     products = list(products)
     for product in products:
         product.shop_price = unit_price_ttc(product, overrides)
+        promo_active = product.promo_ends_at is None or product.promo_ends_at > now
+        compare = product.compare_at_price
+        product.on_sale = bool(compare and promo_active and compare > unit_price_ht(product, overrides))
+        product.shop_compare_price = (
+            _line_totals(Decimal("1"), compare, product.tva_rate)[1] if product.on_sale else None
+        )
+        product.promo_ends_ms = (
+            int(product.promo_ends_at.timestamp() * 1000) if product.on_sale and product.promo_ends_at else None
+        )
+        stock = int(product.stock)
+        product.low_stock = 0 < stock <= LOW_STOCK_DISPLAY
+        product.stock_gauge = min(stock * 100 // LOW_STOCK_DISPLAY, 100)
     return products
 
 

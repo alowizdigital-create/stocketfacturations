@@ -1,10 +1,84 @@
 {% extends "storefront/base.html" %}
 {% load i18n %}
+{% block extra_css %}
+<style>
+    .shop-title { font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800; margin: 1.5rem 0 1.25rem; }
+    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin-bottom: 1.25rem; }
+    .toolbar .grow { flex: 1; }
+    details.dd { position: relative; }
+    details.dd > summary { cursor: pointer; list-style: none; color: #4a5a72; font-size: .95rem; user-select: none; }
+    details.dd > summary::-webkit-details-marker { display: none; }
+    details.dd > summary::after { content: "\F229"; font-family: "bootstrap-icons"; font-size: .7rem; margin-left: .35rem; }
+    details.dd[open] > summary::after { content: "\F286"; }
+    .dd-panel { position: absolute; z-index: 20; top: 2rem; min-width: 220px; background: #fff; border-radius: 10px; box-shadow: 0 8px 28px rgba(13,34,64,.18); padding: .75rem; }
+    .dd-panel.right { right: 0; }
+    .dd-panel a { display: block; padding: .4rem .5rem; color: var(--ink); text-decoration: none; border-radius: 6px; font-size: .92rem; }
+    .dd-panel a:hover { background: var(--brand-light); }
+    .dd-panel a.on::before { content: "\F26E"; font-family: "bootstrap-icons"; margin-right: .5rem; }
+    .layout-btn { border: 0; background: none; padding: .25rem .4rem; color: #8a93a3; font-size: 1.1rem; border-radius: 6px; }
+    .layout-btn.on { background: #eef1f6; color: var(--ink); }
+    .p-card { height: 100%; }
+    .p-media { display: block; position: relative; border: 5px solid #d9e4f1; border-radius: 22px; overflow: hidden; background: #fff; text-decoration: none; }
+    .p-imglink, .p-media .product-img { display: block; }
+    .p-badge { pointer-events: none; position: absolute; top: 10px; right: 10px; background: var(--promo); color: #fff; font-size: .78rem; padding: .22rem .6rem; border-radius: 4px; }
+    .p-buy-form { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 0 .4rem; }
+    .p-buy { width: 100%; display: flex; align-items: center; justify-content: center; gap: .8rem; text-align: center; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .7rem .5rem; }
+    .p-buy span { display: flex; flex-direction: column; line-height: 1.15; }
+    .p-buy small { font-size: .85rem; }
+    .p-buy:hover { background: #0f6a0c; }
+    .p-soldout { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(20,20,20,.75); color: #fff; padding: .4rem 1rem; border-radius: 8px; }
+    .p-name { display: block; margin-top: .7rem; color: #1d4e89; text-decoration: none; font-size: .95rem; }
+    .p-name:hover { text-decoration: underline; }
+    .p-promo { margin-top: .45rem; display: flex; align-items: center; gap: .4rem; background: #fff4e8; border: 1px solid #f6d9b8; color: #b8530c; border-radius: 8px; padding: .35rem .6rem; font-size: .82rem; }
+    .p-promo b { margin-left: auto; font-variant-numeric: tabular-nums; }
+    .p-stock { margin-top: .5rem; font-size: .8rem; color: #4a5a72; }
+    .p-gauge { height: 4px; background: #e8ebf0; border-radius: 4px; margin-top: .25rem; overflow: hidden; }
+    .p-gauge div { height: 100%; background: #f26b21; }
+    #grid.dense { --bs-gutter-x: .6rem; }
+    @media (max-width: 575.98px) { .p-buy { padding: .45rem .3rem; gap: .4rem; } .p-buy strong { font-size: .72rem; } .p-buy small { font-size: .68rem; } .p-buy .bi { display: none; } }
+</style>
+{% endblock %}
 {% block content %}
-{% if boutique.shop_description %}<p class="text-center text-muted mb-3">{{ boutique.shop_description }}</p>{% endif %}
-{% if boutique.shop_delivery_info %}<p class="text-center small mb-3"><i class="bi bi-truck"></i> {{ boutique.shop_delivery_info }}{% if boutique.shop_delivery_fee %} — {% trans "frais de livraison" %} {{ boutique.shop_delivery_fee }} {{ boutique.devise }}{% endif %}</p>{% endif %}
+<h1 class="shop-title">{% trans "Produits" %}</h1>
 
-<form method="get" class="d-flex gap-2 mb-3">
+<form method="get" id="filters" class="toolbar">
+    {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+    {% if category_id %}<input type="hidden" name="categorie" value="{{ category_id }}">{% endif %}
+    {% if sort != "az" %}<input type="hidden" name="tri" value="{{ sort }}">{% endif %}
+
+    <details class="dd">
+        <summary>{% trans "Disponibilité" %}</summary>
+        <div class="dd-panel">
+            <label class="d-flex gap-2 align-items-center mb-2"><input type="checkbox" name="dispo" value="1" {% if available_only %}checked{% endif %}> {% trans "En stock uniquement" %}</label>
+            <button class="btn btn-sm btn-brand w-100">{% trans "Appliquer" %}</button>
+        </div>
+    </details>
+    <details class="dd">
+        <summary>{% trans "Prix" %}</summary>
+        <div class="dd-panel">
+            <div class="d-flex gap-2 mb-2">
+                <input type="number" min="0" name="prix_min" value="{{ price_min }}" class="form-control form-control-sm" placeholder="{% trans 'Min' %}">
+                <input type="number" min="0" name="prix_max" value="{{ price_max }}" class="form-control form-control-sm" placeholder="{% trans 'Max' %}">
+            </div>
+            <button class="btn btn-sm btn-brand w-100">{% trans "Appliquer" %}</button>
+        </div>
+    </details>
+
+    <span class="grow"></span>
+    <span class="text-muted small">{{ page.paginator.count }} {% trans "articles" %}</span>
+    <details class="dd">
+        <summary>{% trans "Trier" %}</summary>
+        <div class="dd-panel right" style="min-width: 250px;">
+            {% for key, label in sorts %}<a href="?{% if qs_base %}{{ qs_base }}&{% endif %}tri={{ key }}" class="{% if sort == key %}on{% endif %}">{{ label }}</a>{% endfor %}
+        </div>
+    </details>
+    <span class="d-none d-sm-inline-flex gap-1">
+        <button type="button" class="layout-btn on" data-cols="large" aria-label="{% trans 'Grande grille' %}"><i class="bi bi-grid"></i></button>
+        <button type="button" class="layout-btn" data-cols="dense" aria-label="{% trans 'Grille serrée' %}"><i class="bi bi-grid-3x3-gap"></i></button>
+    </span>
+</form>
+
+<form method="get" id="recherche" class="d-flex gap-2 mb-3" style="max-width: 560px;">
     <input type="search" name="q" value="{{ query }}" class="form-control" placeholder="{% trans 'Rechercher un produit' %}">
     {% if category_id %}<input type="hidden" name="categorie" value="{{ category_id }}">{% endif %}
     <button class="btn btn-brand" aria-label="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></button>
@@ -19,29 +93,49 @@
 </div>
 {% endif %}
 
-<div class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3">
-    {% for product in page %}
-    <div class="col">
-        <a href="{% url 'storefront:product' slug=slug product_id=product.id %}" class="product-card {% if product.stock <= 0 %}soldout{% endif %}">
-            {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img" loading="lazy">
-            {% else %}<div class="product-img product-img-ph"><i class="bi bi-image"></i></div>{% endif %}
-            <div class="p-2">
-                <div class="fw-semibold small">{{ product.name }}</div>
-                <div class="price">{{ product.shop_price }} {{ boutique.devise }}</div>
-                {% if product.stock <= 0 %}<div class="small text-danger">{% trans "Épuisé" %}</div>{% endif %}
-            </div>
-        </a>
-    </div>
+<div id="grid" class="row row-cols-2 row-cols-md-3 row-cols-lg-4 g-3 g-md-4">
+    {% for product in page %}{% include "storefront/_card.html" %}
     {% empty %}
-    <div class="col-12 text-center text-muted py-5">{% trans "Aucun produit pour le moment." %}</div>
+    <div class="col-12 text-muted py-5">{% trans "Aucun produit pour le moment." %}</div>
     {% endfor %}
 </div>
 
 {% if page.has_other_pages %}
 <nav class="d-flex justify-content-center gap-2 mt-4">
-    {% if page.has_previous %}<a class="btn btn-outline-brand btn-sm" href="?page={{ page.previous_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category_id %}&categorie={{ category_id }}{% endif %}">&laquo;</a>{% endif %}
+    {% if page.has_previous %}<a class="btn btn-outline-brand btn-sm" href="?{% if qs_page %}{{ qs_page }}&{% endif %}page={{ page.previous_page_number }}">&laquo;</a>{% endif %}
     <span class="align-self-center small">{{ page.number }} / {{ page.paginator.num_pages }}</span>
-    {% if page.has_next %}<a class="btn btn-outline-brand btn-sm" href="?page={{ page.next_page_number }}{% if query %}&q={{ query }}{% endif %}{% if category_id %}&categorie={{ category_id }}{% endif %}">&raquo;</a>{% endif %}
+    {% if page.has_next %}<a class="btn btn-outline-brand btn-sm" href="?{% if qs_page %}{{ qs_page }}&{% endif %}page={{ page.next_page_number }}">&raquo;</a>{% endif %}
 </nav>
 {% endif %}
+{% endblock %}
+{% block extra_js %}
+<script>
+(function () {
+    // Compte à rebours des promotions.
+    var timers = document.querySelectorAll("[data-countdown]");
+    function pad(n) { return String(n).padStart(2, "0"); }
+    function tick() {
+        var now = Date.now();
+        timers.forEach(function (el) {
+            var left = Math.max(Math.floor((parseInt(el.dataset.countdown, 10) - now) / 1000), 0);
+            var d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60;
+            el.textContent = (d ? d + "j " : "") + pad(h) + ":" + pad(m) + ":" + pad(s);
+        });
+    }
+    if (timers.length) { tick(); setInterval(tick, 1000); }
+
+    // Densité de la grille (préférence mémorisée si possible).
+    var grid = document.getElementById("grid");
+    var buttons = document.querySelectorAll(".layout-btn");
+    function setCols(mode) {
+        grid.classList.toggle("row-cols-lg-4", mode === "large");
+        grid.classList.toggle("row-cols-lg-5", mode === "dense");
+        grid.classList.toggle("dense", mode === "dense");
+        buttons.forEach(function (b) { b.classList.toggle("on", b.dataset.cols === mode); });
+        try { localStorage.setItem("shop_cols", mode); } catch (e) {}
+    }
+    buttons.forEach(function (b) { b.addEventListener("click", function () { setCols(b.dataset.cols); }); });
+    try { var saved = localStorage.getItem("shop_cols"); if (saved) setCols(saved); } catch (e) {}
+})();
+</script>
 {% endblock %}

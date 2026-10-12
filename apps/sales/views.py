@@ -664,7 +664,7 @@ def _deliver_and_validate(request, commande):
         return False
 
     if invoice is None:
-        messages.success(request, _("%(commande)s marquée comme livrée.") % {"commande": commande.number})
+        messages.success(request, _("%(commande)s livrée — facture soldée.") % {"commande": commande.number})
         return True
     left = invoice.balance_due
     if left > 0:
@@ -699,9 +699,9 @@ def _commande_deliver_action(commande):
         # celui qui clique, et valide la commande (facture, stock) tant
         # qu'elle ne l'est pas : on confirme pour éviter un clic malheureux.
         "confirm": (
-            _("Marquer la commande %(number)s comme livrée ?")
+            _("Marquer la commande %(number)s comme livrée ? La facture sera soldée.")
             if commande.status == Invoice.CONVERTIE
-            else _("Marquer la commande %(number)s comme livrée et la valider (facture générée, stock déduit) ?")
+            else _("Marquer la commande %(number)s comme livrée et la valider (facture générée et soldée, stock déduit) ?")
         ) % {"number": commande.commande_seq if commande.commande_seq is not None else commande.number},
     }
 

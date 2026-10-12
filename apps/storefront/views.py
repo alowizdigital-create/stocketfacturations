@@ -43,14 +43,50 @@ def _shop(slug):
     return boutique
 
 
+SORTS = {
+    "az": ("name",), "za": ("-name",),
+    "prix_asc": ("default_sale_price", "name"), "prix_desc": ("-default_sale_price", "name"),
+    "recent": ("-created_at",),
+}
+
+
+def _contact_url(boutique):
+    number = normalize_phone(boutique.phone, country_calling_code=boutique.country_calling_code)
+    return f"https://wa.me/{number}" if number else ""
+
+
 def _context(request, boutique, **extra):
     lines = catalog.cart_lines(request, boutique)
     context = {
         "boutique": boutique, "slug": boutique.shop_slug,
         "cart_count": catalog.cart_totals(boutique, lines)["count"],
+        "contact_url": _contact_url(boutique),
     }
     context.update(extra)
     return context
+
+
+def _decimal(raw):
+    try:
+        return Decimal(raw) if raw not in (None, "") else None
+    except Exception:  # noqa: BLE001 — saisie libre dans l'URL
+        return None
+
+
+def _sort_labels():
+    return [
+        ("az", _("Alphabétique, de A à Z")), ("za", _("Alphabétique, de Z à A")),
+        ("prix_asc", _("Prix : faible à élevé")), ("prix_desc", _("Prix : élevé à faible")),
+        ("recent", _("Plus récents")),
+    ]
+
+
+def _query_without(request, *keys):
+    """Paramètres GET actuels sans `keys` (pour les liens de pagination)."""
+    params = request.GET.copy()
+    for key in keys:
+        params.pop(key, None)
+    return params.urlencode()
 
 
 def shop_home(request, slug):
@@ -64,16 +100,30 @@ def shop_home(request, slug):
     if category_id:
         products = products.filter(category_id=category_id)
 
-    # Page par ordre alphabétique, produits épuisés repoussés en fin de page.
-    products = products.order_by("name")
+    available_only = request.GET.get("dispo") == "1"
+    if available_only:
+        products = products.filter(stock__gt=0)
+    price_min, price_max = _decimal(request.GET.get("prix_min")), _decimal(request.GET.get("prix_max"))
+    if price_min is not None:
+        products = products.filter(default_sale_price__gte=price_min)
+    if price_max is not None:
+        products = products.filter(default_sale_price__lte=price_max)
+
+    sort = request.GET.get("tri", "az")
+    if sort not in SORTS:
+        sort = "az"
+    products = products.order_by(*SORTS[sort])
     page = Paginator(products, PAGE_SIZE).get_page(request.GET.get("page"))
-    page.object_list = sorted(catalog.attach_prices(page.object_list, boutique), key=lambda p: p.stock <= 0)
+    page.object_list = catalog.attach_prices(page.object_list, boutique)
 
     categories = Category.objects.filter(
         compte=boutique.compte, products__is_online=True, products__is_active=True,
     ).distinct().order_by("name")
     return render(request, "storefront/home.html", _context(
         request, boutique, page=page, query=query, categories=categories, category_id=category_id,
+        available_only=available_only, price_min=request.GET.get("prix_min", ""),
+        price_max=request.GET.get("prix_max", ""), sort=sort, sorts=_sort_labels(),
+        qs_base=_query_without(request, "page", "tri"), qs_page=_query_without(request, "page"),
     ))
 
 
@@ -97,7 +147,9 @@ def cart_add(request, slug, product_id):
         quantity = max(int(request.POST.get("quantity", 1)), 1)
     except ValueError:
         quantity = 1
-    cart = catalog.get_cart(request, slug)
+    buy_now = bool(request.POST.get("buy_now"))
+    # « Commander maintenant » : commande directe de cet article seul.
+    cart = {} if buy_now else catalog.get_cart(request, slug)
     wanted = cart.get(str(product.id), 0) + quantity
     allowed = int(min(product.stock, catalog.MAX_QTY_PER_LINE))
     if allowed <= 0:
@@ -108,6 +160,8 @@ def cart_add(request, slug, product_id):
         _flash(request, _("Stock limité : quantité ramenée à %(n)s.") % {"n": allowed})
     cart[str(product.id)] = wanted
     catalog.save_cart(request, slug, cart)
+    if buy_now:
+        return redirect("storefront:checkout", slug=slug)
     return redirect("storefront:cart", slug=slug)
 
 

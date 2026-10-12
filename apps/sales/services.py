@@ -386,10 +386,8 @@ def deliver_commande(commande, delivered_by=None):
     convert_commande_to_invoice), puis marquée livrée. Le tout dans une seule
     transaction : pas de commande livrée mais non validée, ni l'inverse.
 
-    Aucun paiement n'est enregistré ici : on ne sait pas ce que le livreur a
-    réellement encaissé. La facture reflète donc le vrai reste à payer, à
-    solder ensuite par un versement (bouton « Encaisser » de la facture).
-    Renvoie la facture créée, ou None si la commande était déjà validée."""
+    La facture est soldée à la livraison : le reste à payer est enregistré
+    comme encaissé (voir settle_invoice_on_delivery). Renvoie la facture créée, ou None si la commande était déjà validée."""
 
     if commande.type != Invoice.COMMANDE:
         raise ValueError("Seule une commande peut être livrée.")
@@ -400,6 +398,51 @@ def deliver_commande(commande, delivered_by=None):
     if commande.status != Invoice.CONVERTIE:
         invoice = convert_commande_to_invoice(commande, created_by=delivered_by)
     mark_commande_delivered(commande, delivered_by=delivered_by)
+    settle_invoice_on_delivery(commande, collected_by=delivered_by, invoice=invoice)
+    return invoice
+
+
+# Préfixe de la référence des versements générés par la livraison : sert à
+# les retrouver pour les annuler si la livraison est annulée.
+DELIVERY_PAYMENT_REF = "Encaissé à la livraison"
+
+
+def settle_invoice_on_delivery(commande, *, collected_by=None, invoice=None):
+    """Livrer une commande solde sa facture : le reste à payer est enregistré
+    comme encaissé à la livraison (espèces, dans la caisse individuelle de
+    celui qui livre — voir apps.cashier.services ; Mobile Money si le client
+    a choisi ce mode sur la boutique en ligne). Sans effet si la facture est
+    déjà soldée. Pas fait sur le poste hors-ligne : le versement n'y serait
+    pas rejoué vers le serveur (la facture reste alors à solder à la main).
+    Renvoie la facture."""
+    from django.conf import settings
+
+    invoice = invoice or commande.conversions.filter(type=Invoice.FACTURE).first()
+    if invoice is None or settings.IS_OFFLINE:
+        return invoice
+    left = invoice.balance_due
+    if left <= 0:
+        return invoice
+
+    if commande.online_payment_mode == Invoice.PAY_MOBILE_MONEY:
+        method = Payment.MOBILE_MONEY
+        reference = f"{DELIVERY_PAYMENT_REF} — {commande.online_payment_reference}".strip(" —")
+    else:
+        method, reference = Payment.ESPECES, DELIVERY_PAYMENT_REF
+    return record_payment(invoice, amount=left, method=method, reference=reference, created_by=collected_by)
+
+
+def unsettle_invoice_on_delivery_undone(commande):
+    """Annule les versements générés par la livraison (voir
+    settle_invoice_on_delivery) quand la livraison est annulée : la facture
+    redevient impayée pour ce montant. Les versements saisis à la main ne
+    sont jamais touchés."""
+    invoice = commande.conversions.filter(type=Invoice.FACTURE).first()
+    if invoice is None:
+        return None
+    deleted, _ = invoice.payments.filter(reference__startswith=DELIVERY_PAYMENT_REF).delete()
+    if deleted:
+        _apply_payment_status(invoice)
     return invoice
 
 
@@ -414,7 +457,8 @@ def mark_commande_en_cours(commande, undone_by=None):
     Annuler une livraison rembourse aussi les frais de livraison déjà
     prélevés dans la caisse du livreur (voir
     apps.cashier.services.refund_delivery_fee) : sans ça, la relivraison
-    les débiterait une seconde fois. Ne touche ni à la facture ni au stock,
+    les débiterait une seconde fois. Annule aussi l'encaissement automatique de la livraison (la facture
+    redevient impayée) ; ne touche pas au stock,
     que la validation de la commande a déjà générés."""
 
     from apps.cashier.services import refund_delivery_fee
@@ -429,6 +473,7 @@ def mark_commande_en_cours(commande, undone_by=None):
     commande.save(update_fields=["delivery_status", "delivered_at", "delivered_by", "updated_at"])
     if was_delivered:
         refund_delivery_fee(commande, refunded_by=undone_by)
+        unsettle_invoice_on_delivery_undone(commande)
     return commande
 
 
@@ -494,6 +539,9 @@ def _apply_payment_status(invoice):
         invoice.status = Invoice.PAYEE
     elif total_paid > 0:
         invoice.status = Invoice.PARTIELLEMENT_PAYEE
+    elif invoice.status in (Invoice.PAYEE, Invoice.PARTIELLEMENT_PAYEE):
+        # Plus aucun versement (ex: encaissement de livraison annulé).
+        invoice.status = Invoice.VALIDEE
     invoice.save(update_fields=["status", "updated_at"])
     return invoice
 

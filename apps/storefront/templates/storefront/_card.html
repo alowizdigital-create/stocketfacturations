@@ -1,0 +1,33 @@
+{% load i18n %}
+<div class="col">
+    <div class="p-card {% if product.stock <= 0 %}soldout{% endif %}">
+        <div class="p-media">
+            <a href="{% url 'storefront:product' slug=slug product_id=product.id %}" class="p-imglink" aria-label="{{ product.name }}">
+                {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img" loading="lazy">
+                {% else %}<div class="product-img product-img-ph"><i class="bi bi-image"></i></div>{% endif %}
+            </a>
+            {% if product.on_sale %}<span class="p-badge">{% trans "Promotion" %}</span>{% endif %}
+            {% if product.stock > 0 %}
+            <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="p-buy-form">
+                {% csrf_token %}
+                <input type="hidden" name="quantity" value="1">
+                <input type="hidden" name="buy_now" value="1">
+                <button type="submit" class="p-buy">
+                    <i class="bi bi-bag-fill"></i>
+                    <span><strong>{% trans "COMMANDER MAINTENANT" %}</strong><small>{% trans "paiement à la livraison" %}</small></span>
+                </button>
+            </form>
+            {% else %}
+            <span class="p-soldout">{% trans "Épuisé" %}</span>
+            {% endif %}
+        </div>
+        <a href="{% url 'storefront:product' slug=slug product_id=product.id %}" class="p-name">{{ product.name }}</a>
+        <div class="price">{{ product.shop_price }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old">{{ product.shop_compare_price }} {{ boutique.devise }}</span>{% endif %}</div>
+        {% if product.promo_ends_ms %}
+        <div class="p-promo"><i class="bi bi-hourglass-split"></i> <span>{% trans "Prix promo valable encore" %}</span> <b data-countdown="{{ product.promo_ends_ms }}">--:--:--</b></div>
+        {% endif %}
+        {% if product.low_stock %}
+        <div class="p-stock"><div class="d-flex justify-content-between"><span><i class="bi bi-fire text-danger"></i> {% trans "Stock disponible" %}</span><b class="text-danger">{{ product.stock|floatformat:0 }} {% trans "restants" %}</b></div><div class="p-gauge"><div style="width:{{ product.stock_gauge }}%"></div></div></div>
+        {% endif %}
+    </div>
+</div>
