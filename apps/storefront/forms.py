@@ -7,11 +7,12 @@ from apps.sales.models import Invoice
 
 
 class CheckoutForm(forms.Form):
-    name = forms.CharField(label=_("Votre nom"), max_length=255)
-    phone = forms.CharField(label=_("Téléphone (WhatsApp de préférence)"), max_length=30)
-    address = forms.CharField(
-        label=_("Adresse de livraison"), max_length=255,
-        help_text=_("Quartier, ville, repère pour vous retrouver."),
+    name = forms.CharField(label=_("Nom / prénom"), max_length=255)
+    phone = forms.CharField(label=_("N° tel"), max_length=30)
+    address = forms.CharField(label=_("Ville / quartier"), max_length=255)
+    confirm = forms.BooleanField(
+        label=_("Oui, je veux vraiment être livré(e)"),
+        error_messages={"required": _("Confirmez que vous voulez vraiment être livré(e).")},
     )
     zone = forms.ChoiceField(label=_("Ville de livraison"), choices=[], required=False)
     note = forms.CharField(label=_("Message pour le vendeur (facultatif)"), max_length=300, required=False)

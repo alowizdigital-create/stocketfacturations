@@ -241,9 +241,12 @@ class BoutiqueShopForm(BootstrapFormMixin, forms.ModelForm):
         model = Boutique
         fields = [
             "shop_enabled", "shop_slug", "shop_description", "shop_order_notice",
-            "shop_delivery_fee", "shop_delivery_info",
+            "shop_checkout_notice", "shop_order_footer", "shop_delivery_fee", "shop_delivery_info",
         ]
-        widgets = {"shop_order_notice": forms.Textarea(attrs={"rows": 3})}
+        widgets = {
+            "shop_order_notice": forms.Textarea(attrs={"rows": 3}),
+            "shop_checkout_notice": forms.Textarea(attrs={"rows": 3}),
+        }
 
     def clean_shop_slug(self):
         slug = (self.cleaned_data.get("shop_slug") or "").strip().lower() or None

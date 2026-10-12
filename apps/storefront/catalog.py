@@ -121,6 +121,7 @@ def cart_lines(request, boutique):
     if not cart:
         return []
     products = {str(p.id): p for p in published_products(boutique).filter(pk__in=list(cart))}
+    attach_prices(products.values(), boutique)      # pose prix barré / promotion sur chaque produit
     overrides = price_overrides(boutique)
     lines = []
     for product_id, quantity in cart.items():

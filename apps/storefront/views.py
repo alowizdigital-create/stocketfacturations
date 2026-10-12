@@ -7,8 +7,9 @@ from urllib.parse import quote
 
 from django.conf import settings
 from django.core.paginator import Paginator
-from django.http import Http404
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_POST
@@ -65,6 +66,10 @@ def _context(request, boutique, **extra):
     }
     context.update(extra)
     return context
+
+
+def _is_ajax(request):
+    return request.headers.get("x-requested-with") == "XMLHttpRequest"
 
 
 def _decimal(raw):
@@ -162,6 +167,8 @@ def cart_add(request, slug, product_id):
         _flash(request, _("Stock limité : quantité ramenée à %(n)s.") % {"n": allowed})
     cart[str(product.id)] = wanted
     catalog.save_cart(request, slug, cart)
+    if _is_ajax(request):
+        return JsonResponse({"checkout": reverse("storefront:checkout", args=[slug]), "buy_now": buy_now})
     if buy_now:
         return redirect("storefront:checkout", slug=slug)
     return redirect("storefront:cart", slug=slug)
@@ -182,13 +189,17 @@ def cart_update(request, slug, product_id):
         else:
             cart[key] = min(quantity, catalog.MAX_QTY_PER_LINE)
         catalog.save_cart(request, slug, cart)
+    if _is_ajax(request):
+        return JsonResponse({"ok": True})
     return redirect("storefront:cart", slug=slug)
 
 
 def cart_view(request, slug):
     boutique = _shop(slug)
     lines = catalog.cart_lines(request, boutique)
-    return render(request, "storefront/cart.html", _context(
+    # Panier latéral (JS) : seul le contenu est renvoyé.
+    template = "storefront/_cart_drawer.html" if _is_ajax(request) or request.GET.get("drawer") else "storefront/cart.html"
+    return render(request, template, _context(
         request, boutique, lines=lines, totals=catalog.cart_totals(boutique, lines),
         has_stock_problem=any(not line["in_stock"] for line in lines),
     ))
@@ -197,7 +208,10 @@ def cart_view(request, slug):
 def checkout(request, slug):
     boutique = _shop(slug)
     lines = catalog.cart_lines(request, boutique)
+    ajax = _is_ajax(request)
     if not lines:
+        if ajax:
+            return JsonResponse({"empty": True})
         return redirect("storefront:cart", slug=slug)
 
     zones = catalog.delivery_zones(boutique)
@@ -219,11 +233,16 @@ def checkout(request, slug):
             else:
                 request.session[LAST_ORDER_SESSION_KEY] = now
                 catalog.clear_cart(request, slug)
-                return redirect("storefront:confirmation", slug=slug, order_id=commande.id)
+                target = reverse("storefront:confirmation", args=[slug, commande.id])
+                if ajax:
+                    return JsonResponse({"redirect": target})
+                return redirect(target)
     else:
         form = CheckoutForm(mobile_money_available=mobile_money, zones=zones)
 
-    return render(request, "storefront/checkout.html", _context(
+    # Fenêtre de commande (JS) : seul le formulaire est renvoyé, pas la page.
+    template = "storefront/_checkout_form.html" if ajax or request.GET.get("modal") else "storefront/checkout.html"
+    return render(request, template, _context(
         request, boutique, form=form, lines=lines, totals=totals, error=error, zones=zones,
         payment_methods=boutique.payment_methods,
     ))

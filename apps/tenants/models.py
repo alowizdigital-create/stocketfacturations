@@ -125,6 +125,17 @@ class Boutique(UUIDModel, TimeStampedModel):
             "(ex: « Merci de ne commander que si vous êtes disponible pour la livraison »)."
         ),
     )
+    shop_checkout_notice = models.CharField(
+        _("message « IMPORTANT » du formulaire"), max_length=500, blank=True,
+        help_text=_(
+            "Facultatif : affiché dans un encadré « IMPORTANT » du formulaire de commande "
+            "(ex: « En cliquant sur le bouton, vous confirmez que vous êtes disponible pour être livré. »)."
+        ),
+    )
+    shop_order_footer = models.CharField(
+        _("message sous le bouton de commande"), max_length=300, blank=True,
+        help_text=_("Facultatif (ex: « Nous vous contacterons dans les 30 min après votre commande. Merci ! »)."),
+    )
     shop_delivery_fee = models.DecimalField(
         _("frais de livraison"), max_digits=10, decimal_places=0, default=0,
         help_text=_("Utilisés seulement si aucune zone de livraison n'est définie. 0 = livraison gratuite."),

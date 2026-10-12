@@ -51,6 +51,81 @@
     .p-gauge div { height: 100%; background: #f26b21; }
     #grid.dense { --bs-gutter-x: .6rem; }
     @media (max-width: 575.98px) { .p-buy { padding: .45rem .3rem; gap: .4rem; } .p-buy strong { font-size: .72rem; } .p-buy small { font-size: .68rem; } .p-buy .bi { display: none; } }
+        /* --- formulaire de commande (page et fenêtre) --- */
+        .co-items { border-top: 1px solid #e3e6eb; }
+        .co-item { display: flex; align-items: center; gap: .8rem; padding: .7rem .2rem; border-bottom: 1px solid #e3e6eb; }
+        .co-thumb { position: relative; width: 62px; height: 62px; flex-shrink: 0; border: 1px solid #e3e6eb; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #c3bcd1; }
+        .co-thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
+        .co-qty { position: absolute; top: -8px; right: -8px; background: #6b7280; color: #fff; border-radius: 50%; min-width: 22px; height: 22px; font-size: .75rem; display: flex; align-items: center; justify-content: center; }
+        .co-name { flex: 1; font-weight: 700; font-size: .95rem; }
+        .co-price { font-weight: 700; white-space: nowrap; font-size: .95rem; }
+        .co-x { border: 0; background: none; color: #8a93a3; font-size: 1.3rem; line-height: 1; padding: 0 .2rem; }
+        .co-x:hover { color: #c0392b; }
+        .co-totals { background: #f6f7f9; border: 1px solid #e3e6eb; border-radius: 8px; padding: .8rem 1rem; margin: 1rem 0; display: grid; gap: .3rem; }
+        .co-total { border-top: 1px solid #dfe3e8; padding-top: .5rem; margin-top: .2rem; font-size: 1.15rem; font-weight: 800; }
+        .co-row { display: grid; grid-template-columns: 130px 1fr; gap: .8rem; align-items: start; margin-bottom: .9rem; }
+        .co-row > label { font-weight: 700; font-size: .92rem; padding-top: .55rem; }
+        .co-row .req { color: #d62828; margin-left: .2rem; }
+        .co-input { display: flex; border: 1px solid #c9ced6; border-radius: 6px; overflow: hidden; background: #fff; }
+        .co-ico { display: flex; align-items: center; justify-content: center; width: 46px; background: #e6e8ec; color: #1f2937; flex-shrink: 0; }
+        .co-input input[type=text], .co-input input[type=tel], .co-input select { flex: 1; min-width: 0; border: 0; padding: .6rem .75rem; outline: none; background: #fff; font-size: .95rem; }
+        .co-input:focus-within { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(111,74,142,.18); }
+        .co-check { display: flex; align-items: center; gap: .5rem; padding: .6rem .75rem; margin: 0; font-size: .92rem; flex: 1; }
+        .co-err { color: #c0392b; font-size: .8rem; margin-top: .25rem; }
+        .co-pay { margin: .5rem 0 1rem; }
+        .co-momo { margin-top: .6rem; padding: .8rem; background: var(--brand-light); border-radius: 8px; }
+        .co-important { text-align: center; margin: 1.4rem 0 1rem; }
+        .co-important-badge { display: inline-flex; align-items: center; gap: .6rem; border: 3px solid #d62828; color: #d62828; border-radius: 12px; padding: .5rem 1.2rem; font-weight: 800; font-size: 1.35rem; background: #fff; }
+        .co-important-badge .bi { font-size: 1.8rem; }
+        .co-important p { margin: .9rem 0 0; background: #b83a2e; color: #14110f; font-weight: 700; padding: .5rem .7rem; border-radius: 4px; }
+        .co-submit { width: 100%; display: flex; align-items: center; justify-content: center; gap: .8rem; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .8rem; text-align: center; font-size: .95rem; }
+        .co-submit:hover { background: #0f6a0c; }
+        .co-submit span { display: flex; flex-direction: column; line-height: 1.25; }
+        .co-submit small { font-size: .85rem; }
+        .co-footer { margin: 1rem 0 0; text-align: center; background: #111; color: #ff5a4d; font-weight: 700; padding: .5rem; border-radius: 4px; }
+        .co-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 1000; display: none; overflow-y: auto; padding: 1rem; }
+        .co-overlay.open { display: block; }
+        .co-dialog { position: relative; background: #fff; border-radius: 14px; max-width: 580px; margin: 1rem auto; padding: 2.4rem 1.2rem 1.4rem; }
+        .co-close { position: absolute; top: .5rem; right: .8rem; border: 0; background: none; font-size: 2rem; line-height: 1; color: #111; }
+        .co-loading { text-align: center; padding: 3rem 0; color: #7c7488; }
+        @media (max-width: 479.98px) { .co-row { grid-template-columns: 1fr; gap: .2rem; } .co-row > label { padding-top: 0; } }
+        /* --- panier latéral --- */
+        .dr-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1100; opacity: 0; visibility: hidden; transition: opacity .2s, visibility .2s; }
+        .dr-overlay.open { opacity: 1; visibility: visible; }
+        .dr-panel { position: absolute; top: 0; right: 0; bottom: 0; width: min(440px, 100%); background: #fff; transform: translateX(100%); transition: transform .25s ease; display: flex; flex-direction: column; box-shadow: -8px 0 30px rgba(0,0,0,.15); }
+        .dr-overlay.open .dr-panel { transform: none; }
+        #dr-content, .dr { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+        .dr-head { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.2rem; }
+        .dr-head h2 { font-size: 1.5rem; font-weight: 600; margin: 0; display: flex; align-items: center; gap: .6rem; }
+        .dr-count { background: #e6e9f0; color: var(--ink); font-size: .8rem; font-weight: 600; border-radius: 999px; padding: .1rem .5rem; }
+        .dr-close { border: 0; background: none; font-size: 1.8rem; line-height: 1; color: var(--ink); }
+        .dr-items { flex: 1; overflow-y: auto; padding: 0 1.2rem; }
+        .dr-item { display: grid; grid-template-columns: 54px 1fr auto; gap: .9rem; padding: 1rem 0; border-bottom: 1px solid #e3e6eb; }
+        .dr-thumb { width: 54px; height: 54px; display: flex; align-items: center; justify-content: center; color: #c3bcd1; background: var(--brand-light); }
+        .dr-thumb img { width: 100%; height: 100%; object-fit: cover; }
+        .dr-name { color: var(--ink); text-decoration: none; font-size: .98rem; display: block; }
+        .dr-name:hover { text-decoration: underline; }
+        .dr-unit { color: #5b6b82; font-size: .9rem; margin: .15rem 0 .6rem; }
+        .dr-warn { color: #c0392b; font-size: .8rem; margin-bottom: .4rem; }
+        .dr-line { font-weight: 600; font-size: .95rem; white-space: nowrap; }
+        .dr-controls { display: flex; align-items: center; gap: .9rem; }
+        .dr-stepper { display: inline-flex; align-items: center; border: 1px solid var(--ink); border-radius: 8px; }
+        .dr-stepper button { border: 0; background: none; width: 36px; height: 36px; font-size: 1.1rem; color: var(--ink); }
+        .dr-stepper span { min-width: 30px; text-align: center; }
+        .dr-trash { border: 0; background: none; color: var(--ink); font-size: 1.05rem; }
+        .dr-trash:hover { color: #c0392b; }
+        .dr-foot { padding: 1rem 1.2rem 1.2rem; border-top: 1px solid #e3e6eb; }
+        .dr-total { font-size: 1rem; margin-bottom: .3rem; }
+        .dr-note { color: #6b7686; font-size: .82rem; margin: 0 0 .9rem; }
+        .dr-buy { display: flex; align-items: center; justify-content: center; gap: .7rem; width: 100%; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .7rem; text-decoration: none; text-align: center; }
+        .dr-buy:hover { background: #0f6a0c; color: #fff; }
+        .dr-buy span { display: flex; flex-direction: column; line-height: 1.2; }
+        .dr-buy small { font-size: .9rem; }
+        .dr-buy[disabled] { opacity: .6; }
+        .dr-continue { display: block; width: 100%; margin-top: .6rem; padding: .65rem; border: 1px solid #c9ced6; background: #fff; border-radius: 6px; color: var(--ink); }
+        .dr-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; color: #7c7488; padding: 2rem; }
+        .dr-empty .bi { font-size: 2.6rem; }
+        .dr-empty .dr-continue { width: auto; padding-inline: 1.4rem; }
         @media (max-width: 767.98px) { .shop-nav .inner { grid-template-columns: 1fr auto 1fr; } .shop-links { display: none; } .shop-brand { grid-column: 1 / 3; justify-content: flex-start; font-size: 1.1rem; } }
     </style>
     {% block extra_css %}{% endblock %}
@@ -70,9 +145,9 @@
         </a>
         <div class="shop-icons">
             <a href="{% url 'storefront:home' slug=slug %}#recherche" aria-label="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></a>
-            <a href="{% url 'storefront:cart' slug=slug %}" aria-label="{% trans 'Panier' %}">
+            <a href="{% url 'storefront:cart' slug=slug %}" id="cart-link" aria-label="{% trans 'Panier' %}">
                 <i class="bi bi-bag"></i>
-                {% if cart_count %}<span class="badge rounded-pill bg-danger cart-badge">{{ cart_count }}</span>{% endif %}
+                <span class="badge rounded-pill bg-danger cart-badge" id="cart-badge" {% if not cart_count %}hidden{% endif %}>{{ cart_count }}</span>
             </a>
         </div>
     </div>
@@ -101,6 +176,190 @@
     }
     if (timers.length) { tick(); setInterval(tick, 1000); }
 
+})();
+</script>
+<div id="co-modal" class="co-overlay" data-url="{% url 'storefront:checkout' slug=slug %}">
+    <div class="co-dialog" role="dialog" aria-modal="true">
+        <button type="button" class="co-close" id="co-close" aria-label="{% trans 'Fermer' %}">&times;</button>
+        <div id="co-content"></div>
+    </div>
+</div>
+<script>
+// Formulaire de commande : frais/total selon la ville, bloc Mobile Money.
+window.initCheckoutForm = function (root) {
+    if (!root) return;
+    var select = root.querySelector("#id_zone");
+    var delivery = root.querySelector("#sum-delivery");
+    var total = root.querySelector("#sum-total");
+    var button = root.querySelector("#co-total-btn");
+    var subtotal = parseFloat(root.dataset.subtotal) || 0;
+    function sync() {
+        if (!select) return;
+        var option = select.options[select.selectedIndex];
+        var fee = option && option.value ? (parseFloat(option.dataset.fee) || 0) : 0;
+        delivery.textContent = !option || !option.value ? "{% trans 'selon la ville' %}" : (fee ? fee + " {{ boutique.devise }}" : "{% trans 'Gratuit' %}");
+        total.textContent = subtotal + fee;
+        if (button) button.textContent = subtotal + fee;
+    }
+    if (select) { select.addEventListener("change", sync); sync(); }
+    var box = root.querySelector("#momo-box");
+    if (box) {
+        var toggle = function () {
+            var checked = root.querySelector('input[name="payment_mode"]:checked');
+            box.style.display = checked && checked.value === "MOBILE_MONEY" ? "block" : "none";
+        };
+        root.querySelectorAll('input[name="payment_mode"]').forEach(function (r) { r.addEventListener("change", toggle); });
+        toggle();
+    }
+};
+
+// « Commander maintenant » : le formulaire s'ouvre dans une fenêtre, sans quitter la page.
+// Sans JavaScript, le bouton mène à la page de commande classique.
+(function () {
+    var modal = document.getElementById("co-modal");
+    var content = document.getElementById("co-content");
+    if (!modal || !window.fetch || !window.FormData) return;
+    var XHR = { "X-Requested-With": "XMLHttpRequest" };
+
+    function show() { modal.classList.add("open"); document.body.style.overflow = "hidden"; }
+    function hide() { modal.classList.remove("open"); document.body.style.overflow = ""; }
+    function render(html) { content.innerHTML = html; window.initCheckoutForm(content.querySelector("#checkout-root")); }
+    function handle(response) {
+        var type = response.headers.get("content-type") || "";
+        if (type.indexOf("json") !== -1) {
+            return response.json().then(function (data) {
+                if (data.redirect) { window.location.href = data.redirect; return; }
+                hide();
+            });
+        }
+        return response.text().then(render);
+    }
+    function load() {
+        return fetch(modal.dataset.url + "?modal=1", { headers: XHR, credentials: "same-origin" }).then(handle);
+    }
+    function csrf(root) {
+        var input = (root || document).querySelector("input[name=csrfmiddlewaretoken]");
+        return input ? input.value : "";
+    }
+
+    document.addEventListener("submit", function (e) {
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+
+        if (form.hasAttribute("data-co-form")) {            // envoi de la commande
+            e.preventDefault();
+            var button = form.querySelector(".co-submit");
+            if (button) button.disabled = true;
+            fetch(form.action, { method: "POST", body: new FormData(form), headers: XHR, credentials: "same-origin" })
+                .then(handle).catch(function () { form.submit(); });
+            return;
+        }
+        if (!/\/panier\/ajouter\//.test(form.action)) return;
+        var submitter = e.submitter;
+        var buyNow = form.querySelector("input[name=buy_now]") || (submitter && submitter.name === "buy_now");
+        e.preventDefault();
+        var data = new FormData(form);
+        if (!buyNow) {                                         // « Ajouter au panier » : panier latéral
+            data.delete("buy_now");
+            fetch(form.action, { method: "POST", body: data, headers: XHR, credentials: "same-origin" })
+                .then(function (r) { return r.json(); })
+                .then(function () { return window.openCartDrawer(); })
+                .catch(function () { window.location.href = form.action; });
+            return;
+        }
+        data.set("buy_now", "1");                              // « Commander maintenant » : formulaire en fenêtre
+        window.openCheckoutModal(function () {
+            return fetch(form.action, { method: "POST", body: data, headers: XHR, credentials: "same-origin" })
+                .then(function (r) { return r.json(); });
+        });
+    });
+    window.openCheckoutModal = function (before) {
+        content.innerHTML = '<div class="co-loading"><div class="spinner-border" role="status"></div></div>';
+        show();
+        return Promise.resolve(before ? before() : null).then(load)
+            .catch(function () { window.location.href = modal.dataset.url; });
+    };
+
+    document.addEventListener("click", function (e) {
+        var remove = e.target.closest("[data-co-remove]");
+        if (remove) {                                         // retirer un article de la commande
+            var data = new FormData();
+            data.set("quantity", "0");
+            data.set("csrfmiddlewaretoken", csrf(content));
+            fetch(remove.dataset.url, { method: "POST", body: data, headers: XHR, credentials: "same-origin" })
+                .then(function () { return load(); });
+            return;
+        }
+        if (e.target === modal || e.target.closest("#co-close")) hide();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") hide(); });
+})();
+</script>
+<div id="cart-drawer" class="dr-overlay" data-url="{% url 'storefront:cart' slug=slug %}">
+    <aside class="dr-panel" role="dialog" aria-modal="true" aria-label="{% trans 'Panier' %}"><div id="dr-content"></div></aside>
+</div>
+<script>
+// Panier latéral : s'ouvre au clic sur l'icône du panier et après « Ajouter au panier ».
+(function () {
+    var overlay = document.getElementById("cart-drawer");
+    var content = document.getElementById("dr-content");
+    if (!overlay || !window.fetch || !window.FormData) return;
+    var XHR = { "X-Requested-With": "XMLHttpRequest" };
+
+    function open() { overlay.classList.add("open"); document.body.style.overflow = "hidden"; }
+    function close() { overlay.classList.remove("open"); document.body.style.overflow = ""; }
+    function csrf() {
+        var m = document.cookie.match(/(?:^|; )csrftoken=([^;]+)/);
+        if (m) return decodeURIComponent(m[1]);
+        var input = document.querySelector("input[name=csrfmiddlewaretoken]");
+        return input ? input.value : "";
+    }
+    function badge(n) {
+        var b = document.getElementById("cart-badge");
+        if (b) { b.textContent = n; b.hidden = !n; }
+    }
+    function render(html) {
+        content.innerHTML = html;
+        var root = content.querySelector("#drawer-root");
+        if (root) badge(parseInt(root.dataset.count, 10) || 0);
+    }
+    function load() {
+        return fetch(overlay.dataset.url + "?drawer=1", { headers: XHR, credentials: "same-origin" })
+            .then(function (r) { return r.text(); }).then(render);
+    }
+    function post(url, quantity) {
+        var data = new FormData();
+        data.set("quantity", quantity);
+        data.set("csrfmiddlewaretoken", csrf());
+        return fetch(url, { method: "POST", body: data, headers: XHR, credentials: "same-origin" });
+    }
+    window.openCartDrawer = function () {
+        content.innerHTML = '<div class="co-loading"><div class="spinner-border" role="status"></div></div>';
+        open();
+        return load();
+    };
+
+    document.addEventListener("click", function (e) {
+        var link = e.target.closest("#cart-link");
+        if (link && !(e.ctrlKey || e.metaKey || e.shiftKey || e.button)) { e.preventDefault(); window.openCartDrawer(); return; }
+
+        var step = e.target.closest("[data-dr-step]");
+        if (step) {
+            var box = step.closest(".dr-stepper");
+            var max = parseInt(box.dataset.max, 10) || 99;
+            var next = Math.min(Math.max((parseInt(box.dataset.qty, 10) || 1) + parseInt(step.dataset.drStep, 10), 1), Math.min(max, 99));
+            if (next !== parseInt(box.dataset.qty, 10)) post(box.dataset.url, next).then(load);
+            return;
+        }
+        var remove = e.target.closest("[data-dr-remove]");
+        if (remove) { post(remove.dataset.url, 0).then(load); return; }
+
+        var checkout = e.target.closest("[data-co-open]");
+        if (checkout && window.openCheckoutModal) { e.preventDefault(); close(); window.openCheckoutModal(); return; }
+
+        if (e.target === overlay || e.target.closest("[data-dr-close]")) close();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
 })();
 </script>
 {% block extra_js %}{% endblock %}

@@ -46,7 +46,8 @@ def _url(name, *args):
     return reverse(f"storefront:{name}", args=[SLUG, *args])
 
 
-FORM = {"name": "Awa", "phone": "677123456", "address": "Akwa, Douala", "payment_mode": "LIVRAISON"}
+FORM = {"name": "Awa", "phone": "677123456", "address": "Akwa, Douala", "payment_mode": "LIVRAISON",
+        "confirm": "on"}
 
 
 # --- accès ----------------------------------------------------------------------
@@ -575,3 +576,130 @@ def test_shop_settings_saves_order_notice(admin_client, boutique):
 def test_product_form_has_description(admin_client, boutique):
     Unit.objects.get_or_create(compte=boutique.compte, name="Pièce", defaults={"symbol": "pc"})
     assert "description" in admin_client.get(reverse("catalog:product_create")).content.decode()
+
+
+# --- formulaire de commande en fenêtre (AJAX) ---------------------------------------
+
+XHR = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
+
+
+def test_ajax_buy_now_returns_checkout_url(client, boutique):
+    p = _product(boutique)
+    response = client.post(_url("cart_add", p.id), {"quantity": 1, "buy_now": "1"}, **XHR)
+    assert response.status_code == 200 and response.json() == {"checkout": _url("checkout"), "buy_now": True}
+
+
+def test_checkout_modal_renders_only_the_form(client, boutique):
+    _fill_cart(client, boutique)
+    html = client.get(_url("checkout"), {"modal": "1"}).content.decode()
+    assert 'id="checkout-root"' in html and "<html" not in html and "ACHETER MAINTENANT" in html
+    full = client.get(_url("checkout")).content.decode()
+    assert "<html" in full and 'id="checkout-root"' in full
+
+
+def test_ajax_checkout_success_returns_redirect(client, boutique):
+    _fill_cart(client, boutique)
+    response = client.post(_url("checkout"), FORM, **XHR)
+    commande = Invoice.objects.get()
+    assert response.json() == {"redirect": _url("confirmation", commande.id)}
+
+
+def test_ajax_checkout_errors_return_form_html(client, boutique):
+    _fill_cart(client, boutique)
+    response = client.post(_url("checkout"), {**FORM, "phone": "12"}, **XHR)
+    assert response.status_code == 200 and "Numéro de téléphone invalide" in response.content.decode()
+    assert not Invoice.objects.exists()
+
+
+def test_delivery_confirmation_is_required(client, boutique):
+    _fill_cart(client, boutique)
+    data = {k: v for k, v in FORM.items() if k != "confirm"}
+    response = client.post(_url("checkout"), data, **XHR)
+    assert "vraiment être livré" in response.content.decode() and not Invoice.objects.exists()
+
+
+def test_ajax_remove_item_then_empty_cart(client, boutique):
+    p = _fill_cart(client, boutique)
+    assert client.post(_url("cart_update", p.id), {"quantity": 0}, **XHR).json() == {"ok": True}
+    assert client.get(_url("checkout"), **XHR).json() == {"empty": True}
+
+
+def test_important_notice_and_footer_shown(client, boutique):
+    boutique.shop_checkout_notice = "Soyez disponible pour la livraison"
+    boutique.shop_order_footer = "Nous vous contacterons dans les 30 min"
+    boutique.save()
+    _fill_cart(client, boutique)
+    html = client.get(_url("checkout"), {"modal": "1"}).content.decode()
+    assert "IMPORTANT" in html and "Soyez disponible pour la livraison" in html and "30 min" in html
+
+
+def test_no_important_block_without_notice(client, boutique):
+    _fill_cart(client, boutique)
+    assert "co-important" not in client.get(_url("checkout"), {"modal": "1"}).content.decode()
+
+
+def test_modal_container_present_on_catalog(client, boutique):
+    _product(boutique)
+    assert 'id="co-modal"' in client.get(_url("home")).content.decode()
+
+
+def test_shop_settings_saves_checkout_texts(admin_client, boutique):
+    admin_client.post(reverse("tenants:shop_settings"), {
+        "shop_enabled": "on", "shop_slug": SLUG, "shop_delivery_fee": "0",
+        "shop_checkout_notice": "Important !", "shop_order_footer": "Merci !",
+    })
+    boutique.refresh_from_db()
+    assert boutique.shop_checkout_notice == "Important !" and boutique.shop_order_footer == "Merci !"
+
+
+# --- panier latéral -------------------------------------------------------------------
+
+def test_cart_drawer_partial_lists_items_and_total(client, boutique):
+    p = _fill_cart(client, boutique, qty=2, price="1500")
+    html = client.get(_url("cart"), {"drawer": "1"}).content.decode()
+    assert "<html" not in html and 'id="drawer-root"' in html
+    assert p.name in html and "3000 XAF" in html and "Total estimé" in html and "data-co-open" in html
+    assert 'data-count="2"' in html
+
+
+def test_cart_drawer_via_ajax_header(client, boutique):
+    _fill_cart(client, boutique)
+    assert 'id="drawer-root"' in client.get(_url("cart"), **XHR).content.decode()
+
+
+def test_cart_drawer_empty_state(client, boutique):
+    html = client.get(_url("cart"), {"drawer": "1"}).content.decode()
+    assert "Votre panier est vide" in html and "data-co-open" not in html
+
+
+def test_cart_drawer_shows_old_price_for_promo(client, boutique):
+    _fill_cart(client, boutique, price="10000", compare_at_price=Decimal("15000"))
+    assert "price-old" in client.get(_url("cart"), {"drawer": "1"}).content.decode()
+
+
+def test_cart_drawer_warns_on_stock_problem(client, boutique):
+    p = _fill_cart(client, boutique, qty=5, stock=5)
+    stock_services.apply_movement(
+        boutique=boutique, product=p, type=StockMovement.AJUSTEMENT, quantity=Decimal("-3"), created_by=None,
+    )
+    html = client.get(_url("cart"), {"drawer": "1"}).content.decode()
+    assert "Stock insuffisant" in html and "Corrigez les quantités" in html and "data-co-open" not in html
+
+
+def test_cart_drawer_delivery_note_by_city(client, boutique):
+    _zones(boutique)
+    _fill_cart(client, boutique)
+    assert "calculée selon votre ville" in client.get(_url("cart"), {"drawer": "1"}).content.decode()
+
+
+def test_ajax_add_to_cart_updates_count(client, boutique):
+    p = _product(boutique)
+    response = client.post(_url("cart_add", p.id), {"quantity": 3}, **XHR)
+    assert response.json()["buy_now"] is False
+    assert 'data-count="3"' in client.get(_url("cart"), {"drawer": "1"}).content.decode()
+
+
+def test_drawer_markup_and_cart_badge_on_pages(client, boutique):
+    _product(boutique)
+    html = client.get(_url("home")).content.decode()
+    assert 'id="cart-drawer"' in html and 'id="cart-link"' in html and 'id="cart-badge"' in html

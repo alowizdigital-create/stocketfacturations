@@ -1,0 +1,94 @@
+{% load i18n %}
+<div class="co" id="checkout-root" data-subtotal="{{ totals.subtotal }}">
+    {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
+
+    <div class="co-items">
+        {% for line in lines %}
+        <div class="co-item">
+            <div class="co-thumb">
+                {% if line.product.image %}<img src="{{ line.product.image.url }}" alt="">{% else %}<i class="bi bi-image"></i>{% endif %}
+                <span class="co-qty">{{ line.quantity }}</span>
+            </div>
+            <div class="co-name">{{ line.product.name }}</div>
+            <div class="co-price">{{ line.line_ttc }} {{ boutique.devise }}</div>
+            <button type="button" class="co-x" data-co-remove data-url="{% url 'storefront:cart_update' slug=slug product_id=line.product.id %}" aria-label="{% trans 'Retirer' %}">&times;</button>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="co-totals">
+        <div class="d-flex justify-content-between"><span>{% trans "Sous-total" %}</span><b>{{ totals.subtotal }} {{ boutique.devise }}</b></div>
+        <div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><b id="sum-delivery">{% if totals.fee_pending %}{% trans "selon la ville" %}{% elif totals.delivery_fee %}{{ totals.delivery_fee }} {{ boutique.devise }}{% else %}{% trans "Gratuit" %}{% endif %}</b></div>
+        <div class="d-flex justify-content-between co-total"><span>{% trans "Total" %}</span><b><span id="sum-total">{{ totals.total }}</span> {{ boutique.devise }}</b></div>
+    </div>
+
+    <form method="post" action="{% url 'storefront:checkout' slug=slug %}" data-co-form>
+        {% csrf_token %}
+        {{ form.non_field_errors }}
+        <div class="hp" aria-hidden="true">{{ form.website }}</div>
+
+        <div class="co-row">
+            <label for="id_name">{{ form.name.label }} <span class="req">*</span></label>
+            <div><div class="co-input"><span class="co-ico"><i class="bi bi-person-circle"></i></span><input type="text" name="name" id="id_name" value="{{ form.name.value|default_if_none:'' }}" placeholder="{% trans 'Nom / prénom' %}" required></div>
+            {% for e in form.name.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        <div class="co-row">
+            <label for="id_phone">{{ form.phone.label }}<span class="req">*</span></label>
+            <div><div class="co-input"><span class="co-ico"><i class="bi bi-telephone-fill"></i></span><input type="tel" name="phone" id="id_phone" inputmode="tel" value="{{ form.phone.value|default_if_none:'' }}" placeholder="{% trans 'EX: 677 81 31 26' %}" required></div>
+            {% for e in form.phone.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        {% if zones %}
+        <div class="co-row">
+            <label for="id_zone">{% trans "Ville de livraison" %}<span class="req">*</span></label>
+            <div><div class="co-input"><span class="co-ico"><i class="bi bi-geo-alt-fill"></i></span>
+                <select name="zone" id="id_zone" required>
+                    <option value="">{% trans "— Choisissez votre ville —" %}</option>
+                    {% for z in zones %}<option value="{{ z.id }}" data-fee="{{ z.fee }}" {% if form.zone.value == z.id|stringformat:"s" %}selected{% endif %}>{{ z.city }} — {% if z.fee %}{{ z.fee }} {{ boutique.devise }}{% else %}{% trans "livraison gratuite" %}{% endif %}</option>{% endfor %}
+                </select></div>
+            {% for e in form.zone.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        {% endif %}
+        <div class="co-row">
+            <label for="id_address">{{ form.address.label }}<span class="req">*</span></label>
+            <div><div class="co-input"><span class="co-ico"><i class="bi bi-geo-alt-fill"></i></span><input type="text" name="address" id="id_address" value="{{ form.address.value|default_if_none:'' }}" placeholder="{% trans 'ex: Douala / Akwa' %}" required></div>
+            {% for e in form.address.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
+        </div>
+        <div class="co-row">
+            <label for="id_confirm">{% trans "Voulez-vous vraiment être livré(e) ?" %}</label>
+            <div><div class="co-input"><span class="co-ico"><i class="bi bi-card-checklist"></i></span>
+                <label class="co-check" for="id_confirm"><input type="checkbox" name="confirm" id="id_confirm" {% if form.confirm.value %}checked{% endif %}> {% trans "Oui, je veux vraiment être livré(e)" %}</label></div>
+            {% for e in form.confirm.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
+        </div>
+
+        {% if payment_methods %}
+        <div class="co-pay">
+            <div class="fw-semibold mb-1">{{ form.payment_mode.label }}</div>
+            {% for radio in form.payment_mode %}
+            <div class="form-check">{{ radio.tag }} <label class="form-check-label" for="{{ radio.id_for_label }}">{{ radio.choice_label }}</label></div>
+            {% endfor %}
+            <div id="momo-box" class="co-momo" style="display:none;">
+                <div class="small mb-2">{% trans "Envoyez le montant total à l'un de ces numéros, puis indiquez la référence de la transaction :" %}</div>
+                {% for m in payment_methods %}<div class="fw-semibold">{{ m.label }}{% if m.account_name %} ({{ m.account_name }}){% endif %} : {{ m.number }}</div>{% endfor %}
+                <div class="co-input mt-2"><span class="co-ico"><i class="bi bi-receipt"></i></span><input type="text" name="payment_reference" value="{{ form.payment_reference.value|default_if_none:'' }}" placeholder="{{ form.payment_reference.label }}"></div>
+                {% for e in form.payment_reference.errors %}<div class="co-err">{{ e }}</div>{% endfor %}
+            </div>
+            {% for e in form.payment_mode.errors %}<div class="co-err">{{ e }}</div>{% endfor %}
+        </div>
+        {% else %}
+        <input type="hidden" name="payment_mode" value="LIVRAISON">
+        {% endif %}
+
+        {% if boutique.shop_checkout_notice %}
+        <div class="co-important">
+            <div class="co-important-badge"><i class="bi bi-exclamation-circle-fill"></i><span>{% trans "IMPORTANT" %}</span></div>
+            <p>{{ boutique.shop_checkout_notice }}</p>
+        </div>
+        {% endif %}
+
+        <button type="submit" class="co-submit">
+            <i class="bi bi-bag-fill"></i>
+            <span>{% trans "ACHETER MAINTENANT" %} – <b id="co-total-btn">{{ totals.total }}</b> {{ boutique.devise }}<small>{% trans "Vérifiez bien le prix avant de valider" %}</small></span>
+        </button>
+        {% if boutique.shop_order_footer %}<p class="co-footer">{{ boutique.shop_order_footer }}</p>{% endif %}
+    </form>
+</div>
