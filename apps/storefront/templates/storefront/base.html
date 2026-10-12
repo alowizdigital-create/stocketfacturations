@@ -28,7 +28,7 @@
         .btn-outline-brand:hover { background: var(--brand); color: #fff; }
         .panel { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 1rem; }
         .price { font-weight: 700; color: var(--ink); }
-        .price-old { color: #8a93a3; text-decoration: line-through; font-weight: 400; margin-left: .35rem; }
+        .price-old { color: #8a93a3; text-decoration: line-through; font-weight: 400; margin-left: .35rem; font-size: .88em; white-space: nowrap; }
         .hp { position: absolute; left: -9999px; }
         .product-img { aspect-ratio: 1 / 1; object-fit: cover; width: 100%; background: var(--brand-light); }
         .product-img-ph { display: flex; align-items: center; justify-content: center; color: #c3bcd1; font-size: 2.5rem; }
@@ -127,6 +127,28 @@
         .dr-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: .5rem; color: #7c7488; padding: 2rem; }
         .dr-empty .bi { font-size: 2.6rem; }
         .dr-empty .dr-continue { width: auto; padding-inline: 1.4rem; }
+        /* --- retouches --- */
+        html { scroll-behavior: smooth; }
+        .shop-nav { position: sticky; top: 0; z-index: 50; transition: box-shadow .2s; }
+        .shop-nav.scrolled { box-shadow: 0 2px 14px rgba(13,34,64,.12); }
+        .p-media .product-img { transition: transform .45s ease; }
+        .p-card:hover .p-media .product-img { transform: scale(1.05); }
+        .p-card { transition: transform .2s ease; }
+        .p-card:hover { transform: translateY(-3px); }
+        .p-name { font-weight: 500; line-height: 1.3; }
+        .pd-off { display: inline-block; margin-left: .5rem; background: #fde8e5; color: #c0392b; font-size: .8rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; vertical-align: middle; }
+        .wa-float { position: fixed; right: 16px; bottom: 18px; z-index: 900; width: 54px; height: 54px; border-radius: 50%; background: #25d366; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; box-shadow: 0 6px 18px rgba(0,0,0,.25); text-decoration: none; transition: transform .2s; }
+        .wa-float:hover { transform: scale(1.08); color: #fff; }
+        .shop-footer { background: #f4f6f9; color: #4a5a72; font-size: .9rem; margin-top: 3rem; }
+        .shop-footer h3 { font-size: .8rem; text-transform: uppercase; letter-spacing: .08em; color: #0d2240; margin-bottom: .7rem; }
+        .shop-footer a { color: #1d4e89; text-decoration: none; }
+        .shop-footer a:hover { text-decoration: underline; }
+        .shop-footer .foot-brand { font-weight: 800; font-size: 1.15rem; color: #0d2240; display: flex; align-items: center; gap: .6rem; margin-bottom: .6rem; }
+        .shop-footer .foot-brand img { height: 36px; max-width: 120px; object-fit: contain; }
+        .foot-bottom { border-top: 1px solid #e0e5ec; padding: 1rem 0; text-align: center; font-size: .8rem; color: #7c8798; }
+        .foot-list { list-style: none; margin: 0; padding: 0; display: grid; gap: .45rem; }
+        .foot-list .bi { margin-right: .45rem; color: #6f4a8e; }
+        @media (max-width: 575.98px) { .p-stock { font-size: .72rem; } .p-stock span { white-space: nowrap; } .p-name { font-size: .9rem; } }
         @media (max-width: 767.98px) {
             .shop-nav .inner { grid-template-columns: minmax(0, 1fr) auto; padding: .7rem 1.1rem; gap: .8rem; }
             .shop-links { display: none; }
@@ -140,7 +162,7 @@
     {% block extra_css %}{% endblock %}
     {% include "storefront/_pixels.html" %}
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
 {% if delivery_banner %}<div class="announce"><i class="bi bi-truck"></i> {{ delivery_banner }}</div>{% endif %}
 <header class="shop-nav">
     <div class="container inner" style="max-width: 1240px;">
@@ -166,11 +188,46 @@
     {% if messages %}{% for message in messages %}<div class="alert alert-info py-2">{{ message }}</div>{% endfor %}{% endif %}
     {% block content %}{% endblock %}
 </main>
-<footer class="text-center py-4 mt-4">
-    <div>{{ boutique.name }}{% if boutique.address %} — {{ boutique.address }}{% endif %}{% if boutique.phone %} — {{ boutique.phone }}{% endif %}</div>
-    {% for mention in boutique.legal_mentions %}<span class="me-2">{{ mention }}</span>{% endfor %}
-    <div class="mt-1">{% trans "Boutique propulsée par" %} Zweey</div>
+<footer class="shop-footer">
+    <div class="container" style="max-width: 1240px;">
+        <div class="row g-4 py-4">
+            <div class="col-md-4">
+                <div class="foot-brand">{% if boutique.compte.logo %}<img src="{{ boutique.compte.logo.url }}" alt="">{% endif %}<span>{{ boutique.name }}</span></div>
+                {% if boutique.shop_description %}<p class="mb-0">{{ boutique.shop_description }}</p>{% endif %}
+            </div>
+            <div class="col-md-4">
+                <h3>{% trans "Contact" %}</h3>
+                <ul class="foot-list">
+                    {% if boutique.address %}<li><i class="bi bi-geo-alt-fill"></i>{{ boutique.address }}</li>{% endif %}
+                    {% if boutique.phone %}<li><i class="bi bi-telephone-fill"></i><a href="tel:{{ boutique.phone }}">{{ boutique.phone }}</a></li>{% endif %}
+                    {% if contact_url %}<li><i class="bi bi-whatsapp"></i><a href="{{ contact_url }}" target="_blank" rel="noopener">{% trans "Nous écrire sur WhatsApp" %}</a></li>{% endif %}
+                </ul>
+            </div>
+            <div class="col-md-4">
+                <h3>{% trans "Livraison et paiement" %}</h3>
+                <ul class="foot-list">
+                    {% if delivery_banner %}<li><i class="bi bi-truck"></i>{{ delivery_banner }}</li>{% endif %}
+                    <li><i class="bi bi-cash-coin"></i>{% trans "Paiement à la livraison" %}</li>
+                    {% if boutique.payment_methods %}<li><i class="bi bi-phone"></i>{% trans "Mobile Money accepté" %}</li>{% endif %}
+                </ul>
+            </div>
+        </div>
+        <div class="foot-bottom">
+            {% for mention in boutique.legal_mentions %}<span class="me-2">{{ mention }}</span>{% endfor %}
+            <div>{% trans "Boutique propulsée par" %} Zweey</div>
+        </div>
+    </div>
 </footer>
+{% if contact_url %}<a href="{{ contact_url }}?text={{ wa_text|urlencode }}" class="wa-float" target="_blank" rel="noopener" aria-label="WhatsApp"><i class="bi bi-whatsapp"></i></a>{% endif %}
+<script>
+(function () {
+    var nav = document.querySelector(".shop-nav");
+    if (!nav) return;
+    function onScroll() { nav.classList.toggle("scrolled", window.scrollY > 4); }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+})();
+</script>
 <script>
 (function () {
     // Compte à rebours des promotions.
@@ -211,13 +268,14 @@ window.initCheckoutForm = function (root) {
     var total = root.querySelector("#sum-total");
     var button = root.querySelector("#co-total-btn");
     var subtotal = parseFloat(root.dataset.subtotal) || 0;
+    function fmt(n) { return Math.round(n).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "\u00a0"); }
     function sync() {
         if (!select) return;
         var option = select.options[select.selectedIndex];
         var fee = option && option.value ? (parseFloat(option.dataset.fee) || 0) : 0;
-        delivery.textContent = !option || !option.value ? "{% trans 'selon la ville' %}" : (fee ? fee + " {{ boutique.devise }}" : "{% trans 'Gratuit' %}");
-        total.textContent = subtotal + fee;
-        if (button) button.textContent = subtotal + fee;
+        delivery.textContent = !option || !option.value ? "{% trans 'selon la ville' %}" : (fee ? fmt(fee) + " {{ boutique.devise }}" : "{% trans 'Gratuit' %}");
+        total.textContent = fmt(subtotal + fee);
+        if (button) button.textContent = fmt(subtotal + fee);
     }
     if (select) { select.addEventListener("change", sync); sync(); }
     var box = root.querySelector("#momo-box");

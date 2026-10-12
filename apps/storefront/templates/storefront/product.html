@@ -1,9 +1,29 @@
 {% extends "storefront/base.html" %}
+{% load storefront_extras %}
 {% load i18n %}
 {% block title %}{{ product.name }} — {{ boutique.name }}{% endblock %}
 {% block extra_css %}
 <style>
+    .gallery-wrap { position: relative; }
+    .gallery-count { display: none; }
     .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .sticky-buy { position: fixed; left: 0; right: 0; bottom: 0; z-index: 800; background: #fff; border-top: 1px solid #e3e6eb; box-shadow: 0 -4px 16px rgba(13,34,64,.1); padding: .6rem 1rem; display: none; align-items: center; gap: .8rem; transform: translateY(100%); transition: transform .25s; }
+    .sticky-buy.show { transform: none; }
+    .sticky-buy .sb-info { flex: 1; min-width: 0; line-height: 1.2; }
+    .sticky-buy .sb-name { font-size: .8rem; color: #5b6b82; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sticky-buy .sb-price { font-weight: 800; }
+    .sticky-buy button { background: var(--buy); color: #fff; border: 2px solid #e11d1d; border-radius: 10px; padding: .6rem 1.1rem; font-weight: 800; font-size: .9rem; white-space: nowrap; }
+    @media (max-width: 767.98px) {
+        .sticky-buy { display: flex; }
+        .has-sticky-buy main { padding-bottom: 5.5rem; }
+        .has-sticky-buy .wa-float { bottom: 88px; }
+    }
+    @media (max-width: 991.98px) {
+        .gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; gap: 0; scrollbar-width: none; border-radius: 12px; }
+        .gallery::-webkit-scrollbar { display: none; }
+        .gallery img { flex: 0 0 100%; scroll-snap-align: center; aspect-ratio: 1 / 1; grid-column: auto; }
+        .gallery-count { display: block; position: absolute; right: 12px; bottom: 12px; background: rgba(13,34,64,.75); color: #fff; font-size: .8rem; padding: .2rem .65rem; border-radius: 999px; }
+    }
     .gallery img { width: 100%; display: block; object-fit: cover; background: var(--brand-light); }
     .gallery img:first-child { grid-column: 1 / -1; }
     .buy-panel { position: sticky; top: 1rem; }
@@ -24,19 +44,23 @@
     .related-title { font-size: 1.4rem; font-weight: 600; margin: 3rem 0 1.2rem; }
 </style>
 {% endblock %}
+{% block body_class %}has-sticky-buy{% endblock %}
 {% block content %}
 <a href="{% url 'storefront:home' slug=slug %}" class="small text-decoration-none"><i class="bi bi-arrow-left"></i> {% trans "Retour à la boutique" %}</a>
 <div class="row g-4 mt-1">
     <div class="col-lg-7">
         {% if images %}
-        <div class="gallery">{% for img in images %}<img src="{{ img.url }}" alt="{{ product.name }}"{% if not forloop.first %} loading="lazy"{% endif %}>{% endfor %}</div>
+        <div class="gallery-wrap">
+            <div class="gallery" id="gallery">{% for img in images %}<img src="{{ img.url }}" alt="{{ product.name }}"{% if not forloop.first %} loading="lazy"{% endif %}>{% endfor %}</div>
+            {% if images|length > 1 %}<span class="gallery-count" id="gallery-count">1 / {{ images|length }}</span>{% endif %}
+        </div>
         {% else %}<div class="product-img product-img-ph rounded-3 border"><i class="bi bi-image"></i></div>{% endif %}
     </div>
     <div class="col-lg-5">
         <div class="buy-panel">
             <h1 class="pd-title">{{ product.name }}</h1>
             {% if product.category %}<div class="text-muted small mb-2">{{ product.category.name }}</div>{% endif %}
-            <div class="pd-price price">{{ product.shop_price }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old">{{ product.shop_compare_price }} {{ boutique.devise }}</span>{% endif %}</div>
+            <div class="pd-price price">{{ product.shop_price|money }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old">{{ product.shop_compare_price|money }} {{ boutique.devise }}</span>{% if product.discount_percent %}<span class="pd-off">−{{ product.discount_percent }} %</span>{% endif %}{% endif %}</div>
 
             {% if product.promo_ends_ms %}
             <div class="p-promo mb-2"><i class="bi bi-hourglass-split"></i> <span>{% trans "Prix promo valable encore" %}</span> <b data-countdown="{{ product.promo_ends_ms }}">--:--:--</b></div>
@@ -81,6 +105,13 @@
     </div>
 </div>
 
+{% if max_qty > 0 %}
+<div class="sticky-buy" id="sticky-buy">
+    <div class="sb-info"><div class="sb-name">{{ product.name }}</div><div class="sb-price">{{ product.shop_price|money }} {{ boutique.devise }}</div></div>
+    <button type="button" id="sticky-buy-btn">{% trans "COMMANDER" %}</button>
+</div>
+{% endif %}
+
 {% if related %}
 <h2 class="related-title">{% trans "Vous aimerez aussi" %}</h2>
 <div class="row row-cols-2 row-cols-lg-4 g-3 g-md-4">
@@ -97,6 +128,27 @@
 })();
 </script>
 <script>
+(function () {
+    // Compteur de photos de la galerie (téléphone).
+    var gallery = document.getElementById("gallery"), count = document.getElementById("gallery-count");
+    if (gallery && count) {
+        var update = function () {
+            var index = Math.round(gallery.scrollLeft / gallery.clientWidth) + 1;
+            count.textContent = index + " / " + gallery.children.length;
+        };
+        gallery.addEventListener("scroll", update, { passive: true });
+        gallery.addEventListener("scrollend", update);
+    }
+    // Barre d'achat collée en bas (téléphone) : visible quand le vrai bouton n'est plus à l'écran.
+    var bar = document.getElementById("sticky-buy"), main = document.querySelector(".btn-buy-lg");
+    if (bar && main && "IntersectionObserver" in window) {
+        new IntersectionObserver(function (entries) {
+            var e = entries[0];
+            bar.classList.toggle("show", !e.isIntersecting && e.boundingClientRect.top < 0);
+        }).observe(main);
+        document.getElementById("sticky-buy-btn").addEventListener("click", function () { main.click(); });
+    }
+})();
 (function () {
     var input = document.getElementById("qty");
     if (!input) return;

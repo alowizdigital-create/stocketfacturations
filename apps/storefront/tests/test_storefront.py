@@ -500,7 +500,7 @@ def test_checkout_lists_cities_with_fees(client, boutique):
     _zones(boutique)
     _fill_cart(client, boutique)
     html = client.get(_url("checkout")).content.decode()
-    assert "Bafoussam — 2000 XAF" in html and "Yaoundé — livraison gratuite" in html
+    assert "Bafoussam — 2 000 XAF" in html and "Yaoundé — livraison gratuite" in html
 
 
 def test_admin_manages_delivery_zones(admin_client, boutique):
@@ -548,7 +548,7 @@ def test_related_products_prefer_same_category_and_exclude_self(client, boutique
     for i in range(5):
         _product(boutique, f"Autre{i}")
     html = client.get(_url("product", main.id)).content.decode()
-    related_html = html.split("Vous aimerez aussi")[1].split('id="track-view"')[0]
+    related_html = html.split("Vous aimerez aussi")[1].split("<footer")[0]
     assert "Meme cat" in related_html and "Principal" not in related_html
     assert related_html.count('class="p-card') == 4
 
@@ -658,7 +658,7 @@ def test_cart_drawer_partial_lists_items_and_total(client, boutique):
     p = _fill_cart(client, boutique, qty=2, price="1500")
     html = client.get(_url("cart"), {"drawer": "1"}).content.decode()
     assert "<html" not in html and 'id="drawer-root"' in html
-    assert p.name in html and "3000 XAF" in html and "Total estimé" in html and "data-co-open" in html
+    assert p.name in html and "3 000 XAF" in html and "Total estimé" in html and "data-co-open" in html
     assert 'data-count="2"' in html
 
 
@@ -812,3 +812,85 @@ def test_pixels_never_loaded_when_shop_disabled(client, boutique):
     boutique.shop_enabled = False
     boutique.save()
     assert client.get(_url("home")).status_code == 404
+
+
+# --- retouches de design -------------------------------------------------------------------
+
+from apps.storefront.templatetags.storefront_extras import money
+
+
+def test_money_filter_groups_thousands():
+    assert money(15000) == "15 000" and money(Decimal("1250000")) == "1 250 000"
+    assert money(999) == "999" and money(0) == "0" and money("abc") == "abc"
+
+
+def test_prices_are_grouped_on_cards_and_product_page(client, boutique):
+    p = _product(boutique, "Casque", price="15000")
+    assert "15 000 XAF" in client.get(_url("home")).content.decode()
+    assert "15 000 XAF" in client.get(_url("product", p.id)).content.decode()
+
+
+def test_tracking_attributes_stay_raw_numbers(client, boutique):
+    _product(boutique, "Casque", price="15000")
+    html = client.get(_url("home")).content.decode()
+    assert 'data-track-price="15000"' in html
+
+
+def test_discount_percentage_on_promo(client, boutique):
+    p = _product(boutique, "Promo", price="10000", compare_at_price=Decimal("20000"))
+    assert "−50 %" in client.get(_url("home")).content.decode()
+    assert "−50 %" in client.get(_url("product", p.id)).content.decode()
+
+
+def test_no_percentage_without_promo(client, boutique):
+    _product(boutique, "Normal", price="10000")
+    assert "−" not in client.get(_url("home")).content.decode().split("<main")[1].split("</main>")[0]
+
+
+def test_footer_shows_contact_and_delivery(client, boutique):
+    boutique.address, boutique.shop_description = "Akwa, Douala", "Cosmétiques et soins"
+    boutique.save()
+    _zones(boutique)
+    _product(boutique)
+    footer = client.get(_url("home")).content.decode().split("<footer")[1].split("</footer>")[0]
+    assert "Akwa, Douala" in footer and "tel:677000000" in footer and "Cosmétiques et soins" in footer
+    assert "Livraison gratuite à Douala et Yaoundé" in footer and "Paiement à la livraison" in footer
+
+
+def test_mobile_money_mentioned_in_footer_only_when_configured(client, boutique):
+    _product(boutique)
+    assert "Mobile Money accepté" not in client.get(_url("home")).content.decode()
+    boutique.om_number = "699000111"
+    boutique.save()
+    assert "Mobile Money accepté" in client.get(_url("home")).content.decode()
+
+
+def test_whatsapp_float_button(client, boutique):
+    _product(boutique)
+    html = client.get(_url("home")).content.decode()
+    assert 'class="wa-float"' in html and "wa.me/677000000?text=" in html
+    boutique.phone = ""
+    boutique.save()
+    assert 'class="wa-float"' not in client.get(_url("home")).content.decode()
+
+
+def test_whatsapp_text_mentions_product_on_product_page(client, boutique):
+    p = _product(boutique, "Mastic")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert "Mastic" in html.split('class="wa-float"')[0].rsplit("<a ", 1)[1]
+
+
+def test_product_page_has_sticky_bar_and_swipe_gallery(client, boutique):
+    p = _product(boutique, "Mastic")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert 'id="sticky-buy"' in html and "has-sticky-buy" in html and "scroll-snap-type" in html
+
+
+def test_no_sticky_bar_when_soldout(client, boutique):
+    p = _product(boutique, "Epuise", stock=0)
+    assert 'id="sticky-buy"' not in client.get(_url("product", p.id)).content.decode()
+
+
+def test_header_is_sticky(client, boutique):
+    _product(boutique)
+    assert "position: sticky" in client.get(_url("home")).content.decode()

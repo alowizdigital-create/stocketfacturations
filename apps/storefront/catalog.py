@@ -65,6 +65,10 @@ def attach_prices(products, boutique):
         product.shop_compare_price = (
             _line_totals(Decimal("1"), compare, product.tva_rate)[1] if product.on_sale else None
         )
+        product.discount_percent = (
+            int(round((product.shop_compare_price - product.shop_price) * 100 / product.shop_compare_price))
+            if product.on_sale and product.shop_compare_price else 0
+        )
         product.promo_ends_ms = (
             int(product.promo_ends_at.timestamp() * 1000) if product.on_sale and product.promo_ends_at else None
         )

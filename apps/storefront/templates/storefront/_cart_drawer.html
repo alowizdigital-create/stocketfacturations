@@ -1,3 +1,4 @@
+{% load storefront_extras %}
 {% load i18n %}
 <div class="dr" id="drawer-root" data-count="{{ totals.count }}">
     <div class="dr-head">
@@ -11,7 +12,7 @@
             <div class="dr-thumb">{% if line.product.image %}<img src="{{ line.product.image.url }}" alt="">{% else %}<i class="bi bi-image"></i>{% endif %}</div>
             <div class="dr-info">
                 <a href="{% url 'storefront:product' slug=slug product_id=line.product.id %}" class="dr-name">{{ line.product.name }}</a>
-                <div class="dr-unit">{{ line.unit_ttc }} {{ boutique.devise }}{% if line.product.shop_compare_price %}<span class="price-old">{{ line.product.shop_compare_price }} {{ boutique.devise }}</span>{% endif %}</div>
+                <div class="dr-unit">{{ line.unit_ttc|money }} {{ boutique.devise }}{% if line.product.shop_compare_price %}<span class="price-old">{{ line.product.shop_compare_price|money }} {{ boutique.devise }}</span>{% endif %}</div>
                 {% if not line.in_stock %}<div class="dr-warn">{% blocktrans with n=line.product.stock|floatformat:0 %}Stock insuffisant (reste {{ n }}).{% endblocktrans %}</div>{% endif %}
                 <div class="dr-controls">
                     <div class="dr-stepper" data-url="{% url 'storefront:cart_update' slug=slug product_id=line.product.id %}" data-qty="{{ line.quantity }}" data-max="{{ line.product.stock|floatformat:0 }}">
@@ -22,13 +23,13 @@
                     <button type="button" class="dr-trash" data-dr-remove data-url="{% url 'storefront:cart_update' slug=slug product_id=line.product.id %}" aria-label="{% trans 'Retirer' %}"><i class="bi bi-trash"></i></button>
                 </div>
             </div>
-            <div class="dr-line">{{ line.line_ttc }} {{ boutique.devise }}</div>
+            <div class="dr-line">{{ line.line_ttc|money }} {{ boutique.devise }}</div>
         </div>
         {% endfor %}
     </div>
     <div class="dr-foot">
-        <div class="d-flex justify-content-between dr-total"><span>{% trans "Total estimé" %}</span><b>{{ totals.total }} {{ boutique.devise }}</b></div>
-        <p class="dr-note">{% if totals.fee_pending %}{% trans "Livraison calculée selon votre ville, à la commande." %}{% elif totals.delivery_fee %}{% blocktrans with fee=totals.delivery_fee devise=boutique.devise %}Livraison incluse : {{ fee }} {{ devise }}.{% endblocktrans %}{% else %}{% trans "Livraison gratuite." %}{% endif %}</p>
+        <div class="d-flex justify-content-between dr-total"><span>{% trans "Total estimé" %}</span><b>{{ totals.total|money }} {{ boutique.devise }}</b></div>
+        <p class="dr-note">{% if totals.fee_pending %}{% trans "Livraison calculée selon votre ville, à la commande." %}{% elif totals.delivery_fee %}{% blocktrans with fee=totals.delivery_fee|money devise=boutique.devise %}Livraison incluse : {{ fee }} {{ devise }}.{% endblocktrans %}{% else %}{% trans "Livraison gratuite." %}{% endif %}</p>
         {% if has_stock_problem %}
         <button type="button" class="dr-buy" disabled><span>{% trans "Corrigez les quantités pour commander" %}</span></button>
         {% else %}

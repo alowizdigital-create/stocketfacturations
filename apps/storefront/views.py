@@ -63,6 +63,7 @@ def _context(request, boutique, **extra):
         "cart_count": catalog.cart_totals(boutique, lines)["count"],
         "contact_url": _contact_url(boutique),
         "delivery_banner": boutique.delivery_banner,
+        "wa_text": _("Bonjour, j'ai une question sur votre boutique."),
     }
     context.update(extra)
     return context
@@ -143,6 +144,7 @@ def product_detail(request, slug, product_id):
         request, boutique, product=product, images=images,
         max_qty=int(min(product.stock, catalog.MAX_QTY_PER_LINE)),
         related=catalog.related_products(boutique, product),
+        wa_text=_("Bonjour, je suis intéressé(e) par : %(name)s") % {"name": product.name},
         track_view={
             "ids": [str(product.id)], "name": product.name, "value": float(product.shop_price),
             "price": float(product.shop_price), "currency": boutique.devise,

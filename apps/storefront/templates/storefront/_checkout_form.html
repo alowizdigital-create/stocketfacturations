@@ -1,3 +1,4 @@
+{% load storefront_extras %}
 {% load i18n %}
 <div class="co" id="checkout-root" data-subtotal="{{ totals.subtotal }}" data-count="{{ totals.count }}" data-currency="{{ boutique.devise }}" data-ids="{% for line in lines %}{{ line.product.id }}{% if not forloop.last %},{% endif %}{% endfor %}">
     {% if error %}<div class="alert alert-danger py-2">{{ error }}</div>{% endif %}
@@ -10,16 +11,16 @@
                 <span class="co-qty">{{ line.quantity }}</span>
             </div>
             <div class="co-name">{{ line.product.name }}</div>
-            <div class="co-price">{{ line.line_ttc }} {{ boutique.devise }}</div>
+            <div class="co-price">{{ line.line_ttc|money }} {{ boutique.devise }}</div>
             <button type="button" class="co-x" data-co-remove data-url="{% url 'storefront:cart_update' slug=slug product_id=line.product.id %}" aria-label="{% trans 'Retirer' %}">&times;</button>
         </div>
         {% endfor %}
     </div>
 
     <div class="co-totals">
-        <div class="d-flex justify-content-between"><span>{% trans "Sous-total" %}</span><b>{{ totals.subtotal }} {{ boutique.devise }}</b></div>
-        <div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><b id="sum-delivery">{% if totals.fee_pending %}{% trans "selon la ville" %}{% elif totals.delivery_fee %}{{ totals.delivery_fee }} {{ boutique.devise }}{% else %}{% trans "Gratuit" %}{% endif %}</b></div>
-        <div class="d-flex justify-content-between co-total"><span>{% trans "Total" %}</span><b><span id="sum-total">{{ totals.total }}</span> {{ boutique.devise }}</b></div>
+        <div class="d-flex justify-content-between"><span>{% trans "Sous-total" %}</span><b>{{ totals.subtotal|money }} {{ boutique.devise }}</b></div>
+        <div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><b id="sum-delivery">{% if totals.fee_pending %}{% trans "selon la ville" %}{% elif totals.delivery_fee %}{{ totals.delivery_fee|money }} {{ boutique.devise }}{% else %}{% trans "Gratuit" %}{% endif %}</b></div>
+        <div class="d-flex justify-content-between co-total"><span>{% trans "Total" %}</span><b><span id="sum-total">{{ totals.total|money }}</span> {{ boutique.devise }}</b></div>
     </div>
 
     <form method="post" action="{% url 'storefront:checkout' slug=slug %}" data-co-form>
@@ -43,7 +44,7 @@
             <div><div class="co-input"><span class="co-ico"><i class="bi bi-geo-alt-fill"></i></span>
                 <select name="zone" id="id_zone" required>
                     <option value="">{% trans "— Choisissez votre ville —" %}</option>
-                    {% for z in zones %}<option value="{{ z.id }}" data-fee="{{ z.fee }}" {% if form.zone.value == z.id|stringformat:"s" %}selected{% endif %}>{{ z.city }} — {% if z.fee %}{{ z.fee }} {{ boutique.devise }}{% else %}{% trans "livraison gratuite" %}{% endif %}</option>{% endfor %}
+                    {% for z in zones %}<option value="{{ z.id }}" data-fee="{{ z.fee }}" {% if form.zone.value == z.id|stringformat:"s" %}selected{% endif %}>{{ z.city }} — {% if z.fee %}{{ z.fee|money }} {{ boutique.devise }}{% else %}{% trans "livraison gratuite" %}{% endif %}</option>{% endfor %}
                 </select></div>
             {% for e in form.zone.errors %}<div class="co-err">{{ e }}</div>{% endfor %}</div>
         </div>
@@ -87,7 +88,7 @@
 
         <button type="submit" class="co-submit">
             <i class="bi bi-bag-fill"></i>
-            <span>{% trans "ACHETER MAINTENANT" %} – <b id="co-total-btn">{{ totals.total }}</b> {{ boutique.devise }}<small>{% trans "Vérifiez bien le prix avant de valider" %}</small></span>
+            <span>{% trans "ACHETER MAINTENANT" %} – <b id="co-total-btn">{{ totals.total|money }}</b> {{ boutique.devise }}<small>{% trans "Vérifiez bien le prix avant de valider" %}</small></span>
         </button>
         {% if boutique.shop_order_footer %}<p class="co-footer">{{ boutique.shop_order_footer }}</p>{% endif %}
     </form>

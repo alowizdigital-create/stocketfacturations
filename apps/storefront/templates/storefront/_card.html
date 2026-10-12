@@ -1,3 +1,4 @@
+{% load storefront_extras %}
 {% load i18n %}
 <div class="col">
     <div class="p-card {% if product.stock <= 0 %}soldout{% endif %}">
@@ -6,7 +7,7 @@
                 {% if product.image %}<img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-img" loading="lazy">
                 {% else %}<div class="product-img product-img-ph"><i class="bi bi-image"></i></div>{% endif %}
             </a>
-            {% if product.on_sale %}<span class="p-badge">{% trans "Promotion" %}</span>{% endif %}
+            {% if product.on_sale %}<span class="p-badge">{% trans "Promotion" %}{% if product.discount_percent %} −{{ product.discount_percent }} %{% endif %}</span>{% endif %}
             {% if product.stock > 0 %}
             <form method="post" action="{% url 'storefront:cart_add' slug=slug product_id=product.id %}" class="p-buy-form" data-track-id="{{ product.id }}" data-track-name="{{ product.name }}" data-track-price="{{ product.shop_price }}" data-currency="{{ boutique.devise }}">
                 {% csrf_token %}
@@ -22,7 +23,7 @@
             {% endif %}
         </div>
         <a href="{% url 'storefront:product' slug=slug product_id=product.id %}" class="p-name">{{ product.name }}</a>
-        <div class="price">{{ product.shop_price }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old">{{ product.shop_compare_price }} {{ boutique.devise }}</span>{% endif %}</div>
+        <div class="price">{{ product.shop_price|money }} {{ boutique.devise }}{% if product.shop_compare_price %}<span class="price-old">{{ product.shop_compare_price|money }} {{ boutique.devise }}</span>{% endif %}</div>
         {% if product.promo_ends_ms %}
         <div class="p-promo"><i class="bi bi-hourglass-split"></i> <span>{% trans "Prix promo valable encore" %}</span> <b data-countdown="{{ product.promo_ends_ms }}">--:--:--</b></div>
         {% endif %}

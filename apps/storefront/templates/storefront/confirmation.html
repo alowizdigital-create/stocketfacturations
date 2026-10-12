@@ -1,4 +1,5 @@
 {% extends "storefront/base.html" %}
+{% load storefront_extras %}
 {% load i18n %}
 {% block title %}{% trans "Commande envoyée" %} — {{ boutique.name }}{% endblock %}
 {% block content %}
@@ -11,9 +12,9 @@
 
 <div class="panel mb-3">
     {% for line in commande.lines.all %}
-    <div class="d-flex justify-content-between small py-1"><span>{{ line.quantity|floatformat:"-3" }} × {{ line.description }}</span><span>{{ line.line_total_ttc }}</span></div>
+    <div class="d-flex justify-content-between small py-1"><span>{{ line.quantity|floatformat:"-3" }} × {{ line.description }}</span><span>{{ line.line_total_ttc|money }}</span></div>
     {% endfor %}
-    <div class="d-flex justify-content-between fw-bold border-top mt-2 pt-2"><span>{% trans "Total" %}</span><span>{{ commande.total_ttc }} {{ commande.currency }}</span></div>
+    <div class="d-flex justify-content-between fw-bold border-top mt-2 pt-2"><span>{% trans "Total" %}</span><span>{{ commande.total_ttc|money }} {{ commande.currency }}</span></div>
     <div class="small text-muted mt-2"><i class="bi bi-geo-alt"></i> {{ commande.delivery_address }}</div>
     <div class="small text-muted">
         {% if commande.online_payment_mode == "MOBILE_MONEY" %}<i class="bi bi-phone"></i> {% trans "Mobile Money" %} — {% trans "réf." %} {{ commande.online_payment_reference }} ({% trans "le vendeur la vérifiera" %})
