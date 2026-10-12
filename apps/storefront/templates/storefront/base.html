@@ -17,7 +17,7 @@
         .shop-links a { color: #5b6b82; text-decoration: none; font-size: .95rem; }
         .shop-links a.active, .shop-links a:hover { color: var(--ink); }
         .shop-brand { color: var(--ink); font-weight: 800; font-size: 1.35rem; text-decoration: none; display: flex; align-items: center; gap: .6rem; justify-content: center; letter-spacing: .02em; }
-        .shop-brand img { height: 44px; max-width: 120px; object-fit: contain; }
+        .shop-brand img { height: 52px; max-width: 180px; object-fit: contain; }
         .shop-icons { display: flex; gap: 1.1rem; justify-content: flex-end; font-size: 1.2rem; }
         .shop-icons a { color: var(--ink); position: relative; text-decoration: none; }
         .cart-badge { position: absolute; top: -7px; right: -9px; font-size: .62rem; }
@@ -36,7 +36,7 @@
     .p-media { display: block; position: relative; border: 5px solid #d9e4f1; border-radius: 22px; overflow: hidden; background: #fff; text-decoration: none; }
     .p-imglink, .p-media .product-img { display: block; }
     .p-badge { pointer-events: none; position: absolute; top: 10px; right: 10px; background: var(--promo); color: #fff; font-size: .78rem; padding: .22rem .6rem; border-radius: 4px; }
-    .p-buy-form { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 0 .4rem; }
+    .p-buy-form { position: absolute; left: 0; right: 0; bottom: 10px; margin: 0; padding: 0 .4rem; }
     .p-buy { width: 100%; display: flex; align-items: center; justify-content: center; gap: .8rem; text-align: center; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .7rem .5rem; }
     .p-buy span { display: flex; flex-direction: column; line-height: 1.15; }
     .p-buy small { font-size: .85rem; }
@@ -140,8 +140,8 @@
             {% if contact_url %}<a href="{{ contact_url }}" target="_blank" rel="noopener">{% trans "Contact" %}</a>{% endif %}
         </nav>
         <a href="{% url 'storefront:home' slug=slug %}" class="shop-brand">
-            {% if boutique.compte.logo %}<img src="{{ boutique.compte.logo.url }}" alt="">{% endif %}
-            <span>{{ boutique.name }}</span>
+            {% if boutique.compte.logo %}<img src="{{ boutique.compte.logo.url }}" alt="{{ boutique.name }}">
+            {% else %}<span>{{ boutique.name }}</span>{% endif %}
         </a>
         <div class="shop-icons">
             <a href="{% url 'storefront:home' slug=slug %}#recherche" aria-label="{% trans 'Rechercher' %}"><i class="bi bi-search"></i></a>

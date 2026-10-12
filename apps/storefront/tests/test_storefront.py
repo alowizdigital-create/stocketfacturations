@@ -703,3 +703,18 @@ def test_drawer_markup_and_cart_badge_on_pages(client, boutique):
     _product(boutique)
     html = client.get(_url("home")).content.decode()
     assert 'id="cart-drawer"' in html and 'id="cart-link"' in html and 'id="cart-badge"' in html
+
+
+# --- en-tête : logo seul ---------------------------------------------------------------
+
+def test_header_shows_logo_without_name_when_logo_exists(client, boutique):
+    boutique.compte.logo = "logos/test.webp"
+    boutique.compte.save()
+    html = client.get(_url("home")).content.decode()
+    header = html.split("<header")[1].split("</header>")[0]
+    assert 'alt="' in header and "<span>" + boutique.name + "</span>" not in header
+
+
+def test_header_falls_back_to_name_without_logo(client, boutique):
+    header = client.get(_url("home")).content.decode().split("<header")[1].split("</header>")[0]
+    assert "<span>" + boutique.name + "</span>" in header
