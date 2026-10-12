@@ -40,6 +40,31 @@
 </div>
 
 <div class="card-app mt-3" style="max-width: 560px;">
+    <div class="card-app-header">{% trans "Zones de livraison" %}</div>
+    <div class="card-app-body">
+        <p class="text-muted small">{% trans "Ajoutez les villes que vous livrez et leur tarif (0 = gratuit). Le client choisit sa ville à la commande, et le bandeau de la boutique se met à jour tout seul." %}</p>
+        {% if banner %}<div class="alert alert-secondary py-2 small"><i class="bi bi-megaphone"></i> {% trans "Bandeau affiché" %} : <strong>{{ banner }}</strong></div>{% endif %}
+        {% for zone in zones %}
+        <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+            <span>{{ zone.city }} <span class="badge {% if zone.fee %}bg-light text-dark border{% else %}bg-success{% endif %}">{% if zone.fee %}{{ zone.fee }} {{ request.boutique.devise }}{% else %}{% trans "Gratuite" %}{% endif %}</span></span>
+            <form method="post" action="{% url 'tenants:delivery_zone_delete' zone.id %}">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-sm btn-outline-danger" aria-label="{% trans 'Supprimer' %}"><i class="bi bi-trash"></i></button>
+            </form>
+        </div>
+        {% empty %}
+        <p class="text-muted small mb-2">{% trans "Aucune zone : les frais uniques ci-dessus s'appliquent à toutes les commandes." %}</p>
+        {% endfor %}
+        <form method="post" action="{% url 'tenants:delivery_zone_add' %}" class="row g-2 mt-2 align-items-end">
+            {% csrf_token %}
+            <div class="col-6"><label class="form-label small mb-1">{{ zone_form.city.label }}</label>{{ zone_form.city }}</div>
+            <div class="col-4"><label class="form-label small mb-1">{{ zone_form.fee.label }}</label>{{ zone_form.fee }}</div>
+            <div class="col-2"><button type="submit" class="btn btn-primary w-100" aria-label="{% trans 'Ajouter' %}"><i class="bi bi-plus-lg"></i></button></div>
+        </form>
+    </div>
+</div>
+
+<div class="card-app mt-3" style="max-width: 560px;">
     <div class="card-app-header">{% trans "Produits visibles en ligne" %}</div>
     <div class="card-app-body">
         <p class="mb-2">{% blocktrans trimmed %}<strong>{{ online_count }}</strong> produit(s) sur {{ total_count }} actif(s). Un produit sans stock dans cette boutique s'affiche comme épuisé.{% endblocktrans %}</p>

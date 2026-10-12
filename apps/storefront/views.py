@@ -61,6 +61,7 @@ def _context(request, boutique, **extra):
         "boutique": boutique, "slug": boutique.shop_slug,
         "cart_count": catalog.cart_totals(boutique, lines)["count"],
         "contact_url": _contact_url(boutique),
+        "delivery_banner": boutique.delivery_banner,
     }
     context.update(extra)
     return context
@@ -136,6 +137,7 @@ def product_detail(request, slug, product_id):
     return render(request, "storefront/product.html", _context(
         request, boutique, product=product, images=images,
         max_qty=int(min(product.stock, catalog.MAX_QTY_PER_LINE)),
+        related=catalog.related_products(boutique, product),
     ))
 
 
@@ -198,17 +200,20 @@ def checkout(request, slug):
     if not lines:
         return redirect("storefront:cart", slug=slug)
 
-    totals = catalog.cart_totals(boutique, lines)
+    zones = catalog.delivery_zones(boutique)
     mobile_money = bool(boutique.payment_methods)
     error = ""
+    totals = catalog.cart_totals(boutique, lines)
     if request.method == "POST":
-        form = CheckoutForm(request.POST, mobile_money_available=mobile_money)
+        form = CheckoutForm(request.POST, mobile_money_available=mobile_money, zones=zones)
+        zone = next((z for z in zones if str(z.id) == request.POST.get("zone")), None)
+        totals = catalog.cart_totals(boutique, lines, zone)
         now = timezone.now().timestamp()
         if now - request.session.get(LAST_ORDER_SESSION_KEY, 0) < ORDER_COOLDOWN_SECONDS:
             error = _("Une commande vient d'être envoyée. Patientez quelques secondes.")
         elif form.is_valid():
             try:
-                commande = services.place_order(boutique=boutique, lines=lines, data=form.cleaned_data)
+                commande = services.place_order(boutique=boutique, lines=lines, data=form.cleaned_data, zone=zone)
             except services.OutOfStock as exc:
                 error = _("Stock insuffisant pour : %(names)s. Modifiez votre panier.") % {"names": ", ".join(exc.names)}
             else:
@@ -216,10 +221,10 @@ def checkout(request, slug):
                 catalog.clear_cart(request, slug)
                 return redirect("storefront:confirmation", slug=slug, order_id=commande.id)
     else:
-        form = CheckoutForm(mobile_money_available=mobile_money)
+        form = CheckoutForm(mobile_money_available=mobile_money, zones=zones)
 
     return render(request, "storefront/checkout.html", _context(
-        request, boutique, form=form, lines=lines, totals=totals, error=error,
+        request, boutique, form=form, lines=lines, totals=totals, error=error, zones=zones,
         payment_methods=boutique.payment_methods,
     ))
 

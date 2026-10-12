@@ -74,6 +74,23 @@ def attach_prices(products, boutique):
     return products
 
 
+RELATED_COUNT = 4
+
+
+def related_products(boutique, product):
+    """Suggestions « Vous aimerez aussi » : d'abord la même catégorie, puis
+    les autres produits publiés, disponibles en premier, au plus
+    RELATED_COUNT. Jamais le produit lui-même."""
+    others = published_products(boutique).exclude(pk=product.pk).order_by("-stock", "name")
+    chosen = []
+    if product.category_id:
+        chosen = list(others.filter(category_id=product.category_id)[:RELATED_COUNT])
+    if len(chosen) < RELATED_COUNT:
+        taken = [p.pk for p in chosen]
+        chosen += list(others.exclude(pk__in=taken)[: RELATED_COUNT - len(chosen)])
+    return attach_prices(chosen, boutique)
+
+
 # --- panier (session) ----------------------------------------------------------
 
 def _all_carts(request):
@@ -120,8 +137,25 @@ def cart_lines(request, boutique):
     return lines
 
 
-def cart_totals(boutique, lines):
+def delivery_zones(boutique):
+    return list(boutique.delivery_zones.all())
+
+
+def cart_totals(boutique, lines, zone=None):
+    """Sous-total, frais de livraison et total. Avec des zones de livraison,
+    les frais dépendent de la ville choisie (`zone`) ; tant qu'elle ne l'est
+    pas, `fee_pending` est vrai et le total est hors livraison. Sans zone,
+    les frais uniques de la boutique s'appliquent."""
     subtotal = sum((line["line_ttc"] for line in lines), Decimal("0"))
-    fee = boutique.shop_delivery_fee if lines else Decimal("0")
+    has_zones = boutique.delivery_zones.exists()
+    if not lines:
+        fee = Decimal("0")
+    elif zone is not None:
+        fee = zone.fee
+    elif has_zones:
+        fee = Decimal("0")
+    else:
+        fee = boutique.shop_delivery_fee
     return {"subtotal": subtotal, "delivery_fee": fee, "total": subtotal + fee,
-            "count": sum(line["quantity"] for line in lines)}
+            "count": sum(line["quantity"] for line in lines),
+            "fee_pending": bool(lines) and has_zones and zone is None}

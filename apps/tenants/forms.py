@@ -10,7 +10,7 @@ from apps.core.currencies import CURRENCY_CHOICES
 from apps.core.forms import BootstrapFormMixin
 
 from .countries import AFRICAN_COUNTRIES
-from .models import Boutique, Compte, ExchangeRate, Membership, Plan, Subscription
+from .models import Boutique, Compte, DeliveryZone, ExchangeRate, Membership, Plan, Subscription
 
 User = get_user_model()
 
@@ -239,7 +239,11 @@ class BoutiqueShopForm(BootstrapFormMixin, forms.ModelForm):
 
     class Meta:
         model = Boutique
-        fields = ["shop_enabled", "shop_slug", "shop_description", "shop_delivery_fee", "shop_delivery_info"]
+        fields = [
+            "shop_enabled", "shop_slug", "shop_description", "shop_order_notice",
+            "shop_delivery_fee", "shop_delivery_info",
+        ]
+        widgets = {"shop_order_notice": forms.Textarea(attrs={"rows": 3})}
 
     def clean_shop_slug(self):
         slug = (self.cleaned_data.get("shop_slug") or "").strip().lower() or None
@@ -252,6 +256,23 @@ class BoutiqueShopForm(BootstrapFormMixin, forms.ModelForm):
         if cleaned.get("shop_enabled") and not cleaned.get("shop_slug"):
             self.add_error("shop_slug", _("Choisissez l'adresse de votre boutique pour l'activer."))
         return cleaned
+
+
+class DeliveryZoneForm(BootstrapFormMixin, forms.ModelForm):
+    class Meta:
+        model = DeliveryZone
+        fields = ["city", "fee"]
+        labels = {"city": _("Ville ou zone"), "fee": _("Frais (0 = gratuit)")}
+
+    def __init__(self, *args, boutique=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.boutique = boutique
+
+    def clean_city(self):
+        city = " ".join(self.cleaned_data["city"].split())
+        if self.boutique is not None and DeliveryZone.objects.filter(boutique=self.boutique, city__iexact=city).exists():
+            raise forms.ValidationError(_("Cette ville est déjà dans la liste."))
+        return city
 
 
 class ExchangeRateForm(BootstrapFormMixin, forms.ModelForm):

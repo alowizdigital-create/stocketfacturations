@@ -10,8 +10,18 @@
             {% csrf_token %}
             {{ form.non_field_errors }}
             <div class="hp" aria-hidden="true">{{ form.website }}</div>
+            {% if zones %}
+            <div class="mb-3">
+                <label class="form-label" for="id_zone">{{ form.zone.label }}</label>
+                <select name="zone" id="id_zone" class="form-select{% if form.zone.errors %} is-invalid{% endif %}">
+                    <option value="">{% trans "— Choisissez votre ville —" %}</option>
+                    {% for z in zones %}<option value="{{ z.id }}" data-fee="{{ z.fee }}" {% if form.zone.value == z.id|stringformat:"s" %}selected{% endif %}>{{ z.city }} — {% if z.fee %}{{ z.fee }} {{ boutique.devise }}{% else %}{% trans "livraison gratuite" %}{% endif %}</option>{% endfor %}
+                </select>
+                {% for e in form.zone.errors %}<div class="invalid-feedback d-block">{{ e }}</div>{% endfor %}
+            </div>
+            {% endif %}
             {% for field in form %}
-            {% if field.name != "website" and field.name != "payment_mode" and field.name != "payment_reference" %}
+            {% if field.name != "website" and field.name != "payment_mode" and field.name != "payment_reference" and field.name != "zone" %}
             <div class="mb-3">
                 <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
                 <input type="text" name="{{ field.html_name }}" id="{{ field.id_for_label }}" value="{{ field.value|default_if_none:'' }}" class="form-control{% if field.errors %} is-invalid{% endif %}"{% if field.name == "phone" %} inputmode="tel"{% endif %}>
@@ -52,12 +62,29 @@
             {% for line in lines %}
             <div class="d-flex justify-content-between small py-1"><span>{{ line.quantity }} × {{ line.product.name }}</span><span>{{ line.line_ttc }}</span></div>
             {% endfor %}
-            {% if totals.delivery_fee %}<div class="d-flex justify-content-between small py-1"><span>{% trans "Livraison" %}</span><span>{{ totals.delivery_fee }}</span></div>{% endif %}
-            <div class="d-flex justify-content-between fw-bold border-top mt-2 pt-2"><span>{% trans "Total" %}</span><span>{{ totals.total }} {{ boutique.devise }}</span></div>
+            <div class="d-flex justify-content-between small py-1"><span>{% trans "Livraison" %}</span><span id="sum-delivery">{% if totals.fee_pending %}{% trans "selon la ville" %}{% elif totals.delivery_fee %}{{ totals.delivery_fee }}{% else %}{% trans "gratuite" %}{% endif %}</span></div>
+            <div class="d-flex justify-content-between fw-bold border-top mt-2 pt-2"><span>{% trans "Total" %}</span><span><span id="sum-total" data-subtotal="{{ totals.subtotal }}">{{ totals.total }}</span> {{ boutique.devise }}</span></div>
         </div>
     </div>
 </div>
 <script>
+    // Frais de livraison et total mis à jour selon la ville choisie.
+    (function () {
+        const select = document.getElementById("id_zone");
+        if (!select) return;
+        const delivery = document.getElementById("sum-delivery");
+        const total = document.getElementById("sum-total");
+        const subtotal = parseFloat(total.dataset.subtotal) || 0;
+        const sync = () => {
+            const option = select.options[select.selectedIndex];
+            if (!option || !option.value) { delivery.textContent = "{% trans 'selon la ville' %}"; total.textContent = subtotal; return; }
+            const fee = parseFloat(option.dataset.fee) || 0;
+            delivery.textContent = fee ? fee : "{% trans 'gratuite' %}";
+            total.textContent = subtotal + fee;
+        };
+        select.addEventListener("change", sync);
+        sync();
+    })();
     (function () {
         const box = document.getElementById("momo-box");
         if (!box) return;

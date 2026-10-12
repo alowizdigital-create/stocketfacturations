@@ -18,7 +18,7 @@ class OutOfStock(Exception):
 
 
 @transaction.atomic
-def place_order(*, boutique, lines, data):
+def place_order(*, boutique, lines, data, zone=None):
     """Crée la commande (EN_ATTENTE, origine EN_LIGNE) et rattache le client
     par son téléphone. Le stock n'est pas déduit ici : il l'est à la
     livraison, comme pour toute commande (voir sales.services.deliver_commande).
@@ -43,10 +43,15 @@ def place_order(*, boutique, lines, data):
         "quantity": Decimal(line["quantity"]), "unit_price_ht": line["unit_price_ht"],
         "tva_rate": line["product"].tva_rate,
     } for line in lines]
-    if boutique.shop_delivery_fee:
+    # Avec des zones, les frais sont ceux de la ville choisie ; sinon les
+    # frais uniques de la boutique.
+    fee = zone.fee if zone is not None else (
+        Decimal("0") if boutique.delivery_zones.exists() else boutique.shop_delivery_fee
+    )
+    if fee:
         lines_data.append({
-            "product": None, "description": "Frais de livraison", "quantity": Decimal("1"),
-            "unit_price_ht": boutique.shop_delivery_fee, "tva_rate": Decimal("0"),
+            "product": None, "description": f"Frais de livraison — {zone.city}" if zone else "Frais de livraison",
+            "quantity": Decimal("1"), "unit_price_ht": fee, "tva_rate": Decimal("0"),
         })
 
     note = f"Commande en ligne — {data['name'].strip()}"
@@ -57,7 +62,8 @@ def place_order(*, boutique, lines, data):
         lines_data=lines_data, note=note,
     )
     Invoice.objects.filter(pk=commande.pk).update(
-        source=Invoice.EN_LIGNE, delivery_address=data["address"].strip(),
+        source=Invoice.EN_LIGNE,
+        delivery_address=(f"{zone.city} — " if zone else "") + data["address"].strip(),
         online_payment_mode=data["payment_mode"],
         online_payment_reference=(data.get("payment_reference") or "").strip(),
     )

@@ -105,6 +105,20 @@
                 <i class="bi bi-rulers"></i> {% trans "Unités" %}
             </a>
 
+            {% if not IS_OFFLINE %}
+            <div class="sidebar-section">{% trans "Boutique en ligne" %}</div>
+            {% if request.boutique.shop_enabled and request.boutique.shop_slug %}
+            <a class="nav-link" href="{% url 'storefront:home' slug=request.boutique.shop_slug %}" target="_blank" rel="noopener">
+                <i class="bi bi-shop-window"></i> {% trans "Voir ma boutique" %} <i class="bi bi-box-arrow-up-right small ms-auto"></i>
+            </a>
+            {% endif %}
+            {% if request.is_compte_admin %}
+            <a class="nav-link {% if '/entreprises/parametres/boutique-en-ligne' in request.path %}active{% endif %}" href="{% url 'tenants:shop_settings' %}">
+                <i class="bi bi-sliders"></i> {% if request.boutique.shop_enabled %}{% trans "Réglages boutique" %}{% else %}{% trans "Activer la boutique en ligne" %}{% endif %}
+            </a>
+            {% endif %}
+            {% endif %}
+
             <div class="sidebar-section">{% trans "Stock" %}</div>
             <a class="nav-link {% if request.path == '/stock/' %}active{% endif %}" href="{% url 'stock:stock_level_list' %}">
                 <i class="bi bi-clipboard-data"></i> {% trans "Niveaux de stock" %}

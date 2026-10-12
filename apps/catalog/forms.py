@@ -59,6 +59,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             # "low_stock_threshold_default",
             "expiry_date",
             "is_active",
+            "description",
             "is_online",
             "compare_at_price",
             "promo_ends_at",
@@ -71,6 +72,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
             "unit": _("Unité"),
             "purchase_price": _("Prix d'achat (FCFA)"),
             "is_active": _("Actif"),
+            "description": _("Description (boutique en ligne)"),
             "is_online": _("Afficher sur la boutique en ligne"),
             "compare_at_price": _("Prix avant promotion (barré)"),
             "promo_ends_at": _("Fin de la promotion"),
@@ -84,6 +86,7 @@ class ProductForm(BootstrapFormMixin, forms.ModelForm):
         }
         widgets = {
             "expiry_date": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "description": forms.Textarea(attrs={"rows": 5}),
             "promo_ends_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M"),
         }
 

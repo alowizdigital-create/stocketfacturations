@@ -76,6 +76,10 @@ class Product(UUIDModel, CompteScopedModel, TimeStampedModel):
         help_text=_("Laisser vide pour un produit sans date de péremption."),
     )
     is_active = models.BooleanField(default=True)
+    description = models.TextField(
+        _("description"), blank=True,
+        help_text=_("Affichée sur la page du produit de la boutique en ligne. Facultative — laissez vide pour ne rien afficher."),
+    )
     compare_at_price = models.DecimalField(
         _("prix avant promotion"), max_digits=12, decimal_places=0, null=True, blank=True,
         help_text=_("Affiché barré sur la boutique en ligne, avec la mention « Promotion », s'il est supérieur au prix de vente."),

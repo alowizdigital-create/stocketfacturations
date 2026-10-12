@@ -13,6 +13,7 @@ class CheckoutForm(forms.Form):
         label=_("Adresse de livraison"), max_length=255,
         help_text=_("Quartier, ville, repère pour vous retrouver."),
     )
+    zone = forms.ChoiceField(label=_("Ville de livraison"), choices=[], required=False)
     note = forms.CharField(label=_("Message pour le vendeur (facultatif)"), max_length=300, required=False)
     payment_mode = forms.ChoiceField(label=_("Paiement"), widget=forms.RadioSelect, choices=[])
     payment_reference = forms.CharField(
@@ -21,8 +22,14 @@ class CheckoutForm(forms.Form):
     # Piège à robots : un humain ne voit pas ce champ.
     website = forms.CharField(required=False, widget=forms.TextInput(attrs={"tabindex": "-1", "autocomplete": "off"}))
 
-    def __init__(self, *args, mobile_money_available=False, **kwargs):
+    def __init__(self, *args, mobile_money_available=False, zones=(), **kwargs):
         super().__init__(*args, **kwargs)
+        self.zones = {str(z.id): z for z in zones}
+        if zones:
+            self.fields["zone"].choices = [("", _("— Choisissez votre ville —"))] + [(str(z.id), z.city) for z in zones]
+            self.fields["zone"].required = True
+        else:
+            del self.fields["zone"]
         choices = [(Invoice.PAY_LIVRAISON, _("Payer à la livraison"))]
         if mobile_money_available:
             choices.append((Invoice.PAY_MOBILE_MONEY, _("Payer par Mobile Money (OM / MoMo)")))

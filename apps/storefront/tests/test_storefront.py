@@ -14,7 +14,7 @@ from apps.sales.models import Client, Invoice
 from apps.stock import services as stock_services
 from apps.stock.models import StockMovement
 from apps.sync.tests.factories import BoutiqueFactory, ProductFactory
-from apps.tenants.models import Boutique, Membership
+from apps.tenants.models import Boutique, DeliveryZone, Membership
 
 pytestmark = pytest.mark.django_db
 
@@ -384,3 +384,194 @@ def test_product_form_has_promo_fields(admin_client, boutique):
     Unit.objects.get_or_create(compte=boutique.compte, name="Pièce", defaults={"symbol": "pc"})
     html = admin_client.get(reverse("catalog:product_create")).content.decode()
     assert "compare_at_price" in html and "promo_ends_at" in html and 'type="datetime-local"' in html
+
+
+# --- accès rapide dans la barre latérale -------------------------------------------
+
+def test_sidebar_links_to_shop_when_enabled(admin_client, boutique):
+    html = admin_client.get(reverse("core:home")).content.decode()
+    assert "Voir ma boutique" in html and f"/boutique/{SLUG}/" in html
+    assert reverse("tenants:shop_settings") in html and "Réglages boutique" in html
+
+
+def test_sidebar_offers_activation_when_disabled(admin_client, boutique):
+    boutique.shop_enabled = False
+    boutique.save()
+    html = admin_client.get(reverse("core:home")).content.decode()
+    assert "Voir ma boutique" not in html and "Activer la boutique en ligne" in html
+
+
+def test_sidebar_shop_settings_hidden_from_non_admin(client, boutique):
+    user = User.objects.create_user(email="c@test.com", password="x")
+    Membership.objects.create(user=user, boutique=boutique, role=Membership.CAISSIER, is_active=True)
+    client.force_login(user)
+    html = client.get(reverse("core:home")).content.decode()
+    assert "Voir ma boutique" in html and reverse("tenants:shop_settings") not in html
+
+
+# --- zones de livraison (bandeau dynamique, frais par ville) -----------------------
+
+def _zones(boutique):
+    DeliveryZone.objects.create(boutique=boutique, city="Yaoundé", fee=0)
+    DeliveryZone.objects.create(boutique=boutique, city="Douala", fee=0)
+    DeliveryZone.objects.create(boutique=boutique, city="Bafoussam", fee=2000)
+    DeliveryZone.objects.create(boutique=boutique, city="Garoua", fee=2000)
+
+
+def test_banner_built_from_zones(boutique):
+    _zones(boutique)
+    banner = Boutique.objects.get(pk=boutique.pk).delivery_banner
+    assert banner.startswith("Livraison gratuite à Douala et Yaoundé")
+    assert "2 000 XAF à Bafoussam et Garoua" in banner
+
+
+def test_banner_all_paid_zones_prefixed(boutique):
+    DeliveryZone.objects.create(boutique=boutique, city="Kribi", fee=1500)
+    assert Boutique.objects.get(pk=boutique.pk).delivery_banner == "Livraison : 1 500 XAF à Kribi"
+
+
+def test_custom_text_overrides_generated_banner(boutique):
+    _zones(boutique)
+    boutique.shop_delivery_info = "Texte libre"
+    boutique.save()
+    assert boutique.delivery_banner == "Texte libre"
+
+
+def test_banner_falls_back_to_single_fee_or_nothing(boutique):
+    assert boutique.delivery_banner == ""
+    boutique.shop_delivery_fee = Decimal("1000")
+    assert "1 000 XAF" in boutique.delivery_banner
+
+
+def test_banner_displayed_on_storefront(client, boutique):
+    _zones(boutique)
+    _product(boutique)
+    html = client.get(_url("home")).content.decode()
+    assert "Livraison gratuite à Douala et Yaoundé" in html
+
+
+def test_checkout_requires_city_when_zones_exist(client, boutique):
+    _zones(boutique)
+    _fill_cart(client, boutique)
+    assert client.post(_url("checkout"), FORM).status_code == 200
+    assert not Invoice.objects.exists()
+
+
+def test_checkout_applies_fee_of_chosen_city(client, boutique):
+    _zones(boutique)
+    _fill_cart(client, boutique, qty=2)          # 2 x 500
+    zone = DeliveryZone.objects.get(boutique=boutique, city="Bafoussam")
+    response = client.post(_url("checkout"), {**FORM, "zone": str(zone.id)})
+    assert response.status_code == 302
+    commande = Invoice.objects.get()
+    assert commande.total_ttc == Decimal("3000")          # 1000 + 2000 de livraison
+    assert commande.delivery_address.startswith("Bafoussam — ")
+    assert any("Bafoussam" in line.description for line in commande.lines.all())
+
+
+def test_free_city_adds_no_delivery_line(client, boutique):
+    boutique.shop_delivery_fee = Decimal("9999")      # ignoré dès qu'il y a des zones
+    boutique.save()
+    _zones(boutique)
+    _fill_cart(client, boutique, qty=1)
+    zone = DeliveryZone.objects.get(boutique=boutique, city="Douala")
+    client.post(_url("checkout"), {**FORM, "zone": str(zone.id)})
+    commande = Invoice.objects.get()
+    assert commande.total_ttc == Decimal("500") and commande.lines.count() == 1
+
+
+def test_zone_of_another_boutique_rejected(client, boutique):
+    _zones(boutique)
+    other = BoutiqueFactory()
+    foreign = DeliveryZone.objects.create(boutique=other, city="Ailleurs", fee=5)
+    _fill_cart(client, boutique)
+    assert client.post(_url("checkout"), {**FORM, "zone": str(foreign.id)}).status_code == 200
+    assert not Invoice.objects.exists()
+
+
+def test_cart_says_delivery_depends_on_city(client, boutique):
+    _zones(boutique)
+    _fill_cart(client, boutique)
+    assert "calculée selon votre ville" in client.get(_url("cart")).content.decode()
+
+
+def test_checkout_lists_cities_with_fees(client, boutique):
+    _zones(boutique)
+    _fill_cart(client, boutique)
+    html = client.get(_url("checkout")).content.decode()
+    assert "Bafoussam — 2000 XAF" in html and "Yaoundé — livraison gratuite" in html
+
+
+def test_admin_manages_delivery_zones(admin_client, boutique):
+    add = reverse("tenants:delivery_zone_add")
+    assert admin_client.post(add, {"city": "  Limbé ", "fee": "1500"}).status_code == 302
+    zone = DeliveryZone.objects.get(boutique=boutique)
+    assert zone.city == "Limbé" and zone.fee == Decimal("1500")
+    admin_client.post(add, {"city": "limbé", "fee": "0"})          # doublon (insensible à la casse)
+    assert DeliveryZone.objects.filter(boutique=boutique).count() == 1
+    html = admin_client.get(reverse("tenants:shop_settings")).content.decode()
+    assert "Limbé" in html and "Bandeau affiché" in html
+    admin_client.post(reverse("tenants:delivery_zone_delete", args=[zone.id]))
+    assert not DeliveryZone.objects.filter(boutique=boutique).exists()
+
+
+def test_cannot_delete_zone_of_other_boutique(admin_client, boutique):
+    foreign = DeliveryZone.objects.create(boutique=BoutiqueFactory(), city="X", fee=0)
+    assert admin_client.post(reverse("tenants:delivery_zone_delete", args=[foreign.id])).status_code == 404
+    assert DeliveryZone.objects.filter(pk=foreign.pk).exists()
+
+
+# --- page produit (description, avertissement, suggestions) ------------------------
+
+def test_product_page_shows_description_notice_and_buy_now(client, boutique):
+    boutique.shop_order_notice = "Commandez seulement si vous êtes décidé"
+    boutique.save()
+    p = _product(boutique, "Mastic", description="Répare les fissures. Sèche vite.")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert "Répare les fissures." in html and "Commandez seulement si vous êtes décidé" in html
+    assert 'name="buy_now"' in html and "stepper" in html
+
+
+def test_product_page_hides_empty_description_and_notice(client, boutique):
+    p = _product(boutique, "Simple")
+    html = client.get(_url("product", p.id)).content.decode()
+    assert 'class="pd-desc"' not in html and 'class="order-notice' not in html
+
+
+def test_related_products_prefer_same_category_and_exclude_self(client, boutique):
+    from apps.catalog.models import Category
+
+    cat = Category.objects.create(compte=boutique.compte, name="Maison")
+    main = _product(boutique, "Principal", category=cat)
+    same = _product(boutique, "Meme cat", category=cat)
+    for i in range(5):
+        _product(boutique, f"Autre{i}")
+    html = client.get(_url("product", main.id)).content.decode()
+    related_html = html.split("Vous aimerez aussi")[1]
+    assert "Meme cat" in related_html and "Principal" not in related_html
+    assert related_html.count('class="p-card') == 4
+
+
+def test_related_hidden_when_no_other_product(client, boutique):
+    p = _product(boutique, "Seul")
+    assert "Vous aimerez aussi" not in client.get(_url("product", p.id)).content.decode()
+
+
+def test_related_excludes_unpublished(client, boutique):
+    main = _product(boutique, "Principal")
+    _product(boutique, "Cache", online=False)
+    assert "Vous aimerez aussi" not in client.get(_url("product", main.id)).content.decode()
+
+
+def test_shop_settings_saves_order_notice(admin_client, boutique):
+    response = admin_client.post(reverse("tenants:shop_settings"), {
+        "shop_enabled": "on", "shop_slug": SLUG, "shop_delivery_fee": "0",
+        "shop_order_notice": "Soyez disponible", "shop_description": "", "shop_delivery_info": "",
+    })
+    assert response.status_code == 302
+    assert Boutique.objects.get(pk=boutique.pk).shop_order_notice == "Soyez disponible"
+
+
+def test_product_form_has_description(admin_client, boutique):
+    Unit.objects.get_or_create(compte=boutique.compte, name="Pièce", defaults={"symbol": "pc"})
+    assert "description" in admin_client.get(reverse("catalog:product_create")).content.decode()

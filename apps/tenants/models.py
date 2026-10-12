@@ -12,6 +12,13 @@ from apps.core.images import ensure_webp
 from apps.core.models import TimeStampedModel, UUIDModel
 
 
+def _join_cities(cities):
+    """« A », « A et B », « A, B et C »."""
+    if len(cities) <= 1:
+        return "".join(cities)
+    return ", ".join(cities[:-1]) + " " + str(_("et")) + " " + cities[-1]
+
+
 class Compte(UUIDModel, TimeStampedModel):
     """Une entreprise cliente indépendante de la plateforme (SaaS
     multi-entreprises) : toutes les données d'un Compte sont strictement
@@ -111,13 +118,20 @@ class Boutique(UUIDModel, TimeStampedModel):
         _("présentation"), max_length=300, blank=True,
         help_text=_("Une phrase affichée en haut de la boutique en ligne."),
     )
+    shop_order_notice = models.CharField(
+        _("message avant commande"), max_length=400, blank=True,
+        help_text=_(
+            "Facultatif : un avertissement affiché au-dessus du bouton « Commander » "
+            "(ex: « Merci de ne commander que si vous êtes disponible pour la livraison »)."
+        ),
+    )
     shop_delivery_fee = models.DecimalField(
         _("frais de livraison"), max_digits=10, decimal_places=0, default=0,
-        help_text=_("Ajoutés à chaque commande en ligne. 0 = livraison gratuite."),
+        help_text=_("Utilisés seulement si aucune zone de livraison n'est définie. 0 = livraison gratuite."),
     )
     shop_delivery_info = models.CharField(
         _("informations de livraison"), max_length=200, blank=True,
-        help_text=_("Ex: Livraison à Douala et Yaoundé sous 24-48 h."),
+        help_text=_("Laissez vide pour générer le bandeau automatiquement à partir de vos zones de livraison."),
     )
 
     class Meta:
@@ -134,6 +148,38 @@ class Boutique(UUIDModel, TimeStampedModel):
         if self.is_default:
             Boutique.objects.filter(compte=self.compte).exclude(pk=self.pk).update(is_default=False)
         super().save(*args, **kwargs)
+
+    @property
+    def delivery_banner(self):
+        """Texte du bandeau de livraison de la vitrine. Un texte saisi à la
+        main (shop_delivery_info) l'emporte ; sinon il est construit à partir
+        des zones de livraison — « Livraison gratuite à Yaoundé et Douala »,
+        « 1 000 XAF à Bafoussam » — puis, sans zone, des frais uniques."""
+        if self.shop_delivery_info:
+            return self.shop_delivery_info
+        zones = list(self.delivery_zones.all())
+        if not zones:
+            if self.shop_delivery_fee:
+                return _("Frais de livraison : %(fee)s %(devise)s") % {
+                    "fee": f"{self.shop_delivery_fee:,.0f}".replace(",", " "), "devise": self.devise,
+                }
+            return ""
+        free = [z.city for z in zones if not z.fee]
+        parts = []
+        if free:
+            parts.append(_("Livraison gratuite à %(cities)s") % {"cities": _join_cities(free)})
+        by_fee = {}
+        for zone in zones:
+            if zone.fee:
+                by_fee.setdefault(zone.fee, []).append(zone.city)
+        for fee, cities in by_fee.items():
+            amount = f"{fee:,.0f}".replace(",", " ")
+            parts.append(_("%(amount)s %(devise)s à %(cities)s") % {
+                "amount": amount, "devise": self.devise, "cities": _join_cities(cities),
+            })
+        if not free and parts:
+            parts[0] = _("Livraison : ") + parts[0]
+        return " · ".join(parts)
 
     @property
     def legal_mentions(self):
@@ -168,6 +214,31 @@ class Boutique(UUIDModel, TimeStampedModel):
         for rate in self.exchange_rates.all():
             rates[rate.currency] = rate.rate
         return rates
+
+
+class DeliveryZone(UUIDModel, TimeStampedModel):
+    """Ville desservie par la boutique en ligne, avec son tarif de livraison
+    (0 = gratuite). Le bandeau de la vitrine est généré à partir de ces
+    zones (voir Boutique.delivery_banner) et le client choisit sa ville à la
+    commande."""
+
+    boutique = models.ForeignKey(Boutique, on_delete=models.CASCADE, related_name="delivery_zones")
+    city = models.CharField(_("ville / zone"), max_length=100)
+    fee = models.DecimalField(
+        _("frais de livraison"), max_digits=10, decimal_places=0, default=0,
+        help_text=_("0 = livraison gratuite."),
+    )
+
+    class Meta:
+        verbose_name = _("zone de livraison")
+        verbose_name_plural = _("zones de livraison")
+        ordering = ["fee", "city"]
+        constraints = [
+            models.UniqueConstraint(fields=["boutique", "city"], name="unique_delivery_zone_par_boutique"),
+        ]
+
+    def __str__(self):
+        return f"{self.city} ({self.fee})"
 
 
 class ExchangeRate(UUIDModel, TimeStampedModel):

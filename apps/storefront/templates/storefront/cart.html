@@ -29,7 +29,8 @@
     {% endfor %}
     <div class="border-top mt-2 pt-2">
         <div class="d-flex justify-content-between"><span>{% trans "Sous-total" %}</span><span>{{ totals.subtotal }} {{ boutique.devise }}</span></div>
-        {% if totals.delivery_fee %}<div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><span>{{ totals.delivery_fee }} {{ boutique.devise }}</span></div>{% endif %}
+        {% if totals.fee_pending %}<div class="d-flex justify-content-between text-muted small"><span>{% trans "Livraison" %}</span><span>{% trans "calculée selon votre ville" %}</span></div>
+        {% elif totals.delivery_fee %}<div class="d-flex justify-content-between"><span>{% trans "Livraison" %}</span><span>{{ totals.delivery_fee }} {{ boutique.devise }}</span></div>{% endif %}
         <div class="d-flex justify-content-between fs-5 fw-bold mt-1"><span>{% trans "Total" %}</span><span>{{ totals.total }} {{ boutique.devise }}</span></div>
     </div>
 </div>

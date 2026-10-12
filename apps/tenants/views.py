@@ -14,6 +14,7 @@ from .forms import (
     BoutiqueCreateForm,
     BoutiqueRegionalForm,
     BoutiqueShopForm,
+    DeliveryZoneForm,
     CompteSettingsForm,
     ExchangeRateForm,
     SignupForm,
@@ -442,9 +443,43 @@ def shop_settings(request):
             initial["shop_slug"] = slugify(boutique.name)[:60]
         form = BoutiqueShopForm(instance=boutique, initial=initial)
 
+    zone_form = DeliveryZoneForm(boutique=boutique)
     online_count = Product.objects.filter(compte=request.compte, is_active=True, is_online=True).count()
     total_count = Product.objects.filter(compte=request.compte, is_active=True).count()
     return render(request, "tenants/shop_settings.html", {
         "form": form, "online_count": online_count, "total_count": total_count,
+        "zones": boutique.delivery_zones.all(), "zone_form": zone_form, "banner": boutique.delivery_banner,
         "shop_url": request.build_absolute_uri(f"/boutique/{boutique.shop_slug}/") if boutique.shop_slug else "",
     })
+
+
+@login_required
+@compte_admin_required
+@block_when_offline("tenants:company_settings")
+@require_POST
+def delivery_zone_add(request):
+    boutique = request.boutique
+    form = DeliveryZoneForm(request.POST, boutique=boutique)
+    if form.is_valid():
+        zone = form.save(commit=False)
+        zone.boutique = boutique
+        zone.save()
+        messages.success(request, _("Zone de livraison ajoutée."))
+    else:
+        for errors in form.errors.values():
+            for error in errors:
+                messages.error(request, error)
+    return redirect("tenants:shop_settings")
+
+
+@login_required
+@compte_admin_required
+@block_when_offline("tenants:company_settings")
+@require_POST
+def delivery_zone_delete(request, zone_id):
+    from .models import DeliveryZone
+
+    zone = get_object_or_404(DeliveryZone, pk=zone_id, boutique=request.boutique)
+    zone.delete()
+    messages.success(request, _("Zone de livraison supprimée."))
+    return redirect("tenants:shop_settings")

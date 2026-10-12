@@ -17,25 +17,6 @@
     .dd-panel a.on::before { content: "\F26E"; font-family: "bootstrap-icons"; margin-right: .5rem; }
     .layout-btn { border: 0; background: none; padding: .25rem .4rem; color: #8a93a3; font-size: 1.1rem; border-radius: 6px; }
     .layout-btn.on { background: #eef1f6; color: var(--ink); }
-    .p-card { height: 100%; }
-    .p-media { display: block; position: relative; border: 5px solid #d9e4f1; border-radius: 22px; overflow: hidden; background: #fff; text-decoration: none; }
-    .p-imglink, .p-media .product-img { display: block; }
-    .p-badge { pointer-events: none; position: absolute; top: 10px; right: 10px; background: var(--promo); color: #fff; font-size: .78rem; padding: .22rem .6rem; border-radius: 4px; }
-    .p-buy-form { position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%); margin: 0; padding: 0 .4rem; }
-    .p-buy { width: 100%; display: flex; align-items: center; justify-content: center; gap: .8rem; text-align: center; background: var(--buy); color: #fff; border: 3px solid #e11d1d; border-radius: 12px; padding: .7rem .5rem; }
-    .p-buy span { display: flex; flex-direction: column; line-height: 1.15; }
-    .p-buy small { font-size: .85rem; }
-    .p-buy:hover { background: #0f6a0c; }
-    .p-soldout { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); background: rgba(20,20,20,.75); color: #fff; padding: .4rem 1rem; border-radius: 8px; }
-    .p-name { display: block; margin-top: .7rem; color: #1d4e89; text-decoration: none; font-size: .95rem; }
-    .p-name:hover { text-decoration: underline; }
-    .p-promo { margin-top: .45rem; display: flex; align-items: center; gap: .4rem; background: #fff4e8; border: 1px solid #f6d9b8; color: #b8530c; border-radius: 8px; padding: .35rem .6rem; font-size: .82rem; }
-    .p-promo b { margin-left: auto; font-variant-numeric: tabular-nums; }
-    .p-stock { margin-top: .5rem; font-size: .8rem; color: #4a5a72; }
-    .p-gauge { height: 4px; background: #e8ebf0; border-radius: 4px; margin-top: .25rem; overflow: hidden; }
-    .p-gauge div { height: 100%; background: #f26b21; }
-    #grid.dense { --bs-gutter-x: .6rem; }
-    @media (max-width: 575.98px) { .p-buy { padding: .45rem .3rem; gap: .4rem; } .p-buy strong { font-size: .72rem; } .p-buy small { font-size: .68rem; } .p-buy .bi { display: none; } }
 </style>
 {% endblock %}
 {% block content %}
@@ -111,19 +92,6 @@
 {% block extra_js %}
 <script>
 (function () {
-    // Compte à rebours des promotions.
-    var timers = document.querySelectorAll("[data-countdown]");
-    function pad(n) { return String(n).padStart(2, "0"); }
-    function tick() {
-        var now = Date.now();
-        timers.forEach(function (el) {
-            var left = Math.max(Math.floor((parseInt(el.dataset.countdown, 10) - now) / 1000), 0);
-            var d = Math.floor(left / 86400), h = Math.floor(left % 86400 / 3600), m = Math.floor(left % 3600 / 60), s = left % 60;
-            el.textContent = (d ? d + "j " : "") + pad(h) + ":" + pad(m) + ":" + pad(s);
-        });
-    }
-    if (timers.length) { tick(); setInterval(tick, 1000); }
-
     // Densité de la grille (préférence mémorisée si possible).
     var grid = document.getElementById("grid");
     var buttons = document.querySelectorAll(".layout-btn");
