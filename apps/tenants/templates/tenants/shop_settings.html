@@ -44,11 +44,19 @@
     <div class="card-app-body">
         <p class="mb-2">{% blocktrans trimmed %}<strong>{{ online_count }}</strong> produit(s) sur {{ total_count }} actif(s). Un produit sans stock dans cette boutique s'affiche comme épuisé.{% endblocktrans %}</p>
         <p class="text-muted small">{% trans "Pour choisir produit par produit, cochez « Afficher sur la boutique en ligne » dans la fiche du produit." %}</p>
-        <form method="post" class="d-flex gap-2">
-            {% csrf_token %}
-            <button name="action" value="publish_all" class="btn btn-outline-primary btn-sm">{% trans "Tout publier" %}</button>
-            <button name="action" value="unpublish_all" class="btn btn-outline-secondary btn-sm">{% trans "Tout retirer" %}</button>
-        </form>
+        {# Champ caché plutôt que name/value sur le bouton : le script anti double-clic de base.html désactive le bouton au submit, et un bouton désactivé n'est pas envoyé. #}
+        <div class="d-flex gap-2">
+            <form method="post">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="publish_all">
+                <button type="submit" class="btn btn-outline-primary btn-sm">{% trans "Tout publier" %}</button>
+            </form>
+            <form method="post" onsubmit="return confirm('{% trans 'Retirer tous les produits de la boutique en ligne ?' %}');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="unpublish_all">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">{% trans "Tout retirer" %}</button>
+            </form>
+        </div>
     </div>
 </div>
 {% endblock %}

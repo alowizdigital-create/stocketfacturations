@@ -295,3 +295,11 @@ def test_product_form_has_online_checkbox(admin_client, boutique):
     Unit.objects.get_or_create(compte=boutique.compte, name="Pièce", defaults={"symbol": "pc"})
     html = admin_client.get(reverse("catalog:product_create")).content.decode()
     assert "is_online" in html
+
+
+def test_publish_buttons_send_action_via_hidden_field(admin_client):
+    """Le script anti double-clic désactive le bouton au submit : un
+    name/value sur le bouton ne serait jamais envoyé (régression réelle)."""
+    html = admin_client.get(reverse("tenants:shop_settings")).content.decode()
+    assert 'type="hidden" name="action" value="publish_all"' in html
+    assert '<button name="action"' not in html
