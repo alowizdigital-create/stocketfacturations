@@ -22,7 +22,14 @@
         {% trans "Sans catégorie" as sans_categorie %}
         <div class="text-muted">{{ product.category|default:sans_categorie }}</div>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 flex-wrap">
+        {% if shop_link.state == "ok" %}
+        <button type="button" class="btn btn-outline-primary" data-copy-url="{{ shop_link.url }}" data-copied="{% trans 'Lien copié !' %}"><i class="bi bi-link-45deg"></i> <span data-copy-label>{% trans "Copier le lien" %}</span></button>
+        {% elif shop_link.state == "unpublished" %}
+        <button type="button" class="btn btn-outline-secondary" disabled title="{% trans 'Cochez « Afficher sur la boutique en ligne » dans la fiche du produit (Modifier) pour obtenir son lien.' %}"><i class="bi bi-link-45deg"></i> {% trans "Copier le lien" %}</button>
+        {% elif shop_link.state == "shop_off" %}
+        <a href="{% url 'tenants:shop_settings' %}" class="btn btn-outline-secondary" title="{% trans 'Activez la boutique en ligne pour obtenir le lien du produit.' %}"><i class="bi bi-link-45deg"></i> {% trans "Activer la boutique en ligne" %}</a>
+        {% endif %}
         <a href="{% url 'catalog:product_update' product.id %}" class="btn btn-outline-secondary"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
         <a href="{% url 'catalog:product_list' %}" class="btn btn-outline-secondary">{% trans "Retour" %}</a>
     </div>

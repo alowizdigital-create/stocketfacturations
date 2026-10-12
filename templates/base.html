@@ -444,6 +444,34 @@
     });
 })();
 </script>
+<script>
+// Boutons « Copier le lien » (data-copy-url) : copie dans le presse-papiers, avec
+// repli pour les navigateurs/contextes qui n'autorisent pas l'API moderne.
+document.addEventListener("click", function (e) {
+    var button = e.target.closest("[data-copy-url]");
+    if (!button) return;
+    var url = button.dataset.copyUrl;
+    function done() {
+        var label = button.querySelector("[data-copy-label]");
+        var original = label ? label.textContent : null;
+        if (label) label.textContent = button.dataset.copied || "OK";
+        button.classList.add("copied");
+        setTimeout(function () {
+            if (label) label.textContent = original;
+            button.classList.remove("copied");
+        }, 1800);
+    }
+    function fallback() {
+        var area = document.createElement("textarea");
+        area.value = url; area.setAttribute("readonly", ""); area.style.position = "fixed"; area.style.opacity = "0";
+        document.body.appendChild(area); area.select();
+        try { document.execCommand("copy"); done(); } catch (err) { window.prompt("Copiez ce lien :", url); }
+        document.body.removeChild(area);
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(url).then(done, fallback);
+    else fallback();
+});
+</script>
 {% block extra_js %}{% endblock %}
 </body>
 </html>

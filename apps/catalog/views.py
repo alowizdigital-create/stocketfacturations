@@ -242,6 +242,24 @@ def product_list(request):
     )
 
 
+def _shop_link(request, product):
+    """Lien public de la page du produit sur la boutique en ligne, pour le
+    coller dans une publicité ou un message. `state` : "ok" (lien prêt),
+    "unpublished" (produit pas affiché en ligne), "shop_off" (boutique en
+    ligne inactive) ou None (poste hors-ligne : pas de vitrine)."""
+    from django.urls import reverse
+
+    boutique = request.boutique
+    if settings.IS_OFFLINE or boutique is None:
+        return {"state": None, "url": ""}
+    if not (boutique.shop_enabled and boutique.shop_slug):
+        return {"state": "shop_off", "url": ""}
+    if not (product.is_online and product.is_active):
+        return {"state": "unpublished", "url": ""}
+    path = reverse("storefront:product", args=[boutique.shop_slug, product.id])
+    return {"state": "ok", "url": request.build_absolute_uri(path)}
+
+
 @login_required
 def product_detail(request, product_id):
     """Fiche produit en lecture seule — distincte de la page de facture :
@@ -265,6 +283,7 @@ def product_detail(request, product_id):
             "stock_qty": stock_qty,
             "is_low_stock": stock_qty <= get_effective_low_stock_threshold(product, request.boutique),
             "effective_price": effective_price,
+            "shop_link": _shop_link(request, product),
             **_margin_context(request, product, effective_price),
         },
     )

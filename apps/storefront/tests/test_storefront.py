@@ -894,3 +894,67 @@ def test_no_sticky_bar_when_soldout(client, boutique):
 def test_header_is_sticky(client, boutique):
     _product(boutique)
     assert "position: sticky" in client.get(_url("home")).content.decode()
+
+
+# --- bouton « Copier le lien » (fiche et liste des produits) -----------------------------
+
+def test_product_detail_has_copy_link_button(admin_client, boutique):
+    p = _product(boutique, "Mastic")
+    html = admin_client.get(reverse("catalog:product_detail", args=[p.id])).content.decode()
+    expected = f"/boutique/{SLUG}/produit/{p.id}/"
+    assert "data-copy-url=" in html and expected in html and "Copier le lien" in html
+    assert 'data-copy-url="http' in html            # lien absolu, prêt à coller dans une publicité
+
+
+def test_copy_link_disabled_when_product_not_published(admin_client, boutique):
+    p = _product(boutique, "Cache", online=False)
+    html = admin_client.get(reverse("catalog:product_detail", args=[p.id])).content.decode()
+    assert "data-copy-url=" not in html and "Copier le lien" in html and "disabled" in html
+
+
+def test_copy_link_offers_activation_when_shop_disabled(admin_client, boutique):
+    boutique.shop_enabled = False
+    boutique.save()
+    p = _product(boutique, "Mastic")
+    html = admin_client.get(reverse("catalog:product_detail", args=[p.id])).content.decode()
+    assert "data-copy-url=" not in html and "Activer la boutique en ligne" in html
+
+
+def test_copy_link_in_product_list_only_for_published(admin_client, boutique):
+    shown = _product(boutique, "Visible")
+    hidden = _product(boutique, "Cache", online=False)
+    html = admin_client.get(reverse("catalog:product_list")).content.decode()
+    assert f"/boutique/{SLUG}/produit/{shown.id}/" in html
+    assert f"/boutique/{SLUG}/produit/{hidden.id}/" not in html
+
+
+@override_settings(IS_OFFLINE=True)
+def test_no_copy_link_on_offline_station(boutique):
+    from types import SimpleNamespace
+
+    from apps.catalog.views import _shop_link
+
+    request = SimpleNamespace(boutique=boutique)
+    assert _shop_link(request, SimpleNamespace(is_online=True, is_active=True, id=1)) == {"state": None, "url": ""}
+
+
+def test_copied_link_leads_to_live_product_page(admin_client, client, boutique):
+    p = _product(boutique, "Mastic")
+    html = admin_client.get(reverse("catalog:product_detail", args=[p.id])).content.decode()
+    import re
+
+    url = re.search(r'data-copy-url="([^"]+)"', html).group(1)
+    path = url.split("://", 1)[1].split("/", 1)[1]
+    assert client.get("/" + path).status_code == 200
+
+
+def test_copy_script_present_in_back_office(admin_client, boutique):
+    html = admin_client.get(reverse("core:home")).content.decode()
+    assert "data-copy-url" in html and "navigator.clipboard" in html
+
+
+def test_product_detail_still_requires_login(client, boutique):
+    """Régression : les décorateurs de connexion doivent rester sur la fiche produit."""
+    p = _product(boutique, "Mastic")
+    response = client.get(reverse("catalog:product_detail", args=[p.id]))
+    assert response.status_code == 302 and ("connexion" in response.url or "login" in response.url)

@@ -68,6 +68,10 @@
                     {% endif %}
                 </td>
                 <td class="text-end">
+                    {% if not IS_OFFLINE and request.boutique.shop_enabled and request.boutique.shop_slug and product.is_online and product.is_active %}
+                    {% url 'storefront:product' slug=request.boutique.shop_slug product_id=product.id as shop_path %}
+                    <button type="button" class="btn btn-link p-0 me-3" data-copy-url="{{ request.scheme }}://{{ request.get_host }}{{ shop_path }}" data-copied="{% trans 'Lien copié !' %}" title="{% trans 'Copier le lien de la page produit' %}" aria-label="{% trans 'Copier le lien' %}"><i class="bi bi-link-45deg"></i> <span class="d-none d-md-inline" data-copy-label>{% trans "Lien" %}</span></button>
+                    {% endif %}
                     <a href="{% url 'catalog:product_update' product.id %}" class="me-3"><i class="bi bi-pencil"></i> {% trans "Modifier" %}</a>
                     {% if request.boutique_role == "ADMIN_COMPTE" or request.boutique_role == "GERANT_BOUTIQUE" %}
                     <form method="post" action="{% url 'catalog:product_delete' product.id %}" class="d-inline" onsubmit="return confirm('{% trans "Supprimer ce produit ?" %}');">
