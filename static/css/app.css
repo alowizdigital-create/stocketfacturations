@@ -456,3 +456,37 @@ a.stat-card:hover, a.stat-card:focus-visible {
   border-radius: 10px;
   box-shadow: var(--shadow);
 }
+
+/* --- Liste des commandes sur téléphone : une commande = une carte compacte ---
+   Le tableau à 6 colonnes forçait la colonne « Action » à devenir très étroite :
+   ses boutons s'empilaient en hauteur. Ici chaque ligne devient une mini-fiche
+   (n° · client · total / téléphone · date / boutons alignés sur une seule ligne). */
+@media (max-width: 767.98px) {
+  .table-app { overflow-x: visible; }
+  .cmd-table, .cmd-table tbody { display: block; width: 100%; }
+  .cmd-table thead { display: none; }
+  .cmd-table tbody tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "num client total" "phone phone date" "actions actions actions";
+    column-gap: .6rem; row-gap: .15rem;
+    padding: .7rem .85rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .cmd-table tbody tr:last-child { border-bottom: 0; }
+  .table-app .cmd-table tbody td { display: block; padding: 0; border: 0; min-width: 0; }
+  .cmd-table .c-num { grid-area: num; font-size: 1rem; }
+  .cmd-table .c-client { grid-area: client; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cmd-table .c-total { grid-area: total; font-weight: 700; text-align: right; white-space: nowrap; }
+  .cmd-table .c-phone { grid-area: phone; font-size: .82rem; }
+  .cmd-table .c-date { grid-area: date; display: block !important; font-size: .78rem; text-align: right; align-self: end; }
+  .cmd-table .c-actions { grid-area: actions; margin-top: .45rem; text-align: left !important; }
+  .cmd-table .c-actions > div {
+    display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start !important;
+    gap: .4rem !important; overflow-x: auto;
+  }
+  .cmd-table .c-actions form { flex: 0 0 auto; margin: 0; }
+  .cmd-table .c-actions .btn { padding: .32rem .6rem; }
+  .cmd-table tbody tr:hover { background: transparent; }
+  .cmd-table tbody tr > td[colspan] { grid-column: 1 / -1; display: block; }
+}

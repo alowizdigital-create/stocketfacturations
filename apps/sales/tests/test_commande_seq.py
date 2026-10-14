@@ -68,7 +68,7 @@ def test_list_shows_simple_number_and_eye(logged, boutique):
     Invoice.objects.filter(pk=commande.pk).update(delivery_status=Invoice.EN_COURS)
     html = logged.get(reverse("sales:commande_list")).content.decode()
     assert commande.number not in html                          # plus de numéro de document long
-    assert 'class="fw-semibold">1</td>' in html
+    assert 'class="fw-semibold c-num">1</td>' in html
     assert 'bi-eye' in html and reverse("sales:invoice_detail", args=[commande.id]) in html
 
 

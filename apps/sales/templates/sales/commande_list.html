@@ -44,17 +44,17 @@
 </div>
 
 <div class="table-app">
-    <table class="table mb-0">
+    <table class="table mb-0 cmd-table">
         <thead><tr><th>{% trans "N°" %}</th><th>{% trans "Client" %}</th><th>{% trans "Téléphone" %}</th><th class="d-none d-sm-table-cell">{% trans "Date" %}</th><th>{% trans "Total TTC" %}</th><th class="text-end">{% trans "Action" %}</th></tr></thead>
         <tbody id="commandes-tbody">
             {% for invoice in commandes %}
             <tr>
-                <td class="fw-semibold">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}{% if invoice.source == "EN_LIGNE" %} <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>{% endif %}</td>
-                <td>{{ invoice.client|default:"—" }}</td>
-                <td class="text-muted">{{ invoice.client.phone|default:"—" }}</td>
-                <td class="d-none d-sm-table-cell text-muted">{{ invoice.issue_date|date:"d/m/Y" }}</td>
-                <td>{{ invoice.total_ttc }} {{ invoice.currency }}</td>
-                <td class="text-end">
+                <td class="fw-semibold c-num">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}{% if invoice.source == "EN_LIGNE" %} <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>{% endif %}</td>
+                <td class="c-client">{{ invoice.client|default:"—" }}</td>
+                <td class="text-muted c-phone">{{ invoice.client.phone|default:"—" }}</td>
+                <td class="d-none d-sm-table-cell text-muted c-date">{{ invoice.issue_date|date:"d/m/Y" }}</td>
+                <td class="c-total">{{ invoice.total_ttc }} {{ invoice.currency }}</td>
+                <td class="text-end c-actions">
                     <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
                         <a href="{% url 'sales:invoice_detail' invoice.id %}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
                         <button type="button" class="btn btn-sm btn-outline-secondary copy-phone-btn" data-phone="{{ invoice.client.phone|default:'' }}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" {% if not invoice.client.phone %}disabled{% endif %}>
@@ -154,12 +154,12 @@
         }
         tbody.innerHTML = items.map((c) => `
             <tr>
-                <td class="fw-semibold">${escapeHtml(c.number)}${c.online ? ' <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>' : ""}</td>
-                <td>${c.client ? escapeHtml(c.client) : "—"}</td>
-                <td class="text-muted">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
-                <td class="d-none d-sm-table-cell text-muted">${c.date}</td>
-                <td>${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
-                <td class="text-end">
+                <td class="fw-semibold c-num">${escapeHtml(c.number)}${c.online ? ' <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>' : ""}</td>
+                <td class="c-client">${c.client ? escapeHtml(c.client) : "—"}</td>
+                <td class="text-muted c-phone">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
+                <td class="d-none d-sm-table-cell text-muted c-date">${c.date}</td>
+                <td class="c-total">${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
+                <td class="text-end c-actions">
                     <div class="d-inline-flex flex-wrap gap-1 justify-content-end">
                         <a href="${c.url}" class="btn btn-sm btn-outline-secondary" title="{% trans 'Voir la commande' %}" aria-label="{% trans 'Voir la commande' %}"><i class="bi bi-eye"></i></a>
                         <button type="button" class="btn btn-sm btn-outline-secondary copy-phone-btn" data-phone="${escapeHtml(c.client_phone || "")}" title="{% trans 'Copier le numéro' %}" aria-label="{% trans 'Copier le numéro' %}" ${c.client_phone ? "" : "disabled"}>
