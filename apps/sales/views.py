@@ -624,13 +624,24 @@ def devis_list(request):
 
 
 def _commande_query(query):
-    """Recherche d'une commande : par son numéro simple (« 12 »), par son
-    numéro de document long ou par le nom du client."""
-    # Des chiffres seuls désignent le numéro simple : ne pas les chercher dans
-    # le numéro long, dont la date (20260921) ferait ressortir presque tout.
-    if query.isdigit() and len(query) < 9:
-        return Q(commande_seq=int(query)) | Q(client__name__icontains=query)
-    return Q(number__icontains=query) | Q(client__name__icontains=query)
+    """Recherche d'une commande : chaque mot saisi doit se retrouver dans le
+    nom du client, son téléphone ou le numéro de la commande — donc « kouam
+    mirna » trouve « Mirna Kouam ». Des chiffres seuls désignent le numéro
+    simple (« 12 ») : on ne les cherche pas dans le numéro long, dont la date
+    (20260921) ferait ressortir presque tout."""
+    condition = Q()
+    for token in query.split():
+        part = Q(client__name__icontains=token) | Q(client__phone__icontains=token)
+        if token.isdigit() and len(token) < 9:
+            part |= Q(commande_seq=int(token))
+        else:
+            part |= Q(number__icontains=token)
+        condition &= part
+    return condition
+
+
+# Plafond d'affichage d'une recherche (tous onglets confondus).
+SEARCH_MAX_ROWS = 200
 
 
 # Onglet affiché à l'ouverture de la liste des commandes — partagé par la
@@ -774,11 +785,13 @@ def commande_list(request):
     base = _commande_base_queryset(request)
     delivery_counts = {status: base.filter(delivery_status=status).count() for status in COMMANDE_DELIVERY_TABS}
 
-    commandes = base.filter(delivery_status=delivery_filter)
     if query:
-        commandes = commandes.filter(_commande_query(query))
-    if not query:
-        commandes = commandes[:100]
+        # Une recherche porte sur TOUTES les commandes, pas seulement l'onglet
+        # affiché : on tape un nom et la commande « remonte », quel que soit
+        # son statut de livraison (affiché sur chaque ligne).
+        commandes = base.filter(_commande_query(query)).order_by("-issue_date", "-created_at")[:SEARCH_MAX_ROWS]
+    else:
+        commandes = base.filter(delivery_status=delivery_filter)[:100]
     commandes = list(commandes)
     for commande in commandes:
         commande.actions = _commande_actions(commande)
@@ -803,11 +816,15 @@ def _commandes_for_export(request):
     liste complète qu'on exporte."""
     delivery_filter = _commande_delivery_filter(request)
     query = request.GET.get("q", "").strip()
-    commandes = _commande_base_queryset(request).filter(delivery_status=delivery_filter)
+    commandes = _commande_base_queryset(request)
     if query:
+        # Même règle que l'écran : une recherche couvre tous les onglets.
         commandes = commandes.filter(_commande_query(query))
+        label = _("Recherche")
+    else:
+        commandes = commandes.filter(delivery_status=delivery_filter)
+        label = dict(Invoice.DELIVERY_STATUS_CHOICES).get(delivery_filter, delivery_filter)
     commandes = commandes.order_by("-issue_date", "-created_at")[:EXPORT_MAX_ROWS]
-    label = dict(Invoice.DELIVERY_STATUS_CHOICES).get(delivery_filter, delivery_filter)
     return list(commandes), label
 
 
@@ -838,15 +855,19 @@ def commande_search(request):
     """Recherche commande en direct sur la liste des commandes — même
     principe que catalog:product_search / sales:client_search (au fil de
     la frappe, sans recharger la page) : renvoie du JSON, filtré sur
-    l'onglet de livraison actif (voir commande_list) tout comme le rendu
-    serveur initial, pour que les deux restent cohérents."""
+    l'onglet de livraison actif quand la recherche est vide, et sur TOUS les
+    onglets dès qu'un texte est saisi (voir commande_list), pour que le rendu
+    serveur initial et la recherche en direct restent cohérents."""
     query = request.GET.get("q", "").strip()
     delivery_filter = _commande_delivery_filter(request)
 
-    commandes = _commande_base_queryset(request).filter(delivery_status=delivery_filter)
     if query:
-        commandes = commandes.filter(_commande_query(query))
-    commandes = commandes.order_by("-issue_date", "-created_at")[:100]
+        commandes = _commande_base_queryset(request).filter(_commande_query(query))
+        limit = SEARCH_MAX_ROWS
+    else:
+        commandes = _commande_base_queryset(request).filter(delivery_status=delivery_filter)
+        limit = 100
+    commandes = commandes.order_by("-issue_date", "-created_at")[:limit]
 
     results = [
         {
@@ -857,6 +878,8 @@ def commande_search(request):
             "client_phone": c.client.phone if c.client else "",
             "status": c.status,
             "status_display": c.get_status_display(),
+            "delivery_status": c.delivery_status,
+            "delivery_label": c.get_delivery_status_display(),
             "date": c.issue_date.strftime("%d/%m/%Y"),
             "total_ttc": float(c.total_ttc),
             "currency": c.currency,

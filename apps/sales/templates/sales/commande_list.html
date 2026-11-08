@@ -42,6 +42,7 @@
     <i class="bi bi-search pos-search-icon"></i>
     <input type="text" id="commande-search" value="{{ query }}" class="form-control ps-5" placeholder="{% trans 'Rechercher une commande (n°, client)...' %}" autocomplete="off">
 </div>
+<div id="search-scope-hint" class="text-muted small mb-2" {% if not query %}hidden{% endif %}><i class="bi bi-search"></i> {% trans "Résultats dans tous les onglets" %}</div>
 
 <div class="table-app">
     <table class="table mb-0 cmd-table">
@@ -51,7 +52,7 @@
             <tr>
                 <td class="fw-semibold c-num">{% if invoice.commande_seq is not None %}{{ invoice.commande_seq }}{% else %}{{ invoice.number }}{% endif %}{% if invoice.source == "EN_LIGNE" %} <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>{% endif %}</td>
                 <td class="c-client">{{ invoice.client|default:"—" }}</td>
-                <td class="text-muted c-phone">{{ invoice.client.phone|default:"—" }}</td>
+                <td class="text-muted c-phone">{{ invoice.client.phone|default:"—" }}{% if query %} <span class="badge bg-light text-dark border ms-1">{{ invoice.get_delivery_status_display }}</span>{% endif %}</td>
                 <td class="d-none d-sm-table-cell text-muted c-date">{{ invoice.issue_date|date:"d/m/Y" }}</td>
                 <td class="c-total">{{ invoice.total_ttc }} {{ invoice.currency }}</td>
                 <td class="text-end c-actions">
@@ -86,7 +87,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune commande dans cette catégorie." %}</td></tr>
+            <tr><td colspan="6" class="text-muted text-center py-4">{% if query %}{% trans "Aucune commande ne correspond à cette recherche." %}{% else %}{% trans "Aucune commande dans cette catégorie." %}{% endif %}</td></tr>
             {% endfor %}
         </tbody>
     </table>
@@ -134,7 +135,7 @@
     // pour l'onglet En attente et une commande jamais validée (voir
     // apps.sales.views.commande_delete, qui revérifie tout côté serveur).
     function deleteButton(c) {
-        if (!(deliveryFilter === "EN_ATTENTE" && c.status === "BROUILLON")) return "";
+        if (!(c.delivery_status === "EN_ATTENTE" && c.status === "BROUILLON")) return "";
         const next = window.location.pathname + window.location.search;
         const confirmMsg = DELETE_CONFIRM_TEMPLATE.replace("%(number)s", c.number);
         return `
@@ -147,7 +148,7 @@
             </form>`;
     }
 
-    function renderRows(items) {
+    function renderRows(items, searching) {
         if (!items.length) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-muted text-center py-4">{% trans "Aucune commande trouvée." %}</td></tr>';
             return;
@@ -156,7 +157,7 @@
             <tr>
                 <td class="fw-semibold c-num">${escapeHtml(c.number)}${c.online ? ' <span class="badge bg-info text-dark" title="{% trans 'Commande passée sur la boutique en ligne' %}"><i class="bi bi-globe2"></i></span>' : ""}</td>
                 <td class="c-client">${c.client ? escapeHtml(c.client) : "—"}</td>
-                <td class="text-muted c-phone">${c.client_phone ? escapeHtml(c.client_phone) : "—"}</td>
+                <td class="text-muted c-phone">${c.client_phone ? escapeHtml(c.client_phone) : "—"}${searching ? ` <span class="badge bg-light text-dark border ms-1">${escapeHtml(c.delivery_label)}</span>` : ""}</td>
                 <td class="d-none d-sm-table-cell text-muted c-date">${c.date}</td>
                 <td class="c-total">${Math.round(c.total_ttc).toLocaleString("fr-FR")} ${c.currency}</td>
                 <td class="text-end c-actions">
@@ -189,7 +190,8 @@
         const url = searchUrl + "?livraison=" + encodeURIComponent(deliveryFilter) + "&q=" + encodeURIComponent(query);
         const resp = await fetch(url, {headers: {"X-Requested-With": "XMLHttpRequest"}});
         const data = await resp.json();
-        renderRows(data.results);
+        renderRows(data.results, !!query.trim());
+        document.getElementById("search-scope-hint").hidden = !query.trim();
     }
 
     // Confirmation avant une étape sensible (livraison) — délégué sur le
