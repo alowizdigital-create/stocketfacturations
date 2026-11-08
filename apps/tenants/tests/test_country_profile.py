@@ -1,4 +1,4 @@
-"""Profil de départ Cameroun (XAF, TVA 19,25 %) et mentions NIU/RCCM — voir
+"""Profil de départ Cameroun (XAF, +237, TVA à 0) et mentions NIU/RCCM — voir
 apps.core.country_profiles, apps.tenants.services.create_company_with_owner
 et Boutique.legal_mentions."""
 
@@ -27,10 +27,10 @@ def _create(country="", devise="XOF"):
 
 # --- profil pays ----------------------------------------------------------------
 
-def test_cameroon_profile_sets_xaf_tva_and_calling_code():
+def test_cameroon_profile_sets_xaf_and_calling_code_but_tva_stays_zero():
     _, boutique = _create("CM", devise="XOF")
     assert boutique.devise == "XAF"
-    assert boutique.tva_rate == Decimal("19.25")
+    assert boutique.tva_rate == Decimal("0")
     assert boutique.country_calling_code == "237"
 
 
@@ -51,7 +51,7 @@ def test_signup_with_cameroon_overrides_devise(client):
     })
     assert response.status_code == 302
     boutique = Boutique.objects.get(compte__name="Douala SARL")
-    assert boutique.devise == "XAF" and boutique.tva_rate == Decimal("19.25")
+    assert boutique.devise == "XAF" and boutique.tva_rate == Decimal("0")
 
 
 # --- NIU / RCCM -----------------------------------------------------------------

@@ -263,6 +263,12 @@ def company_settings(request):
         if boutique_form.is_valid():
             boutique_form.save()
             messages.success(request, _("Paramètres régionaux de la boutique mis à jour."))
+            if boutique_form.products_updated:
+                messages.info(
+                    request,
+                    _("La TVA de %(n)s produit(s) a été mise à jour avec le nouveau taux.")
+                    % {"n": boutique_form.products_updated},
+                )
             return redirect("tenants:company_settings")
     elif request.method == "POST":
         form = CompteSettingsForm(request.POST, request.FILES, instance=compte)

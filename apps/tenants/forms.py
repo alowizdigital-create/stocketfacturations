@@ -25,7 +25,7 @@ class SignupForm(BootstrapFormMixin, forms.Form):
     # )
     country = forms.ChoiceField(
         label=_("Pays"), choices=COUNTRY_CHOICES, initial=DEFAULT_COUNTRY, required=False,
-        help_text=_("Applique la devise, la TVA et l'indicatif du pays (modifiables ensuite dans les paramètres)."),
+        help_text=_("Applique la devise et l'indicatif du pays. La TVA démarre à 0 : vous la réglez ensuite dans les paramètres si vous en facturez."),
     )
     devise = forms.ChoiceField(
         label=_("Devise de la boutique"),
@@ -208,8 +208,36 @@ class BoutiqueRegionalForm(BootstrapFormMixin, forms.ModelForm):
         required=False,
     )
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Taux avant modification : sert à répercuter un changement sur les
+        # produits qui suivaient ce taux (voir save).
+        self._previous_tva = self.instance.tva_rate if self.instance.pk else None
+        self.products_updated = 0
+
+    def save(self, commit=True):
+        """Quand l'utilisateur change la TVA par défaut de la boutique, les
+        produits de l'entreprise qui portaient l'ancien taux passent au
+        nouveau — sinon une TVA corrigée (ex: remise à 0) resterait appliquée
+        aux produits déjà créés. Un produit à un taux différent n'est pas touché."""
+        previous = self._previous_tva
+        boutique = super().save(commit=commit)
+        if commit and previous is not None and boutique.tva_rate != previous:
+            from apps.catalog.models import Product
+
+            self.products_updated = Product.objects.filter(
+                compte=boutique.compte, tva_rate=previous,
+            ).update(tva_rate=boutique.tva_rate)
+        return boutique
+
     class Meta:
         model = Boutique
+        help_texts = {
+            "tva_rate": _(
+                "0 par défaut. Proposée sur les nouvelles lignes de facture et les nouveaux produits ; "
+                "si vous la modifiez, les produits qui avaient l'ancien taux passent au nouveau."
+            ),
+        }
         fields = [
             "devise",
             "country_calling_code",

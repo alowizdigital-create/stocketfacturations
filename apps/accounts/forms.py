@@ -19,7 +19,7 @@ class GoogleSignupConfirmForm(BootstrapFormMixin, forms.Form):
     boutique_name = forms.CharField(label=_("Nom de la première boutique"), max_length=255)
     country = forms.ChoiceField(
         label=_("Pays"), choices=COUNTRY_CHOICES, initial=DEFAULT_COUNTRY, required=False,
-        help_text=_("Applique la devise, la TVA et l'indicatif du pays (modifiables ensuite dans les paramètres)."),
+        help_text=_("Applique la devise et l'indicatif du pays. La TVA démarre à 0 : vous la réglez ensuite dans les paramètres si vous en facturez."),
     )
     devise = forms.ChoiceField(
         label=_("Devise de la boutique"), choices=CURRENCY_CHOICES, initial="XAF",
